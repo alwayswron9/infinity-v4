@@ -1,159 +1,450 @@
 # Infinity Technical Architecture
 
 ## System Overview
-- central data service designed for workflow automation platforms (n8n, Make, Zapier)
-- serves as single source of truth for data management and relationship tracking
-- provides semantic operations through vector embeddings
-- enables workflow coordination across platforms
+Infinity serves as a central data service specifically designed to integrate with workflow automation platforms (n8n, Make, Zapier). It provides:
+- A single source of truth for maintaining consistent, reliable data across all workflows
+- Basic CRUD operations on all data models
+- Simple relationship management through foreign keys
+- Vector search capability through embeddings
+- Basic authentication and security
 
-## Data Model Architecture
-- supports core data types: string, number, boolean, date, array, object, vector
-- all models include base fields: id, owner_id, created_at, updated_at
-- vector field uses OpenAI's ada-002 model (1536 dimensions)
-- handles one-to-one and one-to-many relationships with cascade behavior
+## Tech Stack
 
-```mermaid
-graph TD
-    Client[Workflow Platforms] --> API[API Layer]
-    API --> DataMgmt[Data Management]
-    API --> RelMgmt[Relationship Management]
-    API --> VectorOps[Vector Operations]
-    
-    DataMgmt --> DB[(MongoDB)]
-    RelMgmt --> DB
-    VectorOps --> DB
-```
+### Frontend
+- **Next.js**: React framework for server-side rendering and API routes
+- **Tailwind CSS**: Utility-first CSS framework for modern, responsive design
+- **TypeScript**: For type-safe development across the application
+- **React Query**: Data fetching and state management
+- **Zod**: Runtime type validation and schema definition
 
-## Core Components
+### Backend & API
+- **Node.js**: Runtime environment for server-side JavaScript
+- **Next.js API Routes**: For RESTful API endpoints
+- **JWT & API Key Auth**: For secure authentication
+- **OpenAI SDK**: For vector embeddings generation
 
-### Data Model Management
-- schema creation and modification through API
-- field type validation and constraints
-- schema creation and modification is performed via API endpoints with rigorous data validation using Zod. This ensures that all field constraints (e.g., required fields, uniqueness, enums) defined in docs/03-schema.md are enforced both at the API layer and within Mongoose ODM.
+### Database & Storage
+- **MongoDB Atlas**: Primary database for model definitions and data storage
+- **Atlas Vector Search**: For efficient vector similarity searches
+- **MongoDB Indexes**: For optimized query performance
 
-### Relationship Management
-- supports one-to-one relationships (User to Profile)
-- handles one-to-many relationships (Company to Employees)
-- manages cascade operations on delete/update
-- automatic foreign key consistency
-- supports one-to-one and one-to-many relationships as defined in docs/03-schema.md. Advanced relationship types, such as many-to-many associations, computed fields, or polymorphic relationships, are explicitly out-of-scope for the MVP (see docs/02-out-of-scope.md). Relationship configurations include cascade, setNull, or restrict behaviors, which are automatically enforced.
+### Testing & Quality Assurance
+- **Jest**: JavaScript testing framework
+- **Eslint**: For code quality
 
-### Database Operations
-- The system stores custom model data in MongoDB. Each custom model document is stored in a collection with its unique model id (as defined in the model schema) as the primary identifier.
-- Standard CRUD operations on data models are exposed via API endpoints and utilize the unique model id to ensure global uniqueness across all users.
-- Pre-configured action templates streamline common operations.
-- Built-in operation status tracking monitors execution and success of all database operations.
-- Automatic vector generation is performed for models with embedding enabled.
+## Workflow Platform Integration
+Workflow platforms connect to Infinity through:
+1. API Key Authentication:
+   - Generate API key through admin interface
+   - Use API key in all requests via Authorization header
+2. Data Operations:
+   - Create/update/delete records via REST endpoints
+   - Query data with relationship inclusion
+   - Perform vector similarity searches
+3. Model Management:
+   - Define data models and relationships
+   - Configure vector embeddings for semantic operations
 
-### Embedding Management
-- automatic vector field management (1536 dimensions)
-- vector generation from configured source fields
-- updates vectors when source content changes
-- enables similarity search operations
+## Data Architecture
 
-### System Models
-The system also manages internally-defined system models as specified in docs/03-schema.md. These include:
-- ApiKey: Contains fields such as id, owner_id, key, name, is_active, description, created_at, and updated_at; used for authenticating workflow automation platforms and managing access.
-- Log: Stores system log entries with fields including id, timestamp, level, category, message, and details; used for operational monitoring and error tracking.
-These system models are maintained internally and are not exposed via standard CRUD endpoints to end users.
+### Base Models & System Models
+All models in the system automatically include base fields as defined in `03-schema.md`.
 
-## API Structure
-- model management endpoints for schema operations
-- data operation endpoints for CRUD actions
-- relationship query endpoints
-- vector similarity search endpoints
-- authentication endpoints for API keys and tokens
-
-## Security
-- API key authentication for workflow platforms
-- JWT tokens for admin interface
-- basic input validation and sanitization
-- operation logging and tracking
-
-## Infrastructure
-- MongoDB for data and vector storage
-- Next.js for API and admin interface
-- TypeScript for type safety
-- OpenAI ada-002 for embeddings
-
-```mermaid
-graph TD
-    Client[Client Applications] --> Next[Next.js App Router]
-    Next --> API[API Routes]
-    Next --> Pages[Page Routes]
-    API --> Services[Core Services]
-    Services --> ModelMgmt[Model Management]
-    Services --> RelMgmt[Relationship Management]
-    Services --> ActionMgmt[Action Management]
-    ModelMgmt --> Mongoose[Mongoose ODM]
-    RelMgmt --> Mongoose
-    ActionMgmt --> Mongoose
-    Mongoose --> DB[(MongoDB Atlas)]
-```
-
-## Technology Choices
-- frontend stack combines Next.js, React, TailwindCSS, and TypeScript for type-safe development
-- api layer built on Next.js API routes with Zod for runtime type validation
-- authentication handled through JWT (browser clients) and API keys (automation platforms)
-- database operations managed through Mongoose ODM for type-safe queries and schema management
-- vector operations integrated directly into document operations using MongoDB's vector search
-
-## Core Services
-- model management handles schema validation, field types, and relationship definitions
-- relationship service manages one-to-one and one-to-many relationships with cascade operations
-- action service combines CRUD operations with automatic vector generation for configured fields
-
-## Data Structure
-- MongoDB collections store custom model records based on the schema defined in 03-schema.md. Each record uses the model's unique id as the primary identifier, ensuring uniqueness across all users.
-- Documents include base fields (id, owner_id, created_at, updated_at), a human-readable model name, and a dynamic "fields" object for custom data.
-- When embedding is enabled, a 1536-dimensional vector field is automatically generated and maintained within the document.
-- Example document structure:
+## System User Model
 ```typescript
 {
-  id: string                    // Unique model id (e.g., "model_def_123")
-  owner_id: string              // References user
-  name: string                  // Model name (for display purposes)
-  fields: { [key: string]: any }     // Dynamic model-specific fields as per schema
-  vector?: number[]             // Optional embedding vector (1536 dimensions)
-  created_at: Date            
-  updated_at: Date            
+  id: string;           // Required, UUID v4
+  email: string;        // Required, Unique
+  name: string;         // Required
+  status: string;       // enum: ['active', 'inactive']
+  created_at: date;     // Required
+  updated_at: date;     // Required
 }
 ```
 
+### Data Storage
+
+#### Model Definitions
+Model definitions are stored in a dedicated MongoDB collection and follow this structure:
+```typescript
+{
+  id: string;           // Model definition ID
+  owner_id: string;     // References System User
+  name: string;         // Model name
+  description?: string; // Optional description
+  
+  "fields": {
+    [fieldName: string]: {
+      "id": string;         // Field identifier
+      "type": string;       // One of the core data types
+      "required"?: boolean; // Whether the field is required
+      "unique"?: boolean;   // Whether the field must be unique
+      "default"?: any;      // Default value if not provided
+      "enum"?: any[];      // For fields with enumerated values
+      "description"?: string; // Field description
+      "foreign_key"?: {    // If field is a foreign key
+        "references": {
+          "model_id": string;  // Referenced model definition ID
+          "field_id": string;  // Referenced field ID (usually the 'id' field)
+        }
+      }
+    }
+  },
+  "relationships": {
+    [relationName: string]: {
+      "id": string;        // Relationship identifier
+      "type": "hasOne" | "hasMany" | "belongsTo";
+      "target_model_id": string;  // References another model definition ID
+      "foreign_key": {
+        "field_id": string;      // References field ID in this or target model
+      }
+      "onDelete"?: "cascade" | "setNull" | "restrict";
+      "onUpdate"?: "cascade" | "setNull" | "restrict";
+    }
+  },
+  "indexes"?: {
+    [indexName: string]: {
+      "fields": string[];    // References field IDs
+      "unique"?: boolean;
+    }
+  },
+  embedding?: {         // Optional embedding configuration
+    enabled: boolean;   // Whether to enable embeddings
+    source_fields: string[];  // Fields to use for embedding generation
+  }
+}
+```
+
+#### Model Instances
+Each model definition has its own MongoDB collection (named using the model_def_id) containing the actual data records:
+```typescript
+{
+  id: string;           // Instance ID
+  owner_id: string;     // References System User
+  created_at: Date;     // Creation timestamp
+  updated_at: Date;     // Last update timestamp
+  fields: {            // Dynamic fields as defined in model
+    [fieldName: string]: any;
+  }
+  vector?: number[];   // Optional 1536-dim embedding vector
+}
+```
+
+### Relationship Management
+Relationships between models are:
+- Managed through foreign key references
+- Configured with onDelete/onUpdate behaviors (cascade/setNull/restrict)
+- Automatically enforced by the system
+- Queryable through relationship inclusion in API requests
+
+Note: Many-to-many relationships and other advanced features are explicitly out of scope for MVP.
+
 ## API Design
-- restful endpoints exposed for all core operations (CRUD + vector search)
-- routes follow Next.js App Router conventions:
-  ```
-  /api/models    - model definition management
-  /api/actions   - document operations + vector search
-  /api/auth      - authentication endpoints
-  ```
-- all endpoints validate input using Zod schemas
-- vector operations automatically handled during document creation/updates
-- Note: The API is designed to strictly adhere to the MVP scope as defined in docs/02-out-of-scope.md. Advanced features such as many-to-many relationships, computed fields, automatic schema migrations, and extensive analytics are deliberately excluded.
 
-## Project Organization
+### Authentication & Authorization
 
-The Infinity project is organized into several key directories to ensure a clear separation of concerns and maintain scalability. Below is an overview of the project structure:
+#### Authentication Methods
+1. **API Key Authentication**
+   - Format: `inf_<32 random chars>`
+   - Usage: Include in Authorization header as `Bearer <api_key>`
+   - Generation: Through admin interface or API
+   - Storage: Hashed in database
 
-- **src/**
-  - **app/**: Next.js App Router's route definitions, including both API endpoints and page routes.
-  - **components/**: UI components used throughout the admin interface and client-side application.
-  - **lib/**: Shared utilities and helper functions, such as database connections, middleware, and configuration utilities.
-  - **services/**: Core business logic, including model management, relationship handling, action management, and vector operations.
+2. **JWT Authentication**
+   - Format: Standard JWT token
+   - Claims:
+     ```typescript
+     {
+       sub: string;      // User ID
+       username: string; // User's username
+       email: string;    // User email
+       name: string;     // User name
+       exp: number;      // Expiration timestamp
+       iat: number;      // Issued at timestamp
+     }
+     ```
+   - Expiration: 24 hours from issuance (non-refreshable)
+   - Usage: Include in Authorization header as `Bearer <jwt_token>`
 
-- **tests/**: Automated test suites for API endpoints, business logic, and UI components to ensure robust functionality and prevent regressions.
+#### Authentication Endpoints
+```typescript
+// User Registration
+POST /api/auth/register
+{
+  username: string;  // Required, alphanumeric + underscore only
+  email: string;    // Required
+  password: string; // Required
+  name: string;     // Required
+}
+// Response:
+{
+  token: string;        // JWT token
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    name: string;
+    status: string;
+  }
+}
 
-- **docs/**: Documentation files outlining system architecture, feature specifications, design decisions, and usage guidelines.
+// User Authentication
+POST /api/auth/login
+{
+  username: string;  // Either username or email is required
+  email?: string;    // Either username or email is required
+  password: string;
+}
+// Response:
+{
+  token: string;        // JWT token
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    name: string;
+    status: string;
+  }
+}
 
-- **config/**: Environment configurations, deployment scripts, Dockerfiles, and CI/CD pipeline configurations.
+// API Key Management
+POST /api/auth/apikey     // Generate API key
+GET /api/auth/apikey      // List API keys
+DELETE /api/auth/apikey/:id // Revoke API key
 
-This modular structure allows developers to work on different aspects of the application concurrently without interference. API routes leverage Next.js's file-based routing for clarity, while centralized services and utilities promote code reuse and maintainability. Additional infrastructure components can be added into the config directory as the project evolves.
+// Token Management
+POST /api/auth/token/revoke   // Revoke JWT token
+```
 
-## Security & Monitoring
-- authentication through JWT tokens and API keys
-- basic rate limiting on API endpoints
-- CORS configuration for API access
-- request logging and error tracking
-- basic API usage metrics collection
-``` 
+#### User Status Management
+- Active users can:
+  - Log in
+  - Generate API keys
+  - Access all endpoints
+- Inactive users:
+  - Cannot log in
+  - Existing API keys are automatically revoked
+  - Existing JWT tokens are invalidated
+
+### Model Definition Endpoints
+```typescript
+POST   /api/models        // Create new model definition
+GET    /api/models        // List model definitions
+GET    /api/models/:id    // Get specific model definition
+PUT    /api/models/:id    // Update model definition
+DELETE /api/models/:id    // Delete model definition
+```
+
+### Data Operation Endpoints
+```typescript
+// Basic CRUD endpoints
+POST   /api/data/:model_id           // Create record
+GET    /api/data/:model_id           // List/query records
+GET    /api/data/:model_id/:id       // Get specific record
+PUT    /api/data/:model_id/:id       // Update record
+DELETE /api/data/:model_id/:id       // Delete record
+
+// Query parameters for GET requests
+{
+  filter?: {                         // Basic field filtering
+    [field: string]: any
+  },
+  include?: string[],                // Related models to include
+  page?: number,                     // Page number (default: 1)
+  limit?: number                     // Items per page (default: 10)
+}
+
+// Standard Success Response Format
+{
+  success: true,
+  data: any,           // Response payload (single record or array)
+  meta?: {             // Optional metadata for list endpoints
+    page: number,      // Current page number
+    limit: number,     // Items per page
+    total: number      // Total number of records
+  }
+}
+```
+
+### Vector Search Endpoints
+```typescript
+POST /api/actions/:model_id/search
+// Request body:
+{
+  query: string,              // Text query to search for
+  limit?: number,            // Max results (default 10)
+  min_similarity?: number    // Minimum cosine similarity score (0-1)
+}
+// Response:
+{
+  success: true,
+  data: {
+    results: Array<{
+      record: any,             // Model record
+      similarity: number       // Cosine similarity score (0-1)
+    }>
+  }
+}
+```
+
+The system automatically:
+1. Generates embeddings for the query text using OpenAI ada-002
+2. Performs vector similarity search using cosine similarity (only supported metric)
+3. Returns matching records sorted by similarity
+
+Note: Users only need to provide text queries - all vector operations are handled internally.
+
+### Error Responses
+All endpoints return consistent error responses:
+```typescript
+{
+  success: false,
+  error: {
+    code: string;        // Machine-readable error code
+    message: string;     // Human-readable error message
+  }
+}
+```
+
+### HTTP Status Codes
+
+#### Success Codes
+- **200 OK**: Request succeeded
+  - Used for: GET, PUT, DELETE operations
+  - Response includes requested/updated data
+- **201 Created**: Resource created successfully
+  - Used for: POST operations
+  - Response includes created resource
+- **204 No Content**: Request succeeded, no response body
+  - Used for: DELETE operations
+
+#### Client Error Codes
+- **400 Bad Request**: Invalid request format/parameters
+  - Missing required fields
+  - Invalid field values
+  - Malformed JSON
+- **401 Unauthorized**: Authentication required
+  - Missing authentication
+  - Invalid API key/token
+- **403 Forbidden**: Permission denied
+  - Valid authentication but insufficient permissions
+- **404 Not Found**: Resource not found
+  - Invalid model ID
+  - Invalid record ID
+- **409 Conflict**: Resource conflict
+  - Unique constraint violation
+  - Version conflict
+- **422 Unprocessable Entity**: Semantic errors
+  - Validation failures
+  - Business rule violations
+
+#### Server Error Codes
+- **500 Internal Server Error**: Unexpected server error
+  - Includes error details and request ID
+- **503 Service Unavailable**: System temporarily unavailable
+  - Maintenance mode
+  - Rate limit exceeded
+
+#### Example Error Responses
+```typescript
+// 400 Bad Request
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "Missing required field: name",
+    "details": {
+      "field": "name",
+      "type": "required"
+    },
+    "request_id": "req_123"
+  }
+}
+
+// 404 Not Found
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Record not found",
+    "details": {
+      "model": "User",
+      "id": "123"
+    },
+    "request_id": "req_456"
+  }
+}
+
+// 500 Internal Server Error
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "An unexpected error occurred",
+    "details": {
+      "error": "Database connection failed"
+    },
+    "request_id": "req_789"
+  }
+}
+```
+
+### Vector Embeddings
+
+#### Configuration
+Embeddings are configured at the model level:
+```typescript
+{
+  "embedding": {
+    "enabled": boolean;   // Whether to enable embeddings
+    "source_fields": string[];  // Fields to use for embedding generation
+  }
+}
+```
+
+#### Generation Process
+1. **When Embeddings are Generated:**
+   - On record creation
+   - On update of any source field
+   - On manual regeneration request
+
+2. **Generation Steps:**
+   - System concatenates values of source_fields
+   - OpenAI ada-002 model generates 1536-dim vector
+   - Vector is stored in model instance's vector field
+
+3. **Storage:**
+   ```typescript
+   {
+     id: string;
+     // ... other fields ...
+     vector?: number[];   // 1536-dim embedding vector
+   }
+   ```
+
+4. **Search Process:**
+   - Query text is converted to vector using same model
+   - Cosine similarity computed against stored vectors
+   - Results sorted by similarity score
+   - Filtered by optional minimum similarity threshold
+
+#### Example Usage
+```typescript
+// Model Definition
+{
+  "name": "Document",
+  "fields": {
+    "title": { "type": "string" },
+    "content": { "type": "string" }
+  },
+  "embedding": {
+    "enabled": true,
+    "source_fields": ["title", "content"]
+  }
+}
+
+// Search Request
+POST /api/actions/document/search
+{
+  "query": "example search text",
+  "limit": 10,
+  "min_similarity": 0.7
+}
+     ```
