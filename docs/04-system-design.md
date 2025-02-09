@@ -214,6 +214,20 @@ DELETE /api/auth/apikey/:id // Revoke API key
 
 // Token Management
 POST /api/auth/token/revoke   // Revoke JWT token
+
+// Auth Check
+GET /api/auth/check           // Check if current token is valid
+// Response:
+{
+  authenticated: boolean;     // Whether the token is valid
+  user: {                    // Current user information
+    id: string;
+    username: string;
+    email: string;
+    name: string;
+    status: string;
+  }
+}
 ```
 
 #### User Status Management
