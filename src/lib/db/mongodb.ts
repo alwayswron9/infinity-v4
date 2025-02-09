@@ -1,12 +1,13 @@
 import { MongoClient } from 'mongodb';
+import { createIndexes } from './indexes';
 
 if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your MongoDB URI to .env');
+  throw new Error('MONGODB_URI is not set in environment variables');
 }
 
-if (!process.env.MONGODB_DB) {
-  throw new Error('Please add your MongoDB Database name to .env');
-}
+const MONGODB_URI = process.env.MONGODB_URI;
+let client: MongoClient | null = null;
+let indexesCreated = false;
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -41,38 +42,19 @@ async function ensureIndexes(db: ReturnType<MongoClient['db']>) {
   ]);
 }
 
-export async function connectToDatabase(): Promise<{
-  client: MongoClient;
-  db: ReturnType<MongoClient['db']>;
-}> {
-  if (cached.conn) {
-    return {
-      client: cached.conn,
-      db: cached.conn.db(process.env.MONGODB_DB),
-    };
+export async function connectToDatabase() {
+  if (client) {
+    return { db: client.db(), client };
   }
 
-  if (!cached.promise) {
-    const opts = {
-      maxPoolSize: 10,
-    };
+  client = await MongoClient.connect(MONGODB_URI);
+  const db = client.db();
 
-    cached.promise = MongoClient.connect(process.env.MONGODB_URI!, opts);
+  // Create indexes if not already done
+  if (!indexesCreated) {
+    await createIndexes(db);
+    indexesCreated = true;
   }
 
-  try {
-    cached.conn = await cached.promise;
-    const db = cached.conn.db(process.env.MONGODB_DB);
-    
-    // Ensure indexes exist
-    await ensureIndexes(db);
-    
-    return {
-      client: cached.conn,
-      db,
-    };
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
+  return { db, client };
 } 

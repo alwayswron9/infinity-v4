@@ -11,7 +11,7 @@ function getUserId(payload: JWTPayload | { user_id: string }): string {
   return payload.user_id;
 }
 
-// Revoke API key
+// Revoke access token (API key or JWT)
 async function handleDelete(
   req: AuthenticatedRequest,
   { params }: { params: { id: string } }
@@ -20,7 +20,30 @@ async function handleDelete(
     const { db } = await connectToDatabase();
     const userId = getUserId(req.auth.payload);
     
-    // Find and update the API key
+    // Check if this is a JWT token revocation (special case where id is 'current')
+    if (params.id === 'current') {
+      const token = req.cookies.get('token')?.value;
+      if (!token) {
+        return createErrorResponse('No active session', 400);
+      }
+
+      // Add token to revoked_tokens collection
+      await db.collection('revoked_tokens').insertOne({
+        token,
+        revoked_at: new Date(),
+        user_id: userId
+      });
+
+      // Clear client-side cookie
+      const response = NextResponse.json({
+        message: 'Token revoked successfully'
+      });
+      response.cookies.delete('token');
+      
+      return response;
+    }
+
+    // Otherwise, handle API key revocation
     const result = await db.collection('api_keys').updateOne(
       {
         id: params.id,
@@ -44,7 +67,7 @@ async function handleDelete(
     });
     
   } catch (error) {
-    console.error('API key revocation error:', error);
+    console.error('Access token revocation error:', error);
     return createErrorResponse('Internal server error', 500);
   }
 }

@@ -37,6 +37,17 @@ export async function withAuth(
     if (type === 'Bearer') {
       // Handle JWT authentication
       try {
+        // Check if token is revoked
+        const { db } = await connectToDatabase();
+        const isRevoked = await db.collection('revoked_tokens').findOne({ token });
+        
+        if (isRevoked) {
+          return NextResponse.json(
+            { error: 'Token has been revoked' },
+            { status: 401 }
+          );
+        }
+
         const payload = verifyToken(token);
         const authenticatedReq = req as AuthenticatedRequest;
         authenticatedReq.auth = {

@@ -93,7 +93,6 @@ Model definitions are stored in a dedicated MongoDB collection and follow this s
   "relationships": {
     [relationName: string]: {
       "id": string;        // Relationship identifier
-      "type": "hasOne" | "hasMany" | "belongsTo";
       "target_model_id": string;  // References another model definition ID
       "foreign_key": {
         "field_id": string;      // References field ID in this or target model
