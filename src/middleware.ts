@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
 const PROTECTED_API_PATHS = [
   '/api/auth/apikey',
   '/api/auth/me',
+  '/api/models',
 ];
 
 export function middleware(request: NextRequest) {
@@ -31,16 +32,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
-  // Allow public paths and protected API routes
-  if (isPublicPath || isProtectedApiPath || (isApiPath && !pathname.startsWith('/api/data'))) {
-    return NextResponse.next();
-  }
-
   // Handle unauthenticated users
-  if (!token) {
+  if (!token && !isPublicPath) {
+    if (isApiPath) {
+      return new NextResponse(
+        JSON.stringify({ error: { message: 'Unauthorized' } }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Allow public paths and protected API routes
+  if (isPublicPath || isProtectedApiPath || (isApiPath && !pathname.startsWith('/api/data'))) {
+    return NextResponse.next();
   }
 
   return NextResponse.next();

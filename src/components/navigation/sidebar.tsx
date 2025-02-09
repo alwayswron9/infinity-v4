@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HomeIcon, SettingsIcon, LogOutIcon } from 'lucide-react';
+import { HomeIcon, DatabaseIcon, SettingsIcon, LogOutIcon } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: HomeIcon },
+  { href: '/models', label: 'Models', icon: DatabaseIcon },
   { href: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 

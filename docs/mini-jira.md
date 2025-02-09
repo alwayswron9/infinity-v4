@@ -8,14 +8,20 @@ Reference Doc: [04-system-design.md](04-system-design.md)
 
 ## Checklist
 
-- [ ] **Model Definitions Endpoints**
-  - [ ] Create endpoint to create new model definitions (POST /api/models)
-  - [ ] Create endpoint to list model definitions (GET /api/models)
-  - [ ] Create endpoint to get a specific model definition (GET /api/models/:id)
-  - [ ] Create endpoint to update a model definition (PUT /api/models/:id)
-  - [ ] Create endpoint to delete a model definition (DELETE /api/models/:id)
-  - [ ] Persist model definitions in MongoDB (using proper schema)
+- [x] **Model Definitions Endpoints**
+  - [x] Create endpoint to create new model definitions (POST /api/models)
+  - [x] Create endpoint to list model definitions (GET /api/models)
+  - [x] Create endpoint to get a specific model definition (GET /api/models/:id)
+  - [x] Create endpoint to update a model definition (PUT /api/models/:id)
+  - [x] Create endpoint to delete a model definition (DELETE /api/models/:id)
+  - [x] Persist model definitions in MongoDB (using proper schema)
   -     NOTE: Model definitions must adhere to the schema specified in [04-system-design.md](04-system-design.md) and avoid advanced features outlined in [02-out-of-scope.md](02-out-of-scope.md). Only basic data types (string, number, boolean, date, vector), simple foreign key references, and minimal embedding configurations are allowed.
+  - Implementation Details:
+    - Created types/modelDefinition.ts with Zod schemas for validation
+    - Created lib/db/modelsCollection.ts for MongoDB operations
+    - Created lib/models/modelService.ts for business logic
+    - Created app/api/models/route.ts for REST endpoints
+    - Integrated with existing auth system for user context
 
 - [ ] **Data Record Endpoints**
   - [ ] Create endpoint to create a new record (POST /api/data/:model_id)

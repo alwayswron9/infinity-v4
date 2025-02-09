@@ -40,12 +40,12 @@ async function ensureIndexes(db: ReturnType<MongoClient['db']>) {
     { key: { user_id: 1 } },
     { key: { status: 1 } },
   ]);
-}
+  }
 
 export async function connectToDatabase() {
   if (client) {
     return { db: client.db(), client };
-  }
+}
 
   client = await MongoClient.connect(MONGODB_URI);
   const db = client.db();
@@ -54,7 +54,7 @@ export async function connectToDatabase() {
   if (!indexesCreated) {
     await createIndexes(db);
     indexesCreated = true;
-  }
+}
 
   return { db, client };
 } 
