@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusIcon, Loader2Icon, DatabaseIcon, SearchIcon, LinkIcon, ChevronRightIcon } from 'lucide-react';
+import { PlusIcon, Loader2Icon, DatabaseIcon, SearchIcon, LinkIcon, ChevronRightIcon, PencilIcon, CompassIcon } from 'lucide-react';
 import { ModelDefinition } from '@/types/modelDefinition';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
@@ -93,10 +93,9 @@ export default function ModelsPage() {
       ) : (
         <div className="space-y-4">
           {models.map((model) => (
-            <Link
+            <div
               key={model.id}
-              href={`/models/${model.id}`}
-              className="block p-6 bg-surface rounded-lg hover:bg-surface-hover transition-colors"
+              className="p-6 bg-surface rounded-lg hover:bg-surface-hover transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -123,9 +122,24 @@ export default function ModelsPage() {
                     )}
                   </div>
                 </div>
-                <ChevronRightIcon className="w-5 h-5 text-text-tertiary" />
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/models/${model.id}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-surface-hover text-text rounded-lg hover:bg-surface-hover/80 transition-colors"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                    <span>Edit</span>
+                  </Link>
+                  <Link
+                    href={`/models/${model.id}/explore`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <CompassIcon className="w-4 h-4" />
+                    <span>Explore</span>
+                  </Link>
+                </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

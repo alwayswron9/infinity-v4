@@ -23,20 +23,30 @@ Reference Doc: [04-system-design.md](04-system-design.md)
     - Created app/api/models/route.ts for REST endpoints
     - Integrated with existing auth system for user context
 
-- [ ] **Data Record Endpoints**
-  - [ ] Create endpoint to create a new record (POST /api/data/:model_id)
-  - [ ] Create endpoint to query records for a model (GET /api/data/:model_id)
-  - [ ] Create endpoint to get a record by id (GET /api/data/:model_id/:id)
-  - [ ] Create endpoint to update a record (PUT /api/data/:model_id/:id)
-  - [ ] Create endpoint to delete a record (DELETE /api/data/:model_id/:id)
-  - [ ] Ensure record validation according to model definition
+- [x] **Data Record Endpoints**
+  - [x] Create endpoint to create a new record (POST /api/data/:model_id)
+  - [x] Create endpoint to query records for a model (GET /api/data/:model_id)
+  - [x] Create endpoint to get a record by id (GET /api/data/:model_id/:id)
+  - [x] Create endpoint to update a record (PUT /api/data/:model_id/:id)
+  - [x] Create endpoint to delete a record (DELETE /api/data/:model_id/:id)
+  - [x] Ensure record validation according to model definition
   - NOTE: Data records must strictly adhere to the dynamic schema as defined in [04-system-design.md](04-system-design.md), and must not implement any advanced validations or dynamic transformations as described in [02-out-of-scope.md](02-out-of-scope.md).
 
 - [ ] **Vector Search Endpoint (Optional but recommended for MVP)**
+  - [x] Integrate with OpenAI embeddings (ada-002) for vector generation
+  - [x] Implement automatic embedding updates on record creation/updates
   - [ ] Create endpoint to search using embeddings (POST /api/actions/:model_id/search)
-  - [ ] Integrate with OpenAI embeddings (ada-002) and MongoDB Atlas for vector search
-  - [ ] Compute cosine similarity and filter based on the minimum threshold
-  - NOTE: Vector search must utilize 1536-dimensional embeddings generated via OpenAI ada-002 and use cosine similarity for ranking, strictly adhering to the guidelines in [04-system-design.md](04-system-design.md). Do not implement any advanced vector search features outlined in [02-out-of-scope.md](02-out-of-scope.md).
+  - [ ] Set up MongoDB Atlas vector search index
+  - [ ] Implement cosine similarity search with minimum threshold filtering
+  - Implementation Details So Far:
+    - Created lib/embeddings/embeddingService.ts for OpenAI integration
+    - Integrated embedding generation into DataService for record creation/updates
+    - Added proper error handling and validation for embedding generation
+  - TODO:
+    - Create search endpoint and route handler
+    - Set up MongoDB Atlas vector search index
+    - Implement search functionality using knnBeta operator
+  - NOTE: Vector search utilizes 1536-dimensional embeddings generated via OpenAI ada-002 and uses cosine similarity for ranking, strictly adhering to the guidelines in [04-system-design.md](04-system-design.md). Advanced vector search features outlined in [02-out-of-scope.md](02-out-of-scope.md) are not implemented.
 
 - [ ] **Minimal User Interface**
   - [ ] Build UI for model management (form to create/update models)

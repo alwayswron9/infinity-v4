@@ -13,6 +13,4 @@ export async function createIndexes(db: Db) {
     { token: 1 },
     { unique: true }
   );
-
-  // Add more indexes here as needed
 } 

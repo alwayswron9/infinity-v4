@@ -37,6 +37,7 @@ export class ModelsCollection {
 
     const collection = await this.getCollection();
     await collection.insertOne(modelDef);
+
     return modelDef;
   }
 
@@ -52,23 +53,37 @@ export class ModelsCollection {
 
   async update(id: string, input: UpdateModelDefinitionInput): Promise<ModelDefinition | null> {
     const collection = await this.getCollection();
+    
+    // Get the current model definition
+    const currentModel = await this.findById(id);
+    if (!currentModel) {
+      return null;
+    }
+
+    const updatedModel = {
+      ...currentModel,
+      ...input,
+      updated_at: new Date()
+    };
+
     const result = await collection.findOneAndUpdate(
       { id },
-      {
-        $set: {
-          ...input,
-          updated_at: new Date()
-        }
-      },
+      { $set: updatedModel },
       { returnDocument: 'after' }
     );
 
-    return result || null;
+    return result;
   }
 
   async delete(id: string): Promise<boolean> {
+    const model = await this.findById(id);
+    if (!model) {
+      return false;
+    }
+
     const collection = await this.getCollection();
     const result = await collection.deleteOne({ id });
+
     return result.deletedCount === 1;
   }
 
