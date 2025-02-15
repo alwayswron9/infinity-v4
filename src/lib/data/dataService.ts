@@ -1,7 +1,7 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import { ModelDefinition } from '@/types/modelDefinition';
 import { CreateDataRecordInput, DataRecord, ListRecordsQuery, UpdateDataRecordInput } from '@/types/dataRecord';
-import { getMongoClient } from '@/lib/db/mongodb';
+import { getDataMongoClient, ensureCollection } from '@/lib/db/dataDb';
 import { EmbeddingService } from '@/lib/embeddings/embeddingService';
 
 export class DataService {
@@ -10,9 +10,15 @@ export class DataService {
   private embeddingService: EmbeddingService;
 
   constructor(model: ModelDefinition) {
-    this.client = getMongoClient();
+    this.client = getDataMongoClient();
     this.model = model;
     this.embeddingService = new EmbeddingService(model);
+    // Ensure collection exists when service is instantiated
+    this.ensureCollectionExists();
+  }
+
+  private async ensureCollectionExists(): Promise<void> {
+    await ensureCollection(this.model.id);
   }
 
   private getCollectionName(): string {
@@ -105,6 +111,9 @@ export class DataService {
   }
 
   async createRecord(input: CreateDataRecordInput): Promise<DataRecord> {
+    // Ensure collection exists before creating record
+    await this.ensureCollectionExists();
+    
     if (!input) {
       throw new Error('Input is required');
     }
