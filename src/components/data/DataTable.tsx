@@ -57,11 +57,11 @@ export function DataTable({ model, records, onEdit, onDelete }: DataTableProps) 
             <tr key={record._id.toString()} className="hover:bg-surface/50">
               {visibleFields.map(([name, field]) => (
                 <td key={name} className="px-4 py-3 text-sm text-text">
-                  {formatValue(record.fields[name], field.type)}
+                  {formatValue(record[name], field.type)}
                 </td>
               ))}
               <td className="px-4 py-3 text-sm text-text-secondary">
-                {format(new Date(record.created_at), 'MMM d, yyyy')}
+                {format(new Date(record._created_at), 'MMM d, yyyy')}
               </td>
               {(onEdit || onDelete) && (
                 <td className="px-4 py-3 text-sm">

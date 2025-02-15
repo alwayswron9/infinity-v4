@@ -16,7 +16,7 @@ export class DataService {
   }
 
   private getCollectionName(): string {
-    return 'data';
+    return `data_${this.model.id}`;
   }
 
   /**
@@ -25,16 +25,16 @@ export class DataService {
   private toClientRecord(dbRecord: any): DataRecord {
     if (!dbRecord) return dbRecord;
 
-    // Extract system fields
-    const { _id, created_at, updated_at, _vector, model_id, fields } = dbRecord;
+    // Extract system fields and other fields
+    const { _id, _created_at, _updated_at, _vector, ...fields } = dbRecord;
 
-    // Return client format
+    // Return client format with flattened structure
     return {
-        _id,
-        fields,
-        created_at: new Date(created_at),
-        updated_at: new Date(updated_at),
-        _vector
+      _id,
+      _created_at: new Date(_created_at),
+      _updated_at: new Date(_updated_at),
+      _vector,
+      ...fields
     };
   }
 
@@ -44,12 +44,16 @@ export class DataService {
   private toDbRecord(clientRecord: Partial<DataRecord>): any {
     if (!clientRecord) return clientRecord;
 
-    // Keep fields nested under fields object
-    const { fields, ...systemFields } = clientRecord;
+    // Extract system fields and other fields
+    const { _id, _created_at, _updated_at, _vector, ...fields } = clientRecord;
+
+    // Return flattened database format
     return {
-        ...systemFields,
-        model_id: this.model.id,
-        fields
+      _id,
+      _created_at,
+      _updated_at,
+      _vector,
+      ...fields
     };
   }
 
@@ -101,20 +105,23 @@ export class DataService {
   }
 
   async createRecord(input: CreateDataRecordInput): Promise<DataRecord> {
-    if (!input.fields) {
-      throw new Error('Fields object is required');
+    if (!input) {
+      throw new Error('Input is required');
     }
 
+    // Filter out any system fields from input
+    const { _id, _created_at, _updated_at, _vector, ...fields } = input;
+
     // Validate fields against model definition
-    await this.validateFields(input.fields);
+    await this.validateFields(fields);
 
     const now = new Date();
     const clientRecord: DataRecord = {
       _id: new ObjectId(),
-      fields: input.fields,
-      created_at: now,
-      updated_at: now,
-      _vector: this.model.embedding?.enabled ? new Array(1536).fill(0) : undefined
+      _created_at: now,
+      _updated_at: now,
+      _vector: this.model.embedding?.enabled ? new Array(1536).fill(0) : undefined,
+      ...fields
     };
 
     const dbRecord = this.toDbRecord(clientRecord);
@@ -144,70 +151,62 @@ export class DataService {
     const collection = this.client.db().collection(this.getCollectionName());
     const { filter = {}, page = 1, limit = 10 } = query;
 
-    // Transform field filters to use fields prefix
-    const finalFilter: Record<string, any> = {
-        model_id: this.model.id
-    };
+    // Transform filters to work with flattened structure
+    const finalFilter: Record<string, any> = {};
 
-    // Move field filters under the fields object
-    if (Object.keys(filter).length > 0) {
-        const fieldFilters: Record<string, any> = {};
-        for (const [key, value] of Object.entries(filter)) {
-            if (key === '_id') {
-                finalFilter._id = typeof value === 'string' ? new ObjectId(value) : value;
-            } else {
-                fieldFilters[key] = value;
-            }
-        }
-        if (Object.keys(fieldFilters).length > 0) {
-            finalFilter.fields = fieldFilters;
-        }
+    // Handle filters directly since fields are at root level
+    for (const [key, value] of Object.entries(filter)) {
+      if (key === '_id') {
+        finalFilter._id = typeof value === 'string' ? new ObjectId(value) : value;
+      } else {
+        finalFilter[key] = value;
+      }
     }
 
     const [documents, total] = await Promise.all([
-        collection
-            .find(finalFilter)
-            .skip((page - 1) * limit)
-            .limit(limit)
-            .toArray(),
-        collection.countDocuments(finalFilter),
+      collection
+        .find(finalFilter)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .toArray(),
+      collection.countDocuments(finalFilter),
     ]);
 
     return { 
-        records: documents.map(doc => this.toClientRecord(doc)),
-        total 
+      records: documents.map(doc => this.toClientRecord(doc)),
+      total 
     };
   }
 
   async updateRecord(id: string, input: UpdateDataRecordInput): Promise<DataRecord> {
-    if (!input.fields) {
-        throw new Error('Fields object is required');
+    if (!input) {
+      throw new Error('Input is required');
     }
 
     // Validate fields against model definition
-    await this.validateFields(input.fields);
+    await this.validateFields(input);
 
     const collection = this.client.db().collection(this.getCollectionName());
     const dbRecord = await collection.findOneAndUpdate(
-        { _id: new ObjectId(id), model_id: this.model.id },
-        {
-            $set: {
-                fields: input.fields,
-                updated_at: new Date(),
-            },
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          ...input,
+          _updated_at: new Date(),
         },
-        { returnDocument: 'after' }
+      },
+      { returnDocument: 'after' }
     );
 
     if (!dbRecord) {
-        throw new Error('Record not found or update failed');
+      throw new Error('Record not found or update failed');
     }
 
     const clientRecord = this.toClientRecord(dbRecord);
 
     // Update embedding if needed
     if (this.model.embedding?.enabled) {
-        await this.embeddingService.updateRecordEmbedding(clientRecord);
+      await this.embeddingService.updateRecordEmbedding(clientRecord);
     }
 
     return clientRecord;

@@ -83,7 +83,13 @@ export async function POST(
 
       // Create record
       const body = await authReq.json();
-      const record = await dataService.createRecord(body);
+      
+      // Validate nested fields structure
+      if (!body.fields || typeof body.fields !== 'object') {
+        return createErrorResponse('Request body must contain a fields object', 400);
+      }
+
+      const record = await dataService.createRecord(body.fields);
 
       return NextResponse.json({ success: true, data: record }, { status: 201 });
     } catch (error: any) {
@@ -117,7 +123,13 @@ export async function PUT(
 
       // Update record
       const body = await authReq.json();
-      const record = await dataService.updateRecord(id, body);
+
+      // Validate nested fields structure
+      if (!body.fields || typeof body.fields !== 'object') {
+        return createErrorResponse('Request body must contain a fields object', 400);
+      }
+
+      const record = await dataService.updateRecord(id, body.fields);
 
       return NextResponse.json({ success: true, data: record });
     } catch (error: any) {

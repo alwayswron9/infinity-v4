@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { MongoClient, ObjectId, WithId, Document } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { ModelDefinition } from '@/types/modelDefinition';
 import { DataRecord } from '@/types/dataRecord';
 import { getMongoClient } from '@/lib/db/mongodb';
@@ -20,26 +20,7 @@ export class EmbeddingService {
   }
 
   private getCollectionName(): string {
-    return 'data';
-  }
-
-  /**
-   * Transform database record to client record (moves fields to root level)
-   */
-  private toClientRecord(dbRecord: any): DataRecord {
-    if (!dbRecord) return dbRecord;
-
-    // Extract system fields
-    const { _id, created_at, updated_at, _vector, ...fields } = dbRecord;
-
-    // Return client format
-    return {
-      _id,
-      fields,
-      created_at,
-      updated_at,
-      _vector
-    };
+    return `data_${this.model.id}`;
   }
 
   /**
@@ -84,9 +65,12 @@ export class EmbeddingService {
       return;
     }
 
-    // Extract text from source fields
+    // Extract text from source fields directly since they're at root level
     const textForEmbedding = this.model.embedding.source_fields
-      .map(field => String(record.fields[field] || ''))
+      .map(field => {
+        const value = record[field];
+        return value ? String(value) : '';
+      })
       .filter(text => text.length > 0)
       .join(' ');
 
@@ -111,7 +95,7 @@ export class EmbeddingService {
   }
 
   /**
-   * Performs a vector similarity search
+   * Performs a vector similarity search using JavaScript
    */
   async searchSimilar(
     query: string, 
@@ -124,64 +108,55 @@ export class EmbeddingService {
     }
 
     try {
+      // Generate query vector
       const queryVector = await this.generateEmbedding(query);
+
+      // Get all records from the collection
       const collection = getMongoClient().db().collection(this.getCollectionName());
+      const records = await collection.find(filter || {}).toArray();
 
-      // Combine model filter with any additional filters
-      const finalFilter = { model_id: this.model.id, ...filter };
+      // Calculate similarities and sort
+      const results = records
+        .filter(record => record._vector) // Only include records with vectors
+        .map(record => ({
+          record: this.toClientRecord(record),
+          similarity: this.calculateCosineSimilarity(queryVector, record._vector)
+        }))
+        .filter(result => result.similarity >= minSimilarity)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, limit);
 
-      const pipeline = [
-        {
-          $vectorSearch: {
-            queryVector,
-            path: "_vector",
-            numDimensions: 1536,
-            index: "vector_index",
-            numCandidates: 100,
-            limit: limit * 2
-          }
-        },
-        {
-          $match: finalFilter
-        },
-        {
-          $limit: limit
-        },
-        {
-          $project: {
-            document: "$$ROOT",
-            score: { $meta: "vectorSearchScore" }
-          }
-        }
-      ];
-
-      // Don't log the query vector
-      const pipelineLog = JSON.parse(JSON.stringify(pipeline));
-      if (pipelineLog[0]?.$vectorSearch?.queryVector) {
-        pipelineLog[0].$vectorSearch.queryVector = '[vector data]';
-      }
-      console.log('Executing pipeline:', JSON.stringify(pipelineLog, null, 2));
-
-      const results = await collection.aggregate(pipeline).toArray();
       console.log(`Search returned ${results.length} results`);
       if (results.length > 0) {
         console.log('First result:', {
-          id: results[0].document._id,
-          fields: results[0].document.fields,
-          score: results[0].score
+          id: results[0].record._id,
+          similarity: results[0].similarity
         });
       }
-      
-      return results
-        .map(result => ({
-          record: this.toClientRecord(result.document),
-          similarity: result.score
-        }))
-        .filter(result => result.similarity >= minSimilarity);
 
+      return results;
     } catch (error) {
       console.error('Error performing vector search:', error);
       throw error;
     }
+  }
+
+  /**
+   * Transform database record to client record
+   */
+  private toClientRecord(dbRecord: any): DataRecord {
+    if (!dbRecord) return dbRecord;
+
+    // Extract system fields
+    const { _id, _created_at, _updated_at, _vector, ...fields } = dbRecord;
+
+    // Return client format
+    return {
+      _id,
+      _created_at: new Date(_created_at),
+      _updated_at: new Date(_updated_at),
+      _vector,
+      ...fields
+    };
   }
 } 
