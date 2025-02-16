@@ -10,17 +10,17 @@ export type AuthenticatedRequest = NextRequest & {
   };
 };
 
-export type RouteContext<T extends Record<string, string> = {}> = {
+export type RouteContext<T extends Record<string, string | string[]> = {}> = {
   params: T;
 };
 
-export async function withAuth<T extends Record<string, string>>(
+export async function withAuth(
   req: NextRequest,
   handler: (
     req: AuthenticatedRequest,
-    context: RouteContext<T>
+    context: { params: Record<string, string | string[]> }
   ) => Promise<NextResponse>,
-  context: RouteContext<T>
+  context: { params: Record<string, string | string[]> }
 ): Promise<NextResponse> {
   try {
     // Try to get token from Authorization header first
