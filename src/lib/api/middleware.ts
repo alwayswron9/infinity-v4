@@ -10,9 +10,17 @@ export type AuthenticatedRequest = NextRequest & {
   };
 };
 
-export async function withAuth(
+export type RouteContext<T extends Record<string, string> = {}> = {
+  params: T;
+};
+
+export async function withAuth<T extends Record<string, string>>(
   req: NextRequest,
-  handler: (req: AuthenticatedRequest) => Promise<NextResponse>
+  handler: (
+    req: AuthenticatedRequest,
+    context: RouteContext<T>
+  ) => Promise<NextResponse>,
+  context: RouteContext<T>
 ): Promise<NextResponse> {
   try {
     // Try to get token from Authorization header first
@@ -54,7 +62,7 @@ export async function withAuth(
           type: 'jwt',
           payload,
         };
-        return handler(authenticatedReq);
+        return handler(authenticatedReq, context);
       } catch (error) {
         return NextResponse.json(
           { error: 'Invalid JWT token' },
@@ -97,7 +105,7 @@ export async function withAuth(
         payload: { user_id: apiKey.user_id },
       };
       
-      return handler(authenticatedReq);
+      return handler(authenticatedReq, context);
     }
   } catch (error) {
     console.error('Auth middleware error:', error);

@@ -130,5 +130,5 @@ export async function POST(
       console.error('Error performing vector search:', error);
       return createErrorResponse(error.message || 'Failed to perform vector search', error.status || 500);
     }
-  });
+  }, context);
 } 

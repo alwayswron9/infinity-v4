@@ -12,7 +12,7 @@ function getUserId(payload: JWTPayload | { user_id: string }): string {
 }
 
 // Revoke access token (API key or JWT)
-async function handleDelete(req: AuthenticatedRequest, id: string) {
+async function handleDelete(req: AuthenticatedRequest, id: string, context: { params: { id: string } }) {
   try {
     const { db } = await connectToDatabase();
     const userId = getUserId(req.auth.payload);
@@ -70,5 +70,8 @@ async function handleDelete(req: AuthenticatedRequest, id: string) {
 }
 
 // Use the exact type from Next.js App Router
-export const DELETE = (request: NextRequest, context: { params: { id: string } }) =>
-  withAuth(request, async (authReq) => handleDelete(authReq, context.params.id)); 
+export const DELETE = (
+  req: NextRequest,
+  context: { params: { id: string } }
+) =>
+  withAuth(req, async (authReq) => handleDelete(authReq, context.params.id, context), context); 

@@ -62,7 +62,7 @@ export async function GET(
       console.error('Error fetching record(s):', error);
       return createErrorResponse(error.message || 'Failed to fetch record(s)', error.status || 500);
     }
-  });
+  }, context);
 }
 
 export async function POST(
@@ -96,7 +96,7 @@ export async function POST(
       console.error('Error creating record:', error);
       return createErrorResponse(error.message || 'Failed to create record', error.status || 500);
     }
-  });
+  }, context);
 }
 
 export async function PUT(
@@ -136,7 +136,7 @@ export async function PUT(
       console.error('Error updating record:', error);
       return createErrorResponse(error.message || 'Failed to update record', error.status || 500);
     }
-  });
+  }, context);
 }
 
 export async function DELETE(
@@ -169,7 +169,7 @@ export async function DELETE(
       console.error('Error deleting record:', error);
       return createErrorResponse(error.message || 'Failed to delete record', error.status || 500);
     }
-  });
+  }, context);
 }
 
 async function handleSearch(
@@ -216,4 +216,4 @@ async function handleSearch(
   }
 }
 
-export const SEARCH = (req: NextRequest, params: { params: { model_id: string } }) => withAuth(req, (authReq) => handleSearch(authReq, params)); 
+export const SEARCH = (req: NextRequest, params: { params: { model_id: string } }) => withAuth(req, (authReq) => handleSearch(authReq, params), params); 

@@ -36,4 +36,33 @@ async function handler(req: AuthenticatedRequest) {
   }
 }
 
-export const GET = (req: NextRequest) => withAuth(req, handler); 
+export async function GET(req: NextRequest) {
+  return withAuth(req, async (authReq) => {
+    try {
+      const { db } = await connectToDatabase();
+      const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
+      
+      const user = await db.collection('users').findOne(
+        { id: userId },
+        { projection: { password_hash: 0, _id: 0 } }
+      );
+      
+      if (!user) {
+        return createErrorResponse('User not found', 404);
+      }
+
+      if (user.status !== 'active') {
+        return createErrorResponse('Account is inactive', 403);
+      }
+      
+      return NextResponse.json({
+        authenticated: true,
+        user
+      });
+      
+    } catch (error) {
+      console.error('Auth check error:', error);
+      return createErrorResponse('Internal server error', 500);
+    }
+  }, { params: {} }); // Add empty context
+} 

@@ -83,9 +83,9 @@ async function handleGet(req: AuthenticatedRequest) {
 
 // Route handler
 export async function POST(req: NextRequest) {
-  return withAuth(req, handlePost);
+  return withAuth(req, handlePost, { params: {} });
 }
 
 export async function GET(req: NextRequest) {
-  return withAuth(req, handleGet);
+  return withAuth(req, handleGet, { params: {} });
 } 

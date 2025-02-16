@@ -82,7 +82,7 @@ async function handleDelete(req: AuthenticatedRequest) {
   }
 }
 
-export const GET = (req: NextRequest) => withAuth(req, handleGet);
-export const POST = (req: NextRequest) => withAuth(req, handlePost);
-export const PUT = (req: NextRequest) => withAuth(req, handlePut);
-export const DELETE = (req: NextRequest) => withAuth(req, handleDelete); 
+export const GET = (req: NextRequest) => withAuth(req, handleGet, { params: {} });
+export const POST = (req: NextRequest) => withAuth(req, handlePost, { params: {} });
+export const PUT = (req: NextRequest) => withAuth(req, handlePut, { params: {} });
+export const DELETE = (req: NextRequest) => withAuth(req, handleDelete, { params: {} }); 
