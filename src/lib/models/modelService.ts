@@ -145,4 +145,15 @@ export class ModelService {
       }
     }
   }
+
+  // Add this method to validate CRUD operations
+  async validateCrudOperation(modelId: string, ownerId: string): Promise<ModelDefinition> {
+    const model = await this.getModelDefinition(modelId);
+    
+    if (model.owner_id !== ownerId) {
+      throw new Error('Unauthorized to perform this operation');
+    }
+
+    return model;
+  }
 } 

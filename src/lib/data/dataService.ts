@@ -129,20 +129,39 @@ export class DataService {
       _id: new ObjectId(),
       _created_at: now,
       _updated_at: now,
-      _vector: this.model.embedding?.enabled ? new Array(1536).fill(0) : undefined,
       ...fields
     };
 
-    const dbRecord = this.toDbRecord(clientRecord);
+    let vector: number[] | undefined = undefined;
+    // Generate embedding first if enabled
+    if (this.model.embedding?.enabled) {
+      try {
+        vector = await this.embeddingService.updateRecordEmbedding(clientRecord);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error during embedding';
+        throw new Error(`Creation failed: ${message}`);
+      }
+    }
+
+    // Only proceed with database insertion if embedding was successful or not required
+    const dbRecord = this.toDbRecord({
+      ...clientRecord,
+      _vector: vector
+    });
+    
     const collection = this.client.db().collection(this.getCollectionName());
     await collection.insertOne(dbRecord);
 
-    // Generate embedding if needed
-    if (this.model.embedding?.enabled) {
-      await this.embeddingService.updateRecordEmbedding(clientRecord);
-    }
+    console.log('[Data] Record created, ID:', clientRecord._id);
+    return {
+      ...clientRecord,
+      _vector: vector
+    };
+  }
 
-    return clientRecord;
+  private excludeVectorData(record: any) {
+    const { _vector, ...rest } = record;
+    return rest;
   }
 
   async getRecord(id: string): Promise<DataRecord> {
@@ -153,7 +172,7 @@ export class DataService {
       throw new Error('Record not found');
     }
 
-    return this.toClientRecord(record);
+    return this.excludeVectorData(record);
   }
 
   async listRecords(query: ListRecordsQuery): Promise<{ records: DataRecord[]; total: number }> {
@@ -182,12 +201,77 @@ export class DataService {
     ]);
 
     return { 
-      records: documents.map(doc => this.toClientRecord(doc)),
+      records: documents.map(doc => this.excludeVectorData(doc)),
       total 
     };
   }
 
   async updateRecord(id: string, input: UpdateDataRecordInput): Promise<DataRecord> {
+    if (!input) {
+      throw new Error('Input is required');
+    }
+
+    // Validate fields against model definition
+    await this.validateFields(input);
+
+    const collection = this.client.db().collection(this.getCollectionName());
+    
+    // First get the existing record
+    const existingRecord = await collection.findOne({ _id: new ObjectId(id) });
+    if (!existingRecord) {
+      throw new Error('Record not found');
+    }
+
+    // Prepare the updated record
+    const updatedRecord = {
+      ...existingRecord,
+      ...input,
+      _updated_at: new Date(),
+    };
+
+    const clientRecord = this.toClientRecord(updatedRecord);
+
+    let vector: number[] | undefined = undefined;
+    // Update embedding first if enabled
+    if (this.model.embedding?.enabled) {
+      try {
+        vector = await this.embeddingService.updateRecordEmbedding(clientRecord);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error during embedding';
+        throw new Error(`Record update failed: ${message}`);
+      }
+    }
+
+    // Only proceed with database update if embedding was successful or not required
+    const finalRecord = {
+      ...clientRecord,
+      _vector: vector
+    };
+
+    const dbRecord = await collection.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: this.toDbRecord(finalRecord) },
+      { returnDocument: 'after' }
+    );
+
+    if (!dbRecord) {
+      throw new Error('Update failed');
+    }
+
+    return this.toClientRecord(dbRecord);
+  }
+
+  async deleteRecord(id: string): Promise<void> {
+    const collection = this.client.db().collection(this.getCollectionName());
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      throw new Error('Record not found or delete failed');
+    }
+  }
+
+  // Add this method to handle partial updates
+  async partialUpdateRecord(id: string, input: Partial<UpdateDataRecordInput>): Promise<DataRecord> {
     if (!input) {
       throw new Error('Input is required');
     }
@@ -215,18 +299,23 @@ export class DataService {
 
     // Update embedding if needed
     if (this.model.embedding?.enabled) {
-      await this.embeddingService.updateRecordEmbedding(clientRecord);
+      try {
+        await this.embeddingService.updateRecordEmbedding(clientRecord);
+      } catch (error: unknown) {
+        await collection.replaceOne({ _id: new ObjectId(id) }, this.toDbRecord(clientRecord));
+        const message = error instanceof Error ? error.message : 'Unknown error during embedding';
+        throw new Error(`Record update failed: ${message}`);
+      }
     }
 
     return clientRecord;
   }
 
-  async deleteRecord(id: string): Promise<void> {
-    const collection = this.client.db().collection(this.getCollectionName());
-    const result = await collection.deleteOne({ _id: new ObjectId(id) });
-
-    if (result.deletedCount === 0) {
-      throw new Error('Record not found or delete failed');
+  // Add this method to handle upserts
+  async upsertRecord(id: string | undefined, input: CreateDataRecordInput | UpdateDataRecordInput): Promise<DataRecord> {
+    if (id) {
+      return this.updateRecord(id, input as UpdateDataRecordInput);
     }
+    return this.createRecord(input as CreateDataRecordInput);
   }
 } 

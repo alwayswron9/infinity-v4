@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
 import { MongoClient, ObjectId } from 'mongodb';
 import { ModelDefinition } from '@/types/modelDefinition';
-import { DataRecord } from '@/types/dataRecord';
-import { getMongoClient } from '@/lib/db/mongodb';
+import { DataRecord, SearchResult } from '@/types/dataRecord';
+import { getDataMongoClient } from '@/lib/db/dataDb';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY is not set in environment variables');
@@ -49,48 +49,64 @@ export class EmbeddingService {
    * Generates an embedding vector for the given text using OpenAI's ada-002 model
    */
   private async generateEmbedding(text: string): Promise<number[]> {
+    if (!text.trim()) {
+      throw new Error('Cannot generate embedding for empty text');
+    }
+
     const response = await openai.embeddings.create({
       model: 'text-embedding-ada-002',
       input: text,
     });
 
+    if (!response.data[0]?.embedding) {
+      throw new Error('Failed to generate embedding from OpenAI');
+    }
+    
     return response.data[0].embedding;
   }
 
   /**
    * Updates the embedding vector for a record
    */
-  async updateRecordEmbedding(record: DataRecord): Promise<void> {
+  async updateRecordEmbedding(record: DataRecord): Promise<number[]> {
     if (!this.model.embedding?.enabled) {
-      return;
+      console.log('[Embedding] Embeddings disabled for model:', this.model.id);
+      return [];
     }
 
-    // Extract text from source fields directly since they're at root level
+    console.log('[Embedding] Starting embedding generation for record:', record._id);
+    
     const textForEmbedding = this.model.embedding.source_fields
       .map(field => {
         const value = record[field];
-        return value ? String(value) : '';
+        if (!value) {
+          console.warn(`[Embedding] Missing source field '${field}' in record ${record._id}`);
+        }
+        return String(value || '');
       })
-      .filter(text => text.length > 0)
       .join(' ');
 
-    if (!textForEmbedding) {
-      return;
-    }
+    console.log('[Embedding] Generated text for embedding:', textForEmbedding.slice(0, 100) + '...');
 
     try {
-      // Generate embedding vector
+      console.log('[Embedding] Calling OpenAI API...');
       const vector = await this.generateEmbedding(textForEmbedding);
+      console.log('[Embedding] Received vector of length:', vector.length);
 
-      // Update record with new vector
-      const collection = getMongoClient().db().collection(this.getCollectionName());
-      await collection.updateOne(
+      if (vector.every(v => v === 0)) {
+        console.error('[Embedding] Zero vector generated for record:', record._id);
+        throw new Error('Zero vector from OpenAI');
+      }
+
+      await getDataMongoClient().db().collection(this.getCollectionName()).updateOne(
         { _id: record._id },
         { $set: { _vector: vector } }
       );
+      console.log('[Embedding] Successfully stored vector for record:', record._id);
+      return vector;
     } catch (error) {
-      console.error('Error generating embedding:', error);
-      throw new Error('Failed to generate embedding');
+      console.error('[Embedding] Failed to generate embedding:', error);
+      throw error; // Rethrow for upstream handling
     }
   }
 
@@ -103,32 +119,81 @@ export class EmbeddingService {
     minSimilarity: number = 0.7,
     filter?: Record<string, any>
   ): Promise<SearchResult[]> {
-    // Get raw vector data from MongoDB
-    const collection = getMongoClient().db().collection(this.getCollectionName());
-    const records = await collection.find(filter || {}).toArray();
+    if (!this.model.embedding?.enabled) {
+      throw new Error('Vector search is not enabled for this model');
+    }
+
+    const collection = getDataMongoClient().db().collection(this.getCollectionName());
+    
+    // Add collection verification
+    const count = await collection.countDocuments();
+    console.log(`Searching in collection ${this.getCollectionName()} (${count} records)`);
+
+    if (count === 0) {
+      console.log('No records found in collection');
+      return [];
+    }
+
+    // Add vector existence to filter
+    const vectorFilter = {
+      ...filter,
+      _vector: { $exists: true, $ne: null }
+    };
+
+    const records = await collection.find(vectorFilter).toArray();
+    console.log('Records with vectors after filter:', records.length);
+
+    if (records.length === 0) {
+      console.log('No records with vectors found after applying filters');
+      return [];
+    }
 
     // Generate query embedding
+    console.log('Generating embedding for query:', query);
     const queryEmbedding = await this.generateEmbedding(query);
 
-    // Calculate similarities
-    const results = records.map(record => ({
-      record,
-      similarity: this.cosineSimilarity(queryEmbedding, record._vector)
-    }))
-    .filter(result => result.similarity >= minSimilarity)
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, limit);
+    // Calculate similarities for records with valid vectors
+    const results = records
+      .filter(record => Array.isArray(record._vector) && record._vector.length > 0)
+      .map(record => {
+        try {
+          return {
+            record: this.toClientRecord(record),
+            similarity: this.cosineSimilarity(queryEmbedding, record._vector)
+          };
+        } catch (error) {
+          console.error(`Error calculating similarity for record ${record._id}:`, error);
+          return null;
+        }
+      })
+      .filter((result): result is { record: DataRecord; similarity: number } => result !== null);
 
-    return results.map(result => ({
-      ...result.record,
-      _score: result.similarity
-    }));
+    console.log('Successfully processed records:', results.length);
+
+    // Post-processing
+    const filteredResults = results
+      .filter(({ similarity }) => similarity >= minSimilarity)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit)
+      .map(({ record, similarity }) => ({
+        ...record,
+        similarity
+      }));
+
+    console.log('Final results after similarity filtering:', filteredResults.length);
+    return filteredResults;
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
     const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
     const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
     const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+    
+    if (magnitudeA === 0 || magnitudeB === 0) {
+      console.error('Zero magnitude vector detected');
+      return 0;
+    }
+    
     return dotProduct / (magnitudeA * magnitudeB);
   }
 

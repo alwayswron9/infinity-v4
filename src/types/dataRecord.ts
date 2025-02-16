@@ -43,4 +43,8 @@ export type ListRecordsQuery = {
   include?: string[];
   page?: number;
   limit?: number;
-}; 
+};
+
+export interface SearchResult extends DataRecord {
+  similarity: number;
+} 
