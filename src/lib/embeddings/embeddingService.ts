@@ -98,47 +98,38 @@ export class EmbeddingService {
    * Performs a vector similarity search using JavaScript
    */
   async searchSimilar(
-    query: string, 
-    limit: number = 10, 
-    minSimilarity: number = 0,
+    query: string,
+    limit: number = 10,
+    minSimilarity: number = 0.7,
     filter?: Record<string, any>
-  ): Promise<Array<{ record: DataRecord; similarity: number }>> {
-    if (!this.model.embedding?.enabled) {
-      throw new Error('Vector search is not enabled for this model');
-    }
+  ): Promise<SearchResult[]> {
+    // Get raw vector data from MongoDB
+    const collection = getMongoClient().db().collection(this.getCollectionName());
+    const records = await collection.find(filter || {}).toArray();
 
-    try {
-      // Generate query vector
-      const queryVector = await this.generateEmbedding(query);
+    // Generate query embedding
+    const queryEmbedding = await this.generateEmbedding(query);
 
-      // Get all records from the collection
-      const collection = getMongoClient().db().collection(this.getCollectionName());
-      const records = await collection.find(filter || {}).toArray();
+    // Calculate similarities
+    const results = records.map(record => ({
+      record,
+      similarity: this.cosineSimilarity(queryEmbedding, record._vector)
+    }))
+    .filter(result => result.similarity >= minSimilarity)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
 
-      // Calculate similarities and sort
-      const results = records
-        .filter(record => record._vector) // Only include records with vectors
-        .map(record => ({
-          record: this.toClientRecord(record),
-          similarity: this.calculateCosineSimilarity(queryVector, record._vector)
-        }))
-        .filter(result => result.similarity >= minSimilarity)
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, limit);
+    return results.map(result => ({
+      ...result.record,
+      _score: result.similarity
+    }));
+  }
 
-      console.log(`Search returned ${results.length} results`);
-      if (results.length > 0) {
-        console.log('First result:', {
-          id: results[0].record._id,
-          similarity: results[0].similarity
-        });
-      }
-
-      return results;
-    } catch (error) {
-      console.error('Error performing vector search:', error);
-      throw error;
-    }
+  private cosineSimilarity(a: number[], b: number[]): number {
+    const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
+    const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+    const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+    return dotProduct / (magnitudeA * magnitudeB);
   }
 
   /**

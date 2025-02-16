@@ -12,11 +12,10 @@ if (!process.env.MONGODB_DATA_DB) {
 const MONGODB_DATA_URI = process.env.MONGODB_DATA_URI;
 const MONGODB_DATA_DB = process.env.MONGODB_DATA_DB;
 
-let cached = global.mongodbData;
-
-if (!cached) {
-  cached = global.mongodbData = { conn: null, promise: null };
-}
+const cached = global as typeof global & {
+  conn?: MongoClient;
+  promise?: Promise<MongoClient> | null;
+};
 
 declare global {
   var mongodbData: { conn: MongoClient | null; promise: Promise<MongoClient> | null };
@@ -35,6 +34,10 @@ export function getDataMongoClient(): MongoClient {
       .then((client) => {
         cached.conn = client;
         return client;
+      })
+      .catch((err) => {
+        cached.promise = null;
+        throw err;
       });
   }
 
@@ -49,50 +52,37 @@ export function getDataMongoClient(): MongoClient {
  * Connects to MongoDB Data database
  */
 export async function connectToDataDatabase() {
-  if (cached.conn) {
-    return { db: cached.conn.db(MONGODB_DATA_DB), client: cached.conn };
+  if (cached.conn) return cached.conn;
+  
+  if (!process.env.MONGODB_DATA_URI) {
+    throw new Error('Please define MONGODB_DATA_URI in .env');
   }
 
-  if (!cached.promise) {
-    cached.promise = MongoClient.connect(MONGODB_DATA_URI);
-  }
-
-  try {
-    const client = await cached.promise;
-    cached.conn = client;
-    const db = client.db(MONGODB_DATA_DB);
-    return { db, client };
-  } catch (error) {
-    console.error('Failed to connect to MongoDB Data:', error);
-    throw error;
-  }
+  const conn = await MongoClient.connect(process.env.MONGODB_DATA_URI);
+  cached.conn = conn;
+  return conn;
 }
 
 /**
  * Ensures a collection exists and has the necessary indexes
  */
 export async function ensureCollection(modelId: string): Promise<void> {
-  const { db } = await connectToDataDatabase();
+  const client = await connectToDataDatabase();
+  const db = client.db(process.env.MONGODB_DATA_DB);
   const collectionName = `data_${modelId}`;
-  
-  // Get list of collections
-  const collections = await db.listCollections().toArray();
-  const collectionExists = collections.some(col => col.name === collectionName);
-  
-  if (!collectionExists) {
-    // Create the collection
+
+  const collections = await db.listCollections({ name: collectionName }).toArray();
+  if (collections.length === 0) {
     await db.createCollection(collectionName);
     console.log(`Created collection ${collectionName}`);
     
-    // Create basic indexes
-    await db.collection(collectionName).createIndexes([
+    // Only create basic indexes
+    const collection = db.collection(collectionName);
+    await collection.createIndexes([
       { key: { _created_at: 1 } },
       { key: { _updated_at: 1 } }
     ]);
   }
-  
-  // Ensure vector search index exists (if needed)
-  await ensureVectorSearchIndex(db, collectionName);
 }
 
 /**
@@ -102,7 +92,7 @@ export async function disconnectFromDataDatabase(): Promise<void> {
   try {
     if (cached.conn) {
       await cached.conn.close();
-      cached.conn = null;
+      cached.conn = undefined;
       cached.promise = null;
       console.log('Disconnected from MongoDB Data');
     }
@@ -110,4 +100,7 @@ export async function disconnectFromDataDatabase(): Promise<void> {
     console.error('Failed to disconnect from MongoDB Data:', error);
     throw error;
   }
-} 
+}
+
+// Add this initialization call at server startup
+connectToDataDatabase().catch(console.error); 

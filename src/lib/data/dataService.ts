@@ -13,11 +13,11 @@ export class DataService {
     this.client = getDataMongoClient();
     this.model = model;
     this.embeddingService = new EmbeddingService(model);
-    // Ensure collection exists when service is instantiated
-    this.ensureCollectionExists();
+    // No automatic collection initialization
   }
 
-  private async ensureCollectionExists(): Promise<void> {
+  // Add manual initialization method
+  async initializeCollection(): Promise<void> {
     await ensureCollection(this.model.id);
   }
 
@@ -112,7 +112,7 @@ export class DataService {
 
   async createRecord(input: CreateDataRecordInput): Promise<DataRecord> {
     // Ensure collection exists before creating record
-    await this.ensureCollectionExists();
+    await this.initializeCollection();
     
     if (!input) {
       throw new Error('Input is required');

@@ -3,6 +3,7 @@ import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } fro
 import { ModelService } from '@/lib/models/modelService';
 import { DataService } from '@/lib/data/dataService';
 import { EmbeddingService } from '@/lib/embeddings/embeddingService';
+import { connectToDataDatabase, getDataMongoClient } from '@/lib/db/dataDb';
 
 type ModelRouteContext = {
   params: Promise<{ model_id: string }>;
@@ -25,6 +26,12 @@ export async function GET(
   const params = await context.params;
   return withAuth(request, async (authReq) => {
     try {
+      // Add connection check
+      await connectToDataDatabase();
+      
+      const client = getDataMongoClient();
+      const db = client.db();
+
       const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
       const { model_id } = params;
 
@@ -33,6 +40,7 @@ export async function GET(
 
       // Initialize data service with model
       const dataService = new DataService(model);
+      await dataService.initializeCollection();
 
       // Check if this is a get by ID request
       const { searchParams } = new URL(request.url);
@@ -84,6 +92,7 @@ export async function POST(
 
       // Initialize data service with model
       const dataService = new DataService(model);
+      await dataService.initializeCollection();
 
       // Create record
       const body = await authReq.json();
@@ -124,6 +133,7 @@ export async function PUT(
 
       // Initialize data service with model
       const dataService = new DataService(model);
+      await dataService.initializeCollection();
 
       // Update record
       const body = await authReq.json();
@@ -164,6 +174,7 @@ export async function DELETE(
 
       // Initialize data service with model
       const dataService = new DataService(model);
+      await dataService.initializeCollection();
 
       // Delete record
       await dataService.deleteRecord(id);
