@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { AuthForm } from '@/components/ui/auth-form';
 import Link from 'next/link';
 
@@ -17,7 +17,9 @@ export default function LoginPage() {
       </div>
 
       <div className="mt-8">
-        <AuthForm mode="login" />
+        <Suspense fallback={<div className="text-center">Loading...</div>}>
+          <AuthForm mode="login" />
+        </Suspense>
         <div className="mt-6 text-center">
           <Link 
             href="/register"

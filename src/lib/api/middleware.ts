@@ -14,13 +14,13 @@ export type RouteContext<T extends Record<string, string | string[]> = {}> = {
   params: T;
 };
 
-export async function withAuth(
+export async function withAuth<T extends Record<string, string | string[]> = {}>(
   req: NextRequest,
   handler: (
     req: AuthenticatedRequest,
-    context: { params: Record<string, string | string[]> }
+    context: { params: T }
   ) => Promise<NextResponse>,
-  context: { params: Record<string, string | string[]> }
+  context: { params: T }
 ): Promise<NextResponse> {
   try {
     // Try to get token from Authorization header first
@@ -108,10 +108,10 @@ export async function withAuth(
       return handler(authenticatedReq, context);
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('Authentication error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Authentication failed' },
+      { status: 401 }
     );
   }
 }

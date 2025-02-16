@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest, createErrorResponse } from '@/lib/api/middleware';
+import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } from '@/lib/api/middleware';
 import { ModelService } from '@/lib/models/modelService';
 import { DataService } from '@/lib/data/dataService';
 import { EmbeddingService } from '@/lib/embeddings/embeddingService';
+
+type ModelRouteContext = {
+  params: Promise<{ model_id: string }>;
+};
 
 const modelService = new ModelService();
 
@@ -15,13 +19,13 @@ async function verifyModelOwnership(modelId: string, userId: string) {
 }
 
 export async function GET(
-  req: NextRequest,
-  context: { params: { model_id: string } }
-) {
-  return withAuth(req, async (authReq) => {
+  request: NextRequest,
+  context: ModelRouteContext
+): Promise<Response> {
+  const params = await context.params;
+  return withAuth(request, async (authReq) => {
     try {
       const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
-      const params = await Promise.resolve(context.params);
       const { model_id } = params;
 
       // Verify model ownership
@@ -31,7 +35,7 @@ export async function GET(
       const dataService = new DataService(model);
 
       // Check if this is a get by ID request
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
 
       if (id) {
@@ -62,17 +66,17 @@ export async function GET(
       console.error('Error fetching record(s):', error);
       return createErrorResponse(error.message || 'Failed to fetch record(s)', error.status || 500);
     }
-  }, context);
+  }, { params });
 }
 
 export async function POST(
-  req: NextRequest,
-  context: { params: { model_id: string } }
-) {
-  return withAuth(req, async (authReq) => {
+  request: NextRequest,
+  context: ModelRouteContext
+): Promise<Response> {
+  const params = await context.params;
+  return withAuth(request, async (authReq) => {
     try {
       const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
-      const params = await Promise.resolve(context.params);
       const { model_id } = params;
 
       // Verify model ownership
@@ -96,19 +100,19 @@ export async function POST(
       console.error('Error creating record:', error);
       return createErrorResponse(error.message || 'Failed to create record', error.status || 500);
     }
-  }, context);
+  }, { params });
 }
 
 export async function PUT(
-  req: NextRequest,
-  context: { params: { model_id: string } }
-) {
-  return withAuth(req, async (authReq) => {
+  request: NextRequest,
+  context: ModelRouteContext
+): Promise<Response> {
+  const params = await context.params;
+  return withAuth(request, async (authReq) => {
     try {
       const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
-      const params = await Promise.resolve(context.params);
       const { model_id } = params;
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
       
       if (!id) {
@@ -136,19 +140,19 @@ export async function PUT(
       console.error('Error updating record:', error);
       return createErrorResponse(error.message || 'Failed to update record', error.status || 500);
     }
-  }, context);
+  }, { params });
 }
 
 export async function DELETE(
-  req: NextRequest,
-  context: { params: { model_id: string } }
-) {
-  return withAuth(req, async (authReq) => {
+  request: NextRequest,
+  context: { params: Promise<{ model_id: string }> }
+): Promise<Response> {
+  const params = await context.params;
+  return withAuth(request, async (authReq) => {
     try {
       const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
-      const params = await Promise.resolve(context.params);
       const { model_id } = params;
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
       
       if (!id) {
@@ -169,51 +173,5 @@ export async function DELETE(
       console.error('Error deleting record:', error);
       return createErrorResponse(error.message || 'Failed to delete record', error.status || 500);
     }
-  }, context);
-}
-
-async function handleSearch(
-  req: AuthenticatedRequest,
-  { params }: { params: { model_id: string } }
-) {
-  try {
-    const userId = 'sub' in req.auth.payload ? req.auth.payload.sub : req.auth.payload.user_id;
-    const resolvedParams = await Promise.resolve(params);
-    const { model_id } = resolvedParams;
-
-    // Get model definition to validate access
-    const model = await modelService.getModelDefinition(model_id);
-    if (model.owner_id !== userId) {
-      return createErrorResponse('Unauthorized', 403);
-    }
-
-    // Check if embeddings are enabled
-    if (!model.embedding?.enabled) {
-      return createErrorResponse('Vector search is not enabled for this model', 400);
-    }
-
-    // Get search parameters
-    const body = await req.json();
-    const { query, limit = 10, minSimilarity = 0 } = body;
-
-    if (!query || typeof query !== 'string') {
-      return createErrorResponse('Search query is required', 400);
-    }
-
-    // Initialize embedding service
-    const embeddingService = new EmbeddingService(model);
-
-    // Perform search
-    const results = await embeddingService.searchSimilar(query, limit, minSimilarity);
-
-    return NextResponse.json({
-      success: true,
-      data: results
-    });
-  } catch (error: any) {
-    console.error('Error performing vector search:', error);
-    return createErrorResponse(error.message || 'Failed to perform vector search', error.status || 500);
-  }
-}
-
-export const SEARCH = (req: NextRequest, params: { params: { model_id: string } }) => withAuth(req, (authReq) => handleSearch(authReq, params), params); 
+  }, { params });
+} 
