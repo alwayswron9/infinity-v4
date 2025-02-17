@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusIcon, Loader2Icon, DatabaseIcon, SearchIcon, LinkIcon, ChevronRightIcon, PencilIcon, CompassIcon } from 'lucide-react';
+import { PlusIcon, Loader2Icon, DatabaseIcon, SearchIcon, LinkIcon, ChevronRightIcon, PencilIcon, CompassIcon, TrashIcon, MoreVerticalIcon } from 'lucide-react';
 import { ModelDefinition } from '@/types/modelDefinition';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
@@ -44,6 +44,27 @@ export default function ModelsPage() {
       console.error('Error in fetchModels:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (modelId: string) => {
+    if (!confirm('Are you sure you want to delete this model? This action cannot be undone.')) return;
+
+    try {
+      const response = await fetch(`/api/models?id=${modelId}`, {
+        method: 'DELETE',
+        credentials: 'same-origin'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to delete model');
+      }
+
+      toast.success('Model deleted successfully');
+      fetchModels();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
@@ -137,6 +158,39 @@ export default function ModelsPage() {
                     <CompassIcon className="w-4 h-4" />
                     <span>Explore</span>
                   </Link>
+                  <div className="relative">
+                    <button
+                      className="p-2 text-text-secondary hover:bg-surface-hover rounded-lg transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const menu = document.getElementById(`model-menu-${model.id}`);
+                        menu?.classList.toggle('hidden');
+                      }}
+                      onBlur={(e) => {
+                        const menu = document.getElementById(`model-menu-${model.id}`);
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          menu?.classList.add('hidden');
+                        }
+                      }}
+                    >
+                      <MoreVerticalIcon className="w-4 h-4" />
+                    </button>
+                    <div
+                      id={`model-menu-${model.id}`}
+                      className="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-border z-10"
+                      onMouseLeave={() => {
+                        const menu = document.getElementById(`model-menu-${model.id}`);
+                        menu?.classList.add('hidden');
+                      }}
+                    >
+                      <button
+                        onClick={() => handleDelete(model.id)}
+                        className="w-full px-4 py-2 text-left text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        Delete Model
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

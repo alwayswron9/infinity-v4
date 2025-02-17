@@ -73,7 +73,7 @@ export type EmbeddingConfig = z.infer<typeof EmbeddingConfig>;
 export const ModelDefinition = z.object({
   id: z.string().uuid(),
   owner_id: z.string().uuid(),
-  name: z.string().min(1),
+  name: z.string().min(1).regex(/^[a-zA-Z0-9-]+$/, 'Model name can only contain letters, numbers, and hyphens'),
   description: z.string().optional(),
   fields: z.record(z.string(), FieldDefinition),
   relationships: z.record(z.string(), RelationshipDefinition).optional(),
@@ -86,7 +86,7 @@ export type ModelDefinition = z.infer<typeof ModelDefinition>;
 
 // Schema for creating a new model definition (without system-generated fields)
 export const CreateModelDefinitionInput = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).regex(/^[a-zA-Z0-9-]+$/, 'Model name can only contain letters, numbers, and hyphens'),
   description: z.string().optional(),
   fields: z.record(z.string(), CreatableFieldDefinition),
   relationships: z.record(z.string(), RelationshipDefinition).optional(),

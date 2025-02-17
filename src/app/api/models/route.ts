@@ -75,7 +75,7 @@ async function handleDelete(req: AuthenticatedRequest) {
     }
 
     await modelService.deleteModelDefinition(id, userId);
-    return NextResponse.json(null, { status: 204 });
+    return new NextResponse(null, { status: 204 });
   } catch (error: any) {
     console.error('Error deleting model definition:', error);
     return createErrorResponse(error.message || 'Failed to delete model definition', error.status || 500);
