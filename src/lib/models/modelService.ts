@@ -97,6 +97,11 @@ export class ModelService {
   }
 
   private validateFieldsAndRelationships(input: CreateModelDefinitionInput | ModelDefinition) {
+    // Validate model name format
+    if (!input.name || !/^[a-zA-Z0-9-]+$/.test(input.name)) {
+      throw new Error('Model name can only contain letters, numbers, and hyphens');
+    }
+
     // Validate that all field types are supported
     Object.entries(input.fields).forEach(([fieldName, field]) => {
       if (!['string', 'number', 'boolean', 'date'].includes(field.type)) {
