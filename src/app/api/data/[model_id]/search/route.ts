@@ -64,9 +64,20 @@ export async function POST(
         filter
       );
 
+      // Remove vector data from results
+      const resultsWithoutVectors = results.map(({ _vector, ...rest }) => ({
+        ...rest,
+      }));
+
       return NextResponse.json({
         success: true,
-        data: results
+        data: resultsWithoutVectors,
+        meta: {
+          query,
+          total: results.length,
+          limit,
+          minSimilarity
+        }
       });
     } catch (error: any) {
       console.error('Error performing vector search:', error);

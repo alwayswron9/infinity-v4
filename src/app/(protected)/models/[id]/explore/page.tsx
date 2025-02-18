@@ -203,7 +203,7 @@ export default function ExploreModelPage({ params }: { params: Promise<{ id: str
       }
 
       // Update records with search results
-      setRecords(data.data.map((result: any) => result.record));
+      setRecords(data.data);
       setTotalRecords(data.data.length);
       setPage(1); // Reset to first page when searching
     } catch (err: any) {

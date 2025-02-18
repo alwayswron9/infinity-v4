@@ -6,7 +6,7 @@ import { EmbeddingService } from '@/lib/embeddings/embeddingService';
 const modelService = new ModelService();
 
 type SearchContext = {
-  params: Promise<{ model_id: string }>;
+  params: Promise<{ model_name: string }>;
 };
 
 export async function POST(
@@ -16,25 +16,18 @@ export async function POST(
   const params = await context.params;
   return withPublicApiKey(req, async (req) => {
     try {
-      const { model_id } = params;
+      const { model_name } = params;
       const { user_id } = req.apiKey;
 
       // 1. Model Access Check
       let model;
       try {
-        model = await modelService.getModelDefinition(model_id);
+        model = await modelService.getModelDefinitionByName(model_name, user_id);
       } catch (error: any) {
         console.error('Error fetching model:', error);
         return NextResponse.json(
           { error: 'Model not found' },
           { status: 404 }
-        );
-      }
-
-      if (model.owner_id !== user_id) {
-        return NextResponse.json(
-          { error: 'Unauthorized - You do not have access to this model' },
-          { status: 403 }
         );
       }
 
