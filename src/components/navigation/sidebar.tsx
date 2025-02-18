@@ -34,7 +34,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-surface border-r border-border flex flex-col">
+    <aside className="w-64 h-screen sticky top-0 bg-surface border-r border-border flex flex-col">
       <div className="p-6">
         <h1 className="text-xl font-semibold text-primary">Infinity</h1>
       </div>
