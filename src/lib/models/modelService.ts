@@ -161,4 +161,14 @@ export class ModelService {
 
     return model;
   }
+
+  // Add method to get model by name
+  async getModelDefinitionByName(name: string, ownerId: string): Promise<ModelDefinition> {
+    const models = await this.collection.findByOwnerId(ownerId);
+    const model = models.find(m => m.name === name);
+    if (!model) {
+      throw new Error(`Model definition not found with name: ${name}`);
+    }
+    return model;
+  }
 } 

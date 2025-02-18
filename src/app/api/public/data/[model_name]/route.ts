@@ -7,7 +7,7 @@ import { connectToDataDatabase, getDataMongoClient } from '@/lib/db/dataDb';
 const modelService = new ModelService();
 
 type ModelRouteContext = {
-  params: Promise<{ model_id: string }>;
+  params: Promise<{ model_name: string }>;
 };
 
 export async function GET(
@@ -21,17 +21,11 @@ export async function GET(
       const client = getDataMongoClient();
       const db = client.db();
 
-      const { model_id } = params;
+      const { model_name } = params;
       const { user_id } = req.apiKey;
 
-      // Get model and verify access
-      const model = await modelService.getModelDefinition(model_id);
-      if (model.owner_id !== user_id) {
-        return NextResponse.json(
-          { error: 'Unauthorized - You do not have access to this model' },
-          { status: 403 }
-        );
-      }
+      // Get model and verify access using name
+      const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
       const dataService = new DataService(model);
       await dataService.initializeCollection();
@@ -91,16 +85,10 @@ export async function POST(
   const params = await context.params;
   return withPublicApiKey(request, async (req) => {
     try {
-      const { model_id } = params;
+      const { model_name } = params;
       const { user_id } = req.apiKey;
 
-      const model = await modelService.getModelDefinition(model_id);
-      if (model.owner_id !== user_id) {
-        return NextResponse.json(
-          { error: 'Unauthorized - You do not have access to this model' },
-          { status: 403 }
-        );
-      }
+      const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
       const dataService = new DataService(model);
       await dataService.initializeCollection();
@@ -138,7 +126,7 @@ export async function PUT(
   const params = await context.params;
   return withPublicApiKey(request, async (req) => {
     try {
-      const { model_id } = params;
+      const { model_name } = params;
       const { user_id } = req.apiKey;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
@@ -150,13 +138,7 @@ export async function PUT(
         );
       }
 
-      const model = await modelService.getModelDefinition(model_id);
-      if (model.owner_id !== user_id) {
-        return NextResponse.json(
-          { error: 'Unauthorized - You do not have access to this model' },
-          { status: 403 }
-        );
-      }
+      const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
       const dataService = new DataService(model);
       await dataService.initializeCollection();
@@ -184,7 +166,7 @@ export async function DELETE(
   const params = await context.params;
   return withPublicApiKey(request, async (req) => {
     try {
-      const { model_id } = params;
+      const { model_name } = params;
       const { user_id } = req.apiKey;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
@@ -196,13 +178,7 @@ export async function DELETE(
         );
       }
 
-      const model = await modelService.getModelDefinition(model_id);
-      if (model.owner_id !== user_id) {
-        return NextResponse.json(
-          { error: 'Unauthorized - You do not have access to this model' },
-          { status: 403 }
-        );
-      }
+      const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
       const dataService = new DataService(model);
       await dataService.initializeCollection();
