@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withPublicApiKey, PublicApiRequest } from '@/lib/api/publicMiddleware';
 import { ModelService } from '@/lib/models/modelService';
-import { DataService } from '@/lib/data/dataService';
-import { connectToDataDatabase, getDataMongoClient } from '@/lib/db/dataDb';
+import { PostgresDataService } from '@/lib/data/postgresDataService';
 
 const modelService = new ModelService();
 
@@ -17,18 +16,13 @@ export async function GET(
   const params = await context.params;
   return withPublicApiKey(request, async (req) => {
     try {
-      await connectToDataDatabase();
-      const client = getDataMongoClient();
-      const db = client.db();
-
       const { model_name } = params;
       const { user_id } = req.apiKey;
 
       // Get model and verify access using name
       const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      const dataService = new PostgresDataService(model);
 
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
@@ -90,8 +84,7 @@ export async function POST(
 
       const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      const dataService = new PostgresDataService(model);
 
       const body = await req.json();
       const record = await dataService.createRecord(body);
@@ -140,8 +133,7 @@ export async function PUT(
 
       const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      const dataService = new PostgresDataService(model);
 
       const body = await req.json();
       const record = await dataService.updateRecord(id, body);
@@ -180,8 +172,7 @@ export async function DELETE(
 
       const model = await modelService.getModelDefinitionByName(model_name, user_id);
 
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      const dataService = new PostgresDataService(model);
 
       await dataService.deleteRecord(id);
       return NextResponse.json(

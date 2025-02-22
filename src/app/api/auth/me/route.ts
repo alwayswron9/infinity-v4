@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db/mongodb';
 import { withAuth, AuthenticatedRequest, createErrorResponse } from '@/lib/api/middleware';
+import { PostgresUserService } from '@/lib/db/postgres/userService';
+
+const userService = new PostgresUserService();
 
 export async function GET(request: NextRequest): Promise<Response> {
   return withAuth(request, async (authReq) => {
     try {
-      const { db } = await connectToDatabase();
-      
       // Get user ID from JWT payload
-      const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
+      const userId = authReq.auth.payload.user_id;
       
       // Find user
-      const user = await db.collection('users').findOne(
-        { id: userId },
-        { projection: { password_hash: 0 } }  // Exclude password hash
-      );
+      const user = await userService.findById(userId);
       
       if (!user) {
         return createErrorResponse('User not found', 404);
       }
+
+      // Remove password hash from response
+      const { password_hash, ...userWithoutPassword } = user;
       
-      return NextResponse.json({ user });
+      return NextResponse.json({ user: userWithoutPassword });
       
     } catch (error) {
       console.error('Profile fetch error:', error);

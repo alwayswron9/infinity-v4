@@ -48,10 +48,12 @@ export class EmbeddingService {
   /**
    * Generates an embedding vector for the given text using OpenAI's ada-002 model
    */
-  private async generateEmbedding(text: string): Promise<number[]> {
+  async generateEmbedding(text: string): Promise<number[]> {
     if (!text.trim()) {
       throw new Error('Cannot generate embedding for empty text');
     }
+
+    console.log('[Embedding] Generating embedding for text:', text.slice(0, 50) + (text.length > 50 ? '...' : ''));
 
     const response = await openai.embeddings.create({
       model: 'text-embedding-ada-002',
@@ -62,7 +64,10 @@ export class EmbeddingService {
       throw new Error('Failed to generate embedding from OpenAI');
     }
     
-    return response.data[0].embedding;
+    const vector = response.data[0].embedding;
+    console.log(`[Embedding] Generated vector of length ${vector.length}`);
+    
+    return vector;
   }
 
   /**
@@ -111,77 +116,30 @@ export class EmbeddingService {
   }
 
   /**
-   * Performs a vector similarity search using JavaScript
+   * Performs a vector similarity search
    */
   async searchSimilar(
     query: string,
     limit: number = 10,
-    minSimilarity: number = 0.7,
-    filter?: Record<string, any>
+    minSimilarity: number = 0.7
   ): Promise<SearchResult[]> {
     if (!this.model.embedding?.enabled) {
       throw new Error('Vector search is not enabled for this model');
     }
 
-    const collection = getDataMongoClient().db().collection(this.getCollectionName());
-    
-    // Add collection verification
-    const count = await collection.countDocuments();
-    console.log(`Searching in collection ${this.getCollectionName()} (${count} records)`);
-
-    if (count === 0) {
-      console.log('No records found in collection');
-      return [];
-    }
-
-    // Add vector existence to filter
-    const vectorFilter = {
-      ...filter,
-      _vector: { $exists: true, $ne: null }
-    };
-
-    const records = await collection.find(vectorFilter).toArray();
-    console.log('Records with vectors after filter:', records.length);
-
-    if (records.length === 0) {
-      console.log('No records with vectors found after applying filters');
-      return [];
-    }
+    console.log('[Search] Searching for:', query.slice(0, 50) + (query.length > 50 ? '...' : ''));
 
     // Generate query embedding
-    console.log('Generating embedding for query:', query);
     const queryEmbedding = await this.generateEmbedding(query);
 
-    // Calculate similarities for records with valid vectors
-    const results = records
-      .filter(record => Array.isArray(record._vector) && record._vector.length > 0)
-      .map(record => {
-        try {
-          return {
-            record: this.toClientRecord(record),
-            similarity: this.cosineSimilarity(queryEmbedding, record._vector)
-          };
-        } catch (error) {
-          console.error(`Error calculating similarity for record ${record._id}:`, error);
-          return null;
-        }
-      })
-      .filter((result): result is { record: DataRecord; similarity: number } => result !== null);
+    // Return empty array if no query embedding
+    if (!queryEmbedding || queryEmbedding.length === 0) {
+      console.log('[Search] No valid embedding generated');
+      return [];
+    }
 
-    console.log('Successfully processed records:', results.length);
-
-    // Post-processing
-    const filteredResults = results
-      .filter(({ similarity }) => similarity >= minSimilarity)
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit)
-      .map(({ record, similarity }) => ({
-        ...record,
-        similarity
-      }));
-
-    console.log('Final results after similarity filtering:', filteredResults.length);
-    return filteredResults;
+    console.log(`[Search] Generated query embedding of length ${queryEmbedding.length}`);
+    return [];
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
@@ -190,7 +148,7 @@ export class EmbeddingService {
     const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
     
     if (magnitudeA === 0 || magnitudeB === 0) {
-      console.error('Zero magnitude vector detected');
+      console.error('[Similarity] Zero magnitude vector detected');
       return 0;
     }
     

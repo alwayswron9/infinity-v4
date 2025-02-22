@@ -1,26 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } from '@/lib/api/middleware';
+import { withPublicApiKey, PublicApiRequest, createErrorResponse } from '@/lib/api/publicMiddleware';
 import { ModelService } from '@/lib/models/modelService';
 import { PostgresDataService } from '@/lib/data/postgresDataService';
 
-type SearchRouteContext = {
-  params: Promise<{ model_id: string }>;
-};
-
 const modelService = new ModelService();
 
-export async function POST(
-  request: NextRequest,
-  context: SearchRouteContext
-): Promise<Response> {
-  const params = await context.params;
-  return withAuth(request, async (authReq) => {
+export async function POST(request: NextRequest): Promise<Response> {
+  return withPublicApiKey(request, async (authReq) => {
     try {
-      const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
+      const { searchParams } = new URL(request.url);
+      const modelName = searchParams.get('model');
 
-      // Verify model ownership and get model definition
-      const model = await modelService.validateCrudOperation(model_id, userId);
+      if (!modelName) {
+        return createErrorResponse('Model name is required', 400);
+      }
+
+      // Get model definition by name
+      const model = await modelService.getModelDefinitionByName(modelName, authReq.apiKey.user_id);
 
       // Initialize data service
       const dataService = new PostgresDataService(model);
@@ -44,5 +40,5 @@ export async function POST(
       console.error('Search error:', error);
       return createErrorResponse(error.message || 'Search failed', error.status || 500);
     }
-  }, { params });
+  }, { params: {} });
 } 

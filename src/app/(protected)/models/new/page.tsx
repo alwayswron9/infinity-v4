@@ -42,9 +42,38 @@ export default function NewModelPage() {
     required: false,
     unique: false,
   });
+  const [errors, setErrors] = useState<{
+    name?: string;
+  }>({});
+
+  const validateModelName = (name: string) => {
+    if (!name) {
+      return 'Name is required';
+    }
+    if (!/^[a-zA-Z0-9-]+$/.test(name)) {
+      return 'Model name can only contain letters, numbers, and hyphens';
+    }
+    return '';
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.value;
+    const error = validateModelName(name);
+    setErrors(prev => ({ ...prev, name: error }));
+    setModel(prev => ({ ...prev, name }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate name before submission
+    const nameError = validateModelName(model.name || '');
+    if (nameError) {
+      setErrors(prev => ({ ...prev, name: nameError }));
+      toast.error(nameError);
+      return;
+    }
+
     if (Object.keys(model.fields || {}).length === 0) {
       toast.error('Add at least one field to your model');
       return;
@@ -164,11 +193,14 @@ export default function NewModelPage() {
             <input
               type="text"
               value={model.name}
-              onChange={e => setModel(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-4 py-2 rounded-lg border border-border bg-surface"
+              onChange={handleNameChange}
+              className={`w-full px-4 py-2 rounded-lg border ${errors.name ? 'border-red-500' : 'border-border'} bg-surface`}
               placeholder="e.g., Customer, Product, Order"
               required
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKeyFormat, hashApiKey } from '@/lib/auth/apikey';
-import { connectToDatabase } from '@/lib/db/mongodb';
+import { PostgresApiKeyService } from '@/lib/db/postgres/apiKeyService';
 
 export type PublicApiRequest = NextRequest & {
   apiKey: {
@@ -8,6 +8,19 @@ export type PublicApiRequest = NextRequest & {
     key_id: string;
   };
 };
+
+export type RouteContext<T extends Record<string, string | string[]> = {}> = {
+  params: T;
+};
+
+export function createErrorResponse(error: string | { field: string; message: string }, status: number) {
+  return NextResponse.json(
+    { error: typeof error === 'string' ? { message: error } : error },
+    { status }
+  );
+}
+
+const apiKeyService = new PostgresApiKeyService();
 
 export async function withPublicApiKey<T extends Record<string, string | string[]> = {}>(
   req: NextRequest,
@@ -18,55 +31,44 @@ export async function withPublicApiKey<T extends Record<string, string | string[
   context: { params: T }
 ): Promise<NextResponse> {
   try {
+    // Get API key from header
     const apiKey = req.headers.get('x-api-key');
     
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'API key is required' },
-        { status: 401 }
-      );
+      return createErrorResponse('API key is required', 401);
     }
 
+    // Validate API key format
     if (!validateApiKeyFormat(apiKey)) {
-      return NextResponse.json(
-        { error: 'Invalid API key format' },
-        { status: 401 }
-      );
+      return createErrorResponse('Invalid API key format', 401);
     }
 
-    const { db } = await connectToDatabase();
+    // Find and validate API key
     const keyHash = hashApiKey(apiKey);
-    
-    const apiKeyRecord = await db.collection('api_keys').findOne({
-      key_hash: keyHash,
-      status: 'active',
-    });
+    const apiKeyRecord = await apiKeyService.findByKeyHash(keyHash);
 
     if (!apiKeyRecord) {
-      return NextResponse.json(
-        { error: 'Invalid API key' },
-        { status: 401 }
-      );
+      return createErrorResponse('Invalid API key', 401);
+    }
+
+    if (apiKeyRecord.status !== 'active') {
+      return createErrorResponse('API key is inactive', 401);
     }
 
     // Update last used timestamp
-    await db.collection('api_keys').updateOne(
-      { key_hash: keyHash },
-      { $set: { last_used_at: new Date() } }
-    );
+    await apiKeyService.updateLastUsed(apiKeyRecord.id);
 
+    // Add API key info to request
     const authenticatedReq = req as PublicApiRequest;
     authenticatedReq.apiKey = {
       user_id: apiKeyRecord.user_id,
       key_id: apiKeyRecord.id,
     };
     
+    // Call the handler
     return handler(authenticatedReq, context);
   } catch (error) {
     console.error('API key authentication error:', error);
-    return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 401 }
-    );
+    return createErrorResponse('Authentication failed', 401);
   }
 } 

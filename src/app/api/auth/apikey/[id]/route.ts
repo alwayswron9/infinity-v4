@@ -1,60 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db/mongodb';
 import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } from '@/lib/api/middleware';
-import { JWTPayload } from '@/lib/auth/jwt';
+import { PostgresApiKeyService } from '@/lib/db/postgres/apiKeyService';
 
-// Helper to get user ID from auth payload
-function getUserId(payload: JWTPayload | { user_id: string }): string {
-  if ('sub' in payload) {
-    return payload.sub;
-  }
-  return payload.user_id;
-}
+const apiKeyService = new PostgresApiKeyService();
 
-type DeleteContext = {
-  params: Promise<{ id: string }>;
-};
-
-// Update DELETE export to use Next.js compatible typing
 export async function DELETE(
-  request: NextRequest,
-  context: DeleteContext
-): Promise<Response> {
-  const params = await context.params;
-  return withAuth(request, async (authReq) => {
+  req: NextRequest,
+  context: RouteContext<{ id: string }>
+) {
+  return withAuth(req, async (authReq) => {
     try {
-      const { db } = await connectToDatabase();
-      const userId = getUserId(authReq.auth.payload);
+      const userId = authReq.auth.payload.user_id;
+      const keyId = context.params.id;
 
-      // Handle JWT token revocation
-      if (params.id === 'current') {
-        const token = authReq.cookies.get('token')?.value;
-        if (!token) return createErrorResponse('No active session', 400);
+      await apiKeyService.deleteApiKey(keyId, userId);
 
-        await db.collection('revoked_tokens').insertOne({
-          token,
-          revoked_at: new Date(),
-          user_id: userId
-        });
-
-        const response = NextResponse.json({ message: 'Token revoked successfully' });
-        response.cookies.delete('token');
-        return response;
+      return NextResponse.json({
+        success: true,
+        message: 'API key deleted successfully'
+      });
+    } catch (error: any) {
+      console.error('Failed to delete API key:', error);
+      if (error.message === 'API key not found or unauthorized') {
+        return createErrorResponse('API key not found or unauthorized', 404);
       }
-
-      // Handle API key revocation
-      const result = await db.collection('api_keys').updateOne(
-        { id: params.id, user_id: userId, status: 'active' },
-        { $set: { status: 'revoked', updated_at: new Date() } }
-      );
-
-      return result.matchedCount === 0
-        ? createErrorResponse('API key not found', 404)
-        : NextResponse.json({ message: 'API key revoked successfully' });
-        
-    } catch (error) {
-      console.error('Revocation error:', error);
-      return createErrorResponse('Internal server error', 500);
+      return createErrorResponse('Failed to delete API key', 500);
     }
-  }, { params });
+  }, { params: context.params });
 } 

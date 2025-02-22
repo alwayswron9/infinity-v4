@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db/mongodb';
 import { verifyPassword } from '@/lib/auth/password';
 import { generateToken } from '@/lib/auth/jwt';
 import { UserLoginSchema, SystemUser } from '@/types/user';
 import { createErrorResponse } from '@/lib/api/middleware';
+import { PostgresUserService } from '@/lib/db/postgres/userService';
 import { ZodError } from 'zod';
+
+const userService = new PostgresUserService();
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,15 +15,8 @@ export async function POST(req: NextRequest) {
     // Validate request body
     const validatedData = UserLoginSchema.parse(body);
     
-    const { db } = await connectToDatabase();
-    
     // Find user by username
-    const user = await db
-      .collection('users')
-      .findOne(
-        { username: validatedData.username },
-        { projection: { password_hash: 1, id: 1, username: 1, email: 1, name: 1, status: 1, created_at: 1, updated_at: 1 } }
-      ) as SystemUser | null;
+    const user = await userService.findByUsername(validatedData.username);
       
     if (!user) {
       return createErrorResponse({ 
@@ -59,27 +54,27 @@ export async function POST(req: NextRequest) {
       success: true
     });
 
-    // Set token as HTTP-only cookie
-    response.cookies.set({
-      name: 'token',
-      value: token,
+    // Set token cookie
+    response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 // 1 day
+      path: '/',
+      maxAge: 24 * 60 * 60 // 24 hours
     });
     
     return response;
     
   } catch (error) {
     console.error('Login error:', error);
+    
     if (error instanceof ZodError) {
-      const fieldErrors = error.errors[0];
       return createErrorResponse({
-        field: fieldErrors.path[0] as string,
-        message: fieldErrors.message
+        field: error.errors[0].path[0] as string,
+        message: error.errors[0].message
       }, 400);
     }
-    return createErrorResponse('Internal server error', 500);
+    
+    return createErrorResponse('Login failed', 500);
   }
 } 

@@ -1,37 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } from '@/lib/api/middleware';
+import { withPublicApiKey, PublicApiRequest, createErrorResponse } from '@/lib/api/publicMiddleware';
 import { ModelService } from '@/lib/models/modelService';
 import { PostgresDataService } from '@/lib/data/postgresDataService';
 
-type ModelRouteContext = {
-  params: Promise<{ model_id: string }>;
-};
-
 const modelService = new ModelService();
 
-export async function GET(
-  request: NextRequest,
-  context: ModelRouteContext
-): Promise<Response> {
-  const params = await context.params;
-  return withAuth(request, async (authReq) => {
+export async function GET(request: NextRequest) {
+  return withPublicApiKey(request, async (authReq) => {
     try {
-      const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
+      const { searchParams } = new URL(request.url);
+      const modelName = searchParams.get('model');
+      const recordId = searchParams.get('id');
 
-      // Verify model ownership and get model definition
-      const model = await modelService.validateCrudOperation(model_id, userId);
+      if (!modelName) {
+        return createErrorResponse('Model name is required', 400);
+      }
+
+      // Get model definition by name
+      const model = await modelService.getModelDefinitionByName(modelName, authReq.apiKey.user_id);
 
       // Initialize data service
       const dataService = new PostgresDataService(model);
 
-      // Check if this is a get by ID request
-      const { searchParams } = new URL(request.url);
-      const id = searchParams.get('id');
-
-      if (id) {
+      if (recordId) {
         // Get specific record
-        const record = await dataService.getRecord(id);
+        const record = await dataService.getRecord(recordId);
         return NextResponse.json({ success: true, data: record });
       } else {
         // List/query records
@@ -55,21 +48,21 @@ export async function GET(
       console.error('Error fetching record(s):', error);
       return createErrorResponse(error.message || 'Failed to fetch record(s)', error.status || 500);
     }
-  }, { params });
+  }, { params: {} });
 }
 
-export async function POST(
-  request: NextRequest,
-  context: ModelRouteContext
-): Promise<Response> {
-  const params = await context.params;
-  return withAuth(request, async (authReq) => {
+export async function POST(request: NextRequest) {
+  return withPublicApiKey(request, async (authReq) => {
     try {
-      const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
+      const { searchParams } = new URL(request.url);
+      const modelName = searchParams.get('model');
 
-      // Verify model ownership and get model definition
-      const model = await modelService.validateCrudOperation(model_id, userId);
+      if (!modelName) {
+        return createErrorResponse('Model name is required', 400);
+      }
+
+      // Get model definition by name
+      const model = await modelService.getModelDefinitionByName(modelName, authReq.apiKey.user_id);
 
       // Initialize data service
       const dataService = new PostgresDataService(model);
@@ -89,27 +82,25 @@ export async function POST(
       console.error('Error creating record:', error);
       return createErrorResponse(error.message || 'Failed to create record', error.status || 500);
     }
-  }, { params });
+  }, { params: {} });
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: ModelRouteContext
-): Promise<Response> {
-  const params = await context.params;
-  return withAuth(request, async (authReq) => {
+export async function PUT(request: NextRequest) {
+  return withPublicApiKey(request, async (authReq) => {
     try {
-      const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
       const { searchParams } = new URL(request.url);
-      const id = searchParams.get('id');
-      
-      if (!id) {
+      const modelName = searchParams.get('model');
+      const recordId = searchParams.get('id');
+
+      if (!modelName) {
+        return createErrorResponse('Model name is required', 400);
+      }
+      if (!recordId) {
         return createErrorResponse('Record ID is required', 400);
       }
 
-      // Verify model ownership and get model definition
-      const model = await modelService.validateCrudOperation(model_id, userId);
+      // Get model definition by name
+      const model = await modelService.getModelDefinitionByName(modelName, authReq.apiKey.user_id);
 
       // Initialize data service
       const dataService = new PostgresDataService(model);
@@ -122,45 +113,43 @@ export async function PUT(
         return createErrorResponse('Request body must contain a fields object', 400);
       }
 
-      const record = await dataService.updateRecord(id, body.fields);
+      const record = await dataService.updateRecord(recordId, body.fields);
 
       return NextResponse.json({ success: true, data: record });
     } catch (error: any) {
       console.error('Error updating record:', error);
       return createErrorResponse(error.message || 'Failed to update record', error.status || 500);
     }
-  }, { params });
+  }, { params: {} });
 }
 
-export async function DELETE(
-  request: NextRequest,
-  context: ModelRouteContext
-): Promise<Response> {
-  const params = await context.params;
-  return withAuth(request, async (authReq) => {
+export async function DELETE(request: NextRequest) {
+  return withPublicApiKey(request, async (authReq) => {
     try {
-      const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
       const { searchParams } = new URL(request.url);
-      const id = searchParams.get('id');
-      
-      if (!id) {
+      const modelName = searchParams.get('model');
+      const recordId = searchParams.get('id');
+
+      if (!modelName) {
+        return createErrorResponse('Model name is required', 400);
+      }
+      if (!recordId) {
         return createErrorResponse('Record ID is required', 400);
       }
 
-      // Verify model ownership and get model definition
-      const model = await modelService.validateCrudOperation(model_id, userId);
+      // Get model definition by name
+      const model = await modelService.getModelDefinitionByName(modelName, authReq.apiKey.user_id);
 
       // Initialize data service
       const dataService = new PostgresDataService(model);
 
       // Delete record
-      await dataService.deleteRecord(id);
+      await dataService.deleteRecord(recordId);
 
       return new NextResponse(null, { status: 204 });
     } catch (error: any) {
       console.error('Error deleting record:', error);
       return createErrorResponse(error.message || 'Failed to delete record', error.status || 500);
     }
-  }, { params });
+  }, { params: {} });
 } 

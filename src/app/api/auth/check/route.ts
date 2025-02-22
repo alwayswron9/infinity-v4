@@ -1,51 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest, createErrorResponse } from '@/lib/api/middleware';
-import { withLogging } from '@/lib/api/logging';
-import { connectToDatabase } from '@/lib/db/mongodb';
+import { PostgresUserService } from '@/lib/db/postgres/userService';
 
-async function handler(req: AuthenticatedRequest) {
-  try {
-    const { db } = await connectToDatabase();
-    
-    // Get user ID from JWT payload
-    const userId = 'sub' in req.auth.payload ? req.auth.payload.sub : req.auth.payload.user_id;
-    
-    // Find user
-    const user = await db.collection('users').findOne(
-      { id: userId },
-      { projection: { password_hash: 0, _id: 0 } }  // Exclude password hash and _id
-    );
-    
-    if (!user) {
-      return createErrorResponse('User not found', 404);
-    }
-
-    // Check if user is active
-    if (user.status !== 'active') {
-      return createErrorResponse('Account is inactive', 403);
-    }
-    
-    return NextResponse.json({
-      authenticated: true,
-      user
-    });
-    
-  } catch (error) {
-    console.error('Auth check error:', error);
-    return createErrorResponse('Internal server error', 500);
-  }
-}
+const userService = new PostgresUserService();
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (authReq) => {
     try {
-      const { db } = await connectToDatabase();
-      const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
+      // Get user ID from JWT payload
+      const userId = authReq.auth.payload.user_id;
       
-      const user = await db.collection('users').findOne(
-        { id: userId },
-        { projection: { password_hash: 0, _id: 0 } }
-      );
+      // Find user
+      const user = await userService.findById(userId);
       
       if (!user) {
         return createErrorResponse('User not found', 404);
@@ -54,15 +20,18 @@ export async function GET(req: NextRequest) {
       if (user.status !== 'active') {
         return createErrorResponse('Account is inactive', 403);
       }
+
+      // Remove password hash from response
+      const { password_hash, ...userWithoutPassword } = user;
       
       return NextResponse.json({
         authenticated: true,
-        user
+        user: userWithoutPassword
       });
       
     } catch (error) {
       console.error('Auth check error:', error);
       return createErrorResponse('Internal server error', 500);
     }
-  }, { params: {} }); // Add empty context
+  }, { params: {} });
 } 

@@ -8,7 +8,7 @@ const modelService = new ModelService();
 async function handleGet(req: AuthenticatedRequest) {
   try {
     // Get user ID from JWT payload
-    const userId = 'sub' in req.auth.payload ? req.auth.payload.sub : req.auth.payload.user_id;
+    const userId = req.auth.payload.sub;
 
     // Get model ID from query params if present
     const { searchParams } = new URL(req.url);
@@ -37,7 +37,7 @@ async function handleGet(req: AuthenticatedRequest) {
 
 async function handlePost(req: AuthenticatedRequest) {
   try {
-    const userId = 'sub' in req.auth.payload ? req.auth.payload.sub : req.auth.payload.user_id;
+    const userId = req.auth.payload.sub;
     const body = await req.json();
     const model = await modelService.createModelDefinition(body as CreateModelDefinitionInput, userId);
     return NextResponse.json({ success: true, data: model }, { status: 201 });
@@ -49,7 +49,7 @@ async function handlePost(req: AuthenticatedRequest) {
 
 async function handlePut(req: AuthenticatedRequest) {
   try {
-    const userId = 'sub' in req.auth.payload ? req.auth.payload.sub : req.auth.payload.user_id;
+    const userId = req.auth.payload.sub;
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) {
@@ -67,7 +67,7 @@ async function handlePut(req: AuthenticatedRequest) {
 
 async function handleDelete(req: AuthenticatedRequest) {
   try {
-    const userId = 'sub' in req.auth.payload ? req.auth.payload.sub : req.auth.payload.user_id;
+    const userId = req.auth.payload.sub;
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) {
