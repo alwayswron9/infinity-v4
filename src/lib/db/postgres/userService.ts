@@ -18,7 +18,7 @@ export class PostgresUserService {
       if (existingUser.rows.length > 0) {
         throw new Error('Email or username already registered');
       }
-
+ 
       const now = new Date();
       const user: SystemUser = {
         id: uuidv4(),

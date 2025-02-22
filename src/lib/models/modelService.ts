@@ -21,8 +21,22 @@ interface ModelDefinitionRow {
   relationships: Record<string, RelationshipDefinition> | null;
   indexes: Record<string, IndexDefinition> | null;
   embedding: { enabled: boolean; source_fields: string[] } | null;
+  status: string | null;
   created_at: Date;
   updated_at: Date;
+}
+
+// Add these type definitions
+interface ModelField {
+  type: string;
+  // Add other field properties as needed
+}
+
+interface ModelRelationship {
+  foreign_key: {
+    field_id: string;
+  };
+  // Add other relationship properties as needed
 }
 
 // SQL to create the model_definitions table
@@ -36,6 +50,7 @@ const CREATE_TABLE_SQL = `
     relationships JSONB,
     indexes JSONB,
     embedding JSONB,
+    status VARCHAR(20),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     UNIQUE(owner_id, name)
@@ -66,7 +81,7 @@ export class ModelService {
     }
 
     // Validate field types and relationships
-    this.validateFieldsAndRelationships(validatedInput);
+    this.validateModel(validatedInput);
 
     const now = new Date();
     const modelDef: ModelDefinition = {
@@ -141,7 +156,7 @@ export class ModelService {
 
     // Validate field types and relationships if they're being updated
     if (validatedInput.fields || validatedInput.relationships) {
-      this.validateFieldsAndRelationships({
+      this.validateModel({
         ...existingModel,
         ...validatedInput
       });
@@ -239,58 +254,35 @@ export class ModelService {
     return parseInt(result.rows[0].count) > 0;
   }
 
-  private validateFieldsAndRelationships(input: CreateModelDefinitionInput | ModelDefinition) {
-    // Validate model name format
-    if (!input.name || !/^[a-zA-Z0-9-]+$/.test(input.name)) {
-      throw new Error('Model name can only contain letters, numbers, and hyphens');
-    }
-
+  private validateModel(input: CreateModelDefinitionInput) {
     // Validate that all field types are supported
-    Object.entries(input.fields).forEach(([fieldName, field]) => {
+    Object.entries(input.fields).forEach(([fieldName, field]: [string, ModelField]) => {
       if (!['string', 'number', 'boolean', 'date'].includes(field.type)) {
         throw new Error(`Unsupported field type '${field.type}' for field '${fieldName}'`);
       }
     });
 
-    // Validate relationships if present
+    // Validate relationships if they exist
     if (input.relationships) {
-      Object.entries(input.relationships).forEach(([relationName, relation]) => {
-        // Ensure the referenced field exists in the model
+      Object.entries(input.relationships).forEach(([relationName, relation]: [string, ModelRelationship]) => {
         const referencedField = input.fields[relation.foreign_key.field_id];
         if (!referencedField) {
-          throw new Error(`Invalid foreign key reference in relationship '${relationName}': field '${relation.foreign_key.field_id}' does not exist`);
+          throw new Error(
+            `Invalid foreign key reference in relationship '${relationName}': ` +
+            `field '${relation.foreign_key.field_id}' does not exist`
+          );
         }
       });
     }
 
-    // Validate embedding configuration if present
-    if (input.embedding) {
-      // Validate enabled flag
-      if (typeof input.embedding.enabled !== 'boolean') {
-        throw new Error('Embedding enabled flag must be a boolean');
-      }
-
-      // If enabled, validate source fields
-      if (input.embedding.enabled) {
-        if (!Array.isArray(input.embedding.source_fields)) {
-          throw new Error('Embedding source_fields must be an array');
+    // Validate embedding source fields
+    if (input.embedding?.enabled) {
+      input.embedding.source_fields.forEach((fieldName: string) => {
+        const field = input.fields[fieldName];
+        if (!field) {
+          throw new Error(`Invalid embedding source field: '${fieldName}' does not exist`);
         }
-
-        if (input.embedding.source_fields.length === 0) {
-          throw new Error('At least one source field must be specified when embedding is enabled');
-        }
-
-        // Validate each source field
-        input.embedding.source_fields.forEach(fieldName => {
-          const field = input.fields[fieldName];
-          if (!field) {
-            throw new Error(`Invalid embedding source field: '${fieldName}' does not exist`);
-          }
-          if (field.type !== 'string') {
-            throw new Error(`Invalid embedding source field: '${fieldName}' must be a string field`);
-          }
-        });
-      }
+      });
     }
   }
 
@@ -304,8 +296,73 @@ export class ModelService {
       relationships: row.relationships || undefined,
       indexes: row.indexes || undefined,
       embedding: row.embedding || undefined,
+      status: row.status || 'active',
       created_at: row.created_at,
       updated_at: row.updated_at
     };
+  }
+
+  async createModel(definition: ModelDefinition) {
+    try {
+      await executeQuery(
+        `INSERT INTO model_definitions 
+         (id, name, description, fields, owner_id, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+        [
+          definition.id,
+          definition.name,
+          definition.description,
+          JSON.stringify(definition.fields),
+          definition.owner_id
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to create model:', error);
+      throw error;
+    }
+  }
+
+  async archiveModel(id: string, ownerId: string): Promise<void> {
+    try {
+      // Verify ownership and archive the model
+      await executeQuery(
+        `UPDATE model_definitions 
+         SET status = 'archived'
+         WHERE id = $1 AND owner_id = $2`,
+        [id, ownerId]
+      );
+
+      // Archive associated data
+      await executeQuery(
+        `UPDATE model_data 
+         SET status = 'archived'
+         WHERE model_id = $1`,
+        [id]
+      );
+    } catch (error) {
+      console.error('Failed to archive model:', error);
+      throw error;
+    }
+  }
+
+  async restoreModel(id: string, ownerId: string): Promise<void> {
+    try {
+      await executeQuery(
+        `UPDATE model_definitions 
+         SET status = 'active'
+         WHERE id = $1 AND owner_id = $2`,
+        [id, ownerId]
+      );
+
+      await executeQuery(
+        `UPDATE model_data 
+         SET status = 'active'
+         WHERE model_id = $1`,
+        [id]
+      );
+    } catch (error) {
+      console.error('Failed to restore model:', error);
+      throw error;
+    }
   }
 } 

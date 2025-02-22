@@ -6,6 +6,9 @@ import { ArrowLeftIcon, PlusIcon, TrashIcon, SaveIcon, InfoIcon, SearchIcon } fr
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { CreateModelDefinitionInput, FieldType } from '@/types/modelDefinition';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Section } from '@/components/layout/Section';
 
 type Field = {
   id: string;
@@ -79,6 +82,12 @@ export default function NewModelPage() {
       return;
     }
 
+    // Add validation for vector search
+    if (model.embedding?.enabled && model.embedding.source_fields.length === 0) {
+      toast.error('Select at least one source field for vector search');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const response = await fetch('/api/models', {
@@ -87,12 +96,27 @@ export default function NewModelPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'same-origin',
-        body: JSON.stringify(model),
+        body: JSON.stringify({
+          ...model,
+          // Ensure embedding is properly structured
+          embedding: model.embedding?.enabled ? {
+            enabled: true,
+            source_fields: model.embedding.source_fields
+          } : {
+            enabled: false,
+            source_fields: []
+          }
+        }),
       });
 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error?.message || 'Failed to create model');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error?.message || 'Failed to create model');
       }
 
       toast.success('Model created successfully');
@@ -174,142 +198,141 @@ export default function NewModelPage() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <Link
-          href="/models"
-          className="p-2 hover:bg-surface rounded-lg transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <h1 className="text-2xl font-semibold">New Model</h1>
-      </div>
+    <PageContainer maxWidth="4xl">
+      <PageHeader
+        title="New Model"
+        backHref="/models"
+        actions={
+          <button
+            type="submit"
+            form="model-form"
+            disabled={submitting || (model.embedding?.enabled && model.embedding.source_fields.length === 0)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            <SaveIcon className="w-5 h-5" />
+            <span>{submitting ? 'Creating...' : 'Create Model'}</span>
+          </button>
+        }
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Basic Info */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <input
-              type="text"
-              value={model.name}
-              onChange={handleNameChange}
-              className={`w-full px-4 py-2 rounded-lg border ${errors.name ? 'border-red-500' : 'border-border'} bg-surface`}
-              placeholder="e.g., Customer, Product, Order"
-              required
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-500">{errors.name}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={model.description}
-              onChange={e => setModel(prev => ({ ...prev, description: e.target.value }))}
-              className="w-full px-4 py-2 rounded-lg border border-border bg-surface"
-              placeholder="Describe your model..."
-              rows={3}
-            />
-          </div>
-        </div>
-
-        {/* Fields */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-lg font-medium">Fields</h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-sm">
-              <InfoIcon className="w-4 h-4" />
-              <span>Vector fields are handled automatically by the platform</span>
-            </div>
-          </div>
-          
-          {/* Existing Fields */}
-          <div className="space-y-2 mb-4">
-            {Object.entries(model.fields || {}).map(([name, field]) => (
-              <div
-                key={field.id}
-                className="flex items-center gap-4 p-4 bg-surface rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="font-medium">{name}</div>
-                  <div className="text-sm text-text-secondary">
-                    {FIELD_TYPES[field.type as keyof typeof FIELD_TYPES]}
-                    {field.required && ' • Required'}
-                    {field.unique && ' • Unique'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeField(name)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Add Field Form */}
-          <div className="flex gap-4 items-start">
-            <div className="flex-1 grid grid-cols-2 gap-4">
+      <form id="model-form" onSubmit={handleSubmit} className="space-y-8">
+        <Section title="Basic Information">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Name</label>
               <input
                 type="text"
-                value={newField.name}
-                onChange={e => setNewField(prev => ({ ...prev, name: e.target.value }))}
-                className="px-4 py-2 rounded-lg border border-border bg-surface"
-                placeholder="Field name"
+                value={model.name}
+                onChange={handleNameChange}
+                className={`w-full px-4 py-2 rounded-lg border ${errors.name ? 'border-red-500' : 'border-border'} bg-surface`}
+                placeholder="e.g., Customer, Product, Order"
+                required
               />
-              <select
-                value={newField.type}
-                onChange={e => setNewField(prev => ({ ...prev, type: e.target.value as Field['type'] }))}
-                className="px-4 py-2 rounded-lg border border-border bg-surface"
-              >
-                {Object.entries(FIELD_TYPES).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <div className="col-span-2 flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={newField.required}
-                    onChange={e => setNewField(prev => ({ ...prev, required: e.target.checked }))}
-                    className="rounded border-border"
-                  />
-                  <span className="text-sm">Required</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={newField.unique}
-                    onChange={e => setNewField(prev => ({ ...prev, unique: e.target.checked }))}
-                    className="rounded border-border"
-                  />
-                  <span className="text-sm">Unique</span>
-                </label>
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Description</label>
+              <textarea
+                value={model.description}
+                onChange={e => setModel(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg border border-border bg-surface"
+                placeholder="Describe your model..."
+                rows={3}
+              />
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Fields">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-medium">Fields</h2>
+              <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-sm">
+                <InfoIcon className="w-4 h-4" />
+                <span>Vector fields are handled automatically by the platform</span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={addField}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              <PlusIcon className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+            
+            {/* Existing Fields */}
+            <div className="space-y-2 mb-4">
+              {Object.entries(model.fields || {}).map(([name, field]) => (
+                <div
+                  key={field.id}
+                  className="flex items-center gap-4 p-4 bg-surface rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium">{name}</div>
+                    <div className="text-sm text-text-secondary">
+                      {FIELD_TYPES[field.type as keyof typeof FIELD_TYPES]}
+                      {field.required && ' • Required'}
+                      {field.unique && ' • Unique'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeField(name)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
 
-        {/* Vector Search Configuration */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-lg font-medium">Vector Search</h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-sm">
-              <InfoIcon className="w-4 h-4" />
-              <span>Enable semantic search using OpenAI embeddings</span>
+            {/* Add Field Form */}
+            <div className="flex gap-4 items-start">
+              <div className="flex-1 grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={newField.name}
+                  onChange={e => setNewField(prev => ({ ...prev, name: e.target.value }))}
+                  className="px-4 py-2 rounded-lg border border-border bg-surface"
+                  placeholder="Field name"
+                />
+                <select
+                  value={newField.type}
+                  onChange={e => setNewField(prev => ({ ...prev, type: e.target.value as Field['type'] }))}
+                  className="px-4 py-2 rounded-lg border border-border bg-surface"
+                >
+                  {Object.entries(FIELD_TYPES).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+                <div className="col-span-2 flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={newField.required}
+                      onChange={e => setNewField(prev => ({ ...prev, required: e.target.checked }))}
+                      className="rounded border-border"
+                    />
+                    <span className="text-sm">Required</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={newField.unique}
+                      onChange={e => setNewField(prev => ({ ...prev, unique: e.target.checked }))}
+                      className="rounded border-border"
+                    />
+                    <span className="text-sm">Unique</span>
+                  </label>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={addField}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <PlusIcon className="w-5 h-5" />
+              </button>
             </div>
           </div>
+        </Section>
 
+        <Section title="Vector Search Configuration">
           <div className="space-y-4">
             <label className="flex items-center gap-2">
               <input
@@ -348,20 +371,8 @@ export default function NewModelPage() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Submit */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={submitting || (model.embedding?.enabled && model.embedding.source_fields.length === 0)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            <SaveIcon className="w-5 h-5" />
-            <span>{submitting ? 'Creating...' : 'Create Model'}</span>
-          </button>
-        </div>
+        </Section>
       </form>
-    </div>
+    </PageContainer>
   );
 } 

@@ -28,4 +28,27 @@ CREATE INDEX IF NOT EXISTS model_data_jsonb_idx ON model_data USING GIN (data);
 CREATE TRIGGER update_model_data_updated_at
     BEFORE UPDATE ON model_data
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column(); 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS model_definitions (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  fields JSONB NOT NULL,
+  owner_id UUID NOT NULL REFERENCES users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION create_model_table(model_id TEXT, table_name TEXT) RETURNS VOID AS $$
+BEGIN
+  EXECUTE format('
+    CREATE TABLE IF NOT EXISTS %I (
+      id UUID PRIMARY KEY,
+      data JSONB NOT NULL,
+      embedding VECTOR(1536),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )', table_name);
+END;
+$$ LANGUAGE plpgsql; 

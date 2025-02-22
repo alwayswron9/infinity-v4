@@ -1,6 +1,6 @@
-import { executeQuery } from '../db/postgres';
-import { ModelDefinition } from '@/types/modelDefinition';
-import { CreateDataRecordInput, DataRecord, ListRecordsQuery, UpdateDataRecordInput } from '@/types/dataRecord';
+import { executeQuery, vectorSimilaritySearch } from '../db/postgres';
+import { ModelDefinition, FieldDefinition } from '@/types/modelDefinition';
+import { CreateDataRecordInput, DataRecord, ListRecordsQuery, UpdateDataRecordInput, SearchResult } from '@/types/dataRecord';
 import { EmbeddingService } from '@/lib/embeddings/embeddingService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -31,8 +31,11 @@ export class PostgresDataService {
   }
 
   private async validateFields(fields: Record<string, any>): Promise<void> {
+    // Add type assertion for model.fields
+    const modelFields = this.model.fields as Record<string, FieldDefinition>;
+    
     // Validate required fields
-    for (const [fieldName, fieldDef] of Object.entries(this.model.fields)) {
+    for (const [fieldName, fieldDef] of Object.entries(modelFields)) {
       if (fieldDef.required && !(fieldName in fields)) {
         throw new Error(`Missing required field: ${fieldName}`);
       }
@@ -78,11 +81,11 @@ export class PostgresDataService {
     }
 
     return this.model.embedding.source_fields
-      .map(field => {
+      .map((field: string) => {
         const value = fields[field];
         return value ? String(value).trim() : '';
       })
-      .filter(text => text.length > 0)
+      .filter((text: string) => text.length > 0)
       .join(' ');
   }
 
@@ -249,36 +252,77 @@ export class PostgresDataService {
     }
   }
 
-  async searchSimilar(query: string, limit: number = 10, minSimilarity: number = 0.7): Promise<DataRecord[]> {
+  async searchSimilar(
+    query: string,
+    limit: number = 10,
+    minSimilarity: number = 0.7
+  ): Promise<DataRecord[]> {
     if (!this.model.embedding?.enabled) {
       throw new Error('Vector search is not enabled for this model');
     }
 
+    console.log('[Search] Searching for:', query.slice(0, 50) + (query.length > 50 ? '...' : ''));
+
     try {
-      console.log(`[Search] Searching for: ${query.slice(0, 50)}${query.length > 50 ? '...' : ''}`);
       // Generate query embedding
       const queryEmbedding = await this.embeddingService.generateEmbedding(query);
       console.log(`[Search] Generated query embedding of length ${queryEmbedding.length}`);
 
-      const result = await executeQuery(
-        `SELECT *, 1 - (embedding <=> $1::vector) as similarity
+      // Perform the similarity search
+      const results = await executeQuery(
+        `SELECT *, 
+                1 - (embedding <=> $1::vector) as similarity
          FROM model_data
          WHERE model_id = $2
            AND embedding IS NOT NULL
            AND 1 - (embedding <=> $1::vector) >= $3
-         ORDER BY embedding <=> $1::vector
+         ORDER BY similarity DESC
          LIMIT $4`,
-        [this.formatVectorForPostgres(queryEmbedding), this.model.id, minSimilarity, limit]
+        [
+          this.formatVectorForPostgres(queryEmbedding),
+          this.model.id,
+          minSimilarity,
+          limit
+        ]
       );
 
-      console.log(`[Search] Found ${result.rows.length} results with similarity >= ${minSimilarity}`);
-      return result.rows.map(row => ({
+      console.log(`[Search] Found ${results.rows.length} results with similarity >= ${minSimilarity}`);
+      
+      return results.rows.map(row => ({
         ...this.toClientRecord(row),
         similarity: row.similarity
       }));
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error during search';
-      throw new Error(`Search failed: ${message}`);
+    } catch (error) {
+      console.error('[Search] Failed to perform search:', error);
+      throw error;
+    }
+  }
+
+  async searchRecords(
+    modelId: string,
+    embedding: number[],
+    limit: number = 10,
+    minSimilarity: number = 0.7
+  ): Promise<SearchResult[]> {
+    const tableName = `data_${modelId}`;
+    try {
+      const results = await vectorSimilaritySearch(
+        tableName,
+        embedding,
+        limit,
+        minSimilarity
+      );
+      return results.map(row => ({
+        _id: row.id,
+        _created_at: new Date(row.created_at),
+        _updated_at: new Date(row.updated_at),
+        id: row.id,
+        data: row.data,
+        similarity: row.similarity
+      }));
+    } catch (error) {
+      console.error('Failed to search records:', error);
+      throw error;
     }
   }
 } 

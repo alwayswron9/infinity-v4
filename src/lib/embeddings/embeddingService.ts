@@ -1,8 +1,7 @@
-import OpenAI from 'openai';
-import { MongoClient, ObjectId } from 'mongodb';
 import { ModelDefinition } from '@/types/modelDefinition';
+import { executeQuery } from '../db/postgres';
+import OpenAI from 'openai';
 import { DataRecord, SearchResult } from '@/types/dataRecord';
-import { getDataMongoClient } from '@/lib/db/dataDb';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY is not set in environment variables');
@@ -49,25 +48,21 @@ export class EmbeddingService {
    * Generates an embedding vector for the given text using OpenAI's ada-002 model
    */
   async generateEmbedding(text: string): Promise<number[]> {
-    if (!text.trim()) {
-      throw new Error('Cannot generate embedding for empty text');
+    if (!text) {
+      throw new Error('Text is required for embedding');
     }
 
-    console.log('[Embedding] Generating embedding for text:', text.slice(0, 50) + (text.length > 50 ? '...' : ''));
+    try {
+      const response = await openai.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: text,
+      });
 
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: text,
-    });
-
-    if (!response.data[0]?.embedding) {
-      throw new Error('Failed to generate embedding from OpenAI');
+      return response.data[0].embedding;
+    } catch (error) {
+      console.error('Failed to generate embedding:', error);
+      throw new Error('Failed to generate embedding');
     }
-    
-    const vector = response.data[0].embedding;
-    console.log(`[Embedding] Generated vector of length ${vector.length}`);
-    
-    return vector;
   }
 
   /**
@@ -82,7 +77,7 @@ export class EmbeddingService {
     console.log('[Embedding] Starting embedding generation for record:', record._id);
     
     const textForEmbedding = this.model.embedding.source_fields
-      .map(field => {
+      .map((field: string) => {
         const value = record[field];
         if (!value) {
           console.warn(`[Embedding] Missing source field '${field}' in record ${record._id}`);
@@ -103,15 +98,12 @@ export class EmbeddingService {
         throw new Error('Zero vector from OpenAI');
       }
 
-      await getDataMongoClient().db().collection(this.getCollectionName()).updateOne(
-        { _id: record._id },
-        { $set: { _vector: vector } }
-      );
+      await this.storeEmbedding(record._id.toString(), vector);
       console.log('[Embedding] Successfully stored vector for record:', record._id);
       return vector;
     } catch (error) {
       console.error('[Embedding] Failed to generate embedding:', error);
-      throw error; // Rethrow for upstream handling
+      throw error;
     }
   }
 
@@ -172,5 +164,17 @@ export class EmbeddingService {
       _vector,
       ...fields
     };
+  }
+
+  async storeEmbedding(recordId: string, embedding: number[]): Promise<void> {
+    try {
+      await executeQuery(
+        'UPDATE model_data SET embedding = $1 WHERE id = $2',
+        [embedding, recordId]
+      );
+    } catch (error) {
+      console.error('Failed to store embedding:', error);
+      throw error;
+    }
   }
 } 
