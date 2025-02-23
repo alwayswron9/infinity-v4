@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import useViewStore from '@/lib/stores/viewStore';
 import type { ModelView } from '@/types/viewDefinition';
-import { toast } from 'sonner';
+import { toast } from '@/lib/utils/toast';
 
 // Helper to check if a field is a system field
 const isSystemField = (field: string) => field.startsWith('_');
