@@ -1,6 +1,6 @@
 import { InfoIcon, PlusIcon, TrashIcon } from 'lucide-react';
 import { useState } from 'react';
-import { ModelDefinition, FieldType, CreatableFieldDefinition } from '@/types/modelDefinition';
+import { ModelDefinition, FieldType, CreatableFieldDefinition, FieldDefinition } from '@/types/modelDefinition';
 import { toast } from 'react-hot-toast';
 
 const FIELD_TYPES = {
@@ -96,7 +96,7 @@ export function FieldsSection({ model, onChange }: FieldsSectionProps) {
       
       {/* Existing Fields */}
       <div className="space-y-3 mb-6">
-        {Object.entries(model.fields)
+        {(Object.entries(model.fields) as [string, FieldDefinition][])
           .filter(([_, field]) => field.type !== 'vector')
           .map(([name, field]) => (
             <div

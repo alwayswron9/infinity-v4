@@ -4,11 +4,12 @@ import { ModelService } from '@/lib/models/modelService';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
   return withAuth(request, async (req) => {
     try {
-      const { id } = await params;
+      const { id } = resolvedParams;
       const { user_id } = req.auth.payload;
 
       const modelService = new ModelService();
@@ -21,5 +22,5 @@ export async function POST(
         error.status || 500
       );
     }
-  }, { params });
+  }, { params: resolvedParams });
 } 

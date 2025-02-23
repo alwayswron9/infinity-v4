@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db/mongodb';
 import { withLogging } from '@/lib/api/logging';
+import { pool } from '@/lib/db/postgres';
 
 async function handler() {
   try {
     const startTime = Date.now();
-    const { db } = await connectToDatabase();
     
-    // Test DB connection with a simple command
-    await db.command({ ping: 1 });
+    // Test DB connection with a simple query
+    const result = await pool.query('SELECT NOW()');
     
     return NextResponse.json({
       status: 'ok',
       message: 'Database connection successful',
+      timestamp: result.rows[0].now,
       latency_ms: Date.now() - startTime,
     });
   } catch (error) {

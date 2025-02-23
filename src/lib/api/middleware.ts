@@ -81,4 +81,60 @@ export async function withAuth<T extends Record<string, string | string[]> = {}>
       { status: 401 }
     );
   }
+}
+
+export async function withApiKey<T extends Record<string, string | string[]> = {}>(
+  req: NextRequest,
+  handler: (
+    req: AuthenticatedRequest,
+    context: { params: T }
+  ) => Promise<NextResponse>,
+  context: { params: T }
+): Promise<NextResponse> {
+  try {
+    const apiKey = req.headers.get('x-api-key');
+    
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key is required' },
+        { status: 401 }
+      );
+    }
+
+    if (!validateApiKeyFormat(apiKey)) {
+      return NextResponse.json(
+        { error: 'Invalid API key format' },
+        { status: 401 }
+      );
+    }
+
+    const hashedKey = hashApiKey(apiKey);
+    const keyDetails = await apiKeyService.findByKeyHash(hashedKey);
+
+    if (!keyDetails) {
+      return NextResponse.json(
+        { error: 'Invalid API key' },
+        { status: 401 }
+      );
+    }
+
+    const authenticatedReq = req as AuthenticatedRequest;
+    authenticatedReq.auth = {
+      type: 'jwt',
+      payload: {
+        sub: keyDetails.user_id,
+        user_id: keyDetails.user_id,
+        email: '', // API keys don't have associated emails
+        name: keyDetails.name // Use the API key name as the name
+      }
+    };
+
+    return handler(authenticatedReq, context);
+  } catch (error) {
+    console.error('API key authentication error:', error);
+    return NextResponse.json(
+      { error: 'Authentication failed' },
+      { status: 401 }
+    );
+  }
 } 

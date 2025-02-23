@@ -6,7 +6,12 @@ import { ArrowLeftIcon, SaveIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { use } from 'react';
-import { ModelDefinition, UpdateModelDefinitionInput, CreatableFieldDefinition } from '@/types/modelDefinition';
+import { 
+  ModelDefinition, 
+  UpdateModelDefinitionInput, 
+  CreatableFieldDefinition,
+  FieldDefinition 
+} from '@/types/modelDefinition';
 import { BasicInfoSection } from '@/components/models/BasicInfoSection';
 import { FieldsSection } from '@/components/models/FieldsSection';
 import { VectorSearchSection } from '@/components/models/VectorSearchSection';
@@ -62,22 +67,25 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
     setSubmitting(true);
     try {
       // Filter out any vector fields before updating
-      const fields = Object.entries(model.fields).reduce((acc, [name, field]) => {
+      const fields: Record<string, CreatableFieldDefinition> = {};
+      const entries = Object.entries(model.fields) as [string, FieldDefinition][];
+      for (const [name, field] of entries) {
         if (field.type !== 'vector') {
           const { type, id, required, unique, description, default: defaultValue, enum: enumValues, foreign_key } = field;
-          acc[name] = {
-            type,
-            id,
-            required,
-            unique,
-            description,
-            default: defaultValue,
-            enum: enumValues,
-            foreign_key,
-          } as CreatableFieldDefinition;
+          if (type === 'string' || type === 'number' || type === 'boolean' || type === 'date') {
+            fields[name] = {
+              type,
+              id,
+              required,
+              unique,
+              description,
+              default: defaultValue,
+              enum: enumValues,
+              foreign_key,
+            };
+          }
         }
-        return acc;
-      }, {} as Record<string, CreatableFieldDefinition>);
+      }
 
       const updateData: UpdateModelDefinitionInput = {
         name: model.name,
@@ -143,17 +151,17 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
       <form onSubmit={handleSubmit} className="space-y-8">
         <BasicInfoSection 
           model={model} 
-          onChange={updates => setModel(prev => prev ? { ...prev, ...updates } : null)} 
+          onChange={(updates: Partial<ModelDefinition>) => setModel((prev: ModelDefinition | null) => prev ? { ...prev, ...updates } : null)} 
         />
         
         <FieldsSection 
           model={model} 
-          onChange={updates => setModel(prev => prev ? { ...prev, ...updates } : null)} 
+          onChange={(updates: Partial<ModelDefinition>) => setModel((prev: ModelDefinition | null) => prev ? { ...prev, ...updates } : null)} 
         />
         
         <VectorSearchSection 
           model={model} 
-          onChange={updates => setModel(prev => prev ? { ...prev, ...updates } : null)} 
+          onChange={(updates: Partial<ModelDefinition>) => setModel((prev: ModelDefinition | null) => prev ? { ...prev, ...updates } : null)} 
         />
       </form>
     </PageContainer>
