@@ -252,6 +252,19 @@ export class PostgresDataService {
     }
   }
 
+  async clearData(): Promise<void> {
+    try {
+      const result = await executeQuery(
+        'DELETE FROM model_data WHERE model_id = $1',
+        [this.model.id]
+      );
+      console.log(`[Data] Cleared ${result.rowCount} records from model ${this.model.name}`);
+    } catch (error) {
+      console.error('[Data] Failed to clear data:', error);
+      throw error;
+    }
+  }
+
   async searchSimilar(
     query: string,
     limit: number = 10,

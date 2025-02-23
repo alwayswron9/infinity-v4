@@ -26,7 +26,7 @@ export const ListRecordsQuery = z.object({
   filter: z.record(z.string(), z.any()).optional(),
   include: z.array(z.string()).optional(),
   page: z.number().min(1).default(1),
-  limit: z.number().min(1).max(100).default(10),
+  limit: z.number().min(1).max(1000).default(10),
 });
 
 // Types derived from schemas
