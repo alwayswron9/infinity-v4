@@ -8,7 +8,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       {children}
       <Toaster 
         position="bottom-right"
+        duration={1000}
+        richColors
+        closeButton
         toastOptions={{
+          duration: 1000,
           style: {
             background: 'var(--surface)',
             color: 'var(--text-primary)',
