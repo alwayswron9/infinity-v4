@@ -30,9 +30,13 @@ export const ListRecordsQuery = z.object({
 });
 
 // Types derived from schemas
-export type DataRecord = z.infer<typeof DataRecordSchema> & {
-  [key: string]: any;  // Allow dynamic fields
-};
+export interface DataRecord {
+  _id: string;
+  _created_at: Date;
+  _updated_at: Date;
+  _vector?: number[];
+  [key: string]: any;
+}
 
 export type CreateDataRecordInput = z.infer<typeof CreateDataRecordInput>;
 

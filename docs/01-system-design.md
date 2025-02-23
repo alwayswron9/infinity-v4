@@ -27,6 +27,10 @@ Infinity serves as a central data service specifically designed to integrate wit
 - **MongoDB Atlas**: Primary database for model definitions and data storage
 - **Atlas Vector Search**: For efficient vector similarity searches
 - **MongoDB Indexes**: For optimized query performance
+- **PostgreSQL**: Relational database for structured data and complex queries
+  - **pgvector**: Extension for vector storage and similarity search
+  - **Foreign Key Constraints**: For enforcing data integrity
+  - **ACID Compliance**: For transactional operations
 
 ### Testing & Quality Assurance
 - **Jest**: JavaScript testing framework

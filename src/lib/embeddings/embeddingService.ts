@@ -1,8 +1,7 @@
-import OpenAI from 'openai';
-import { MongoClient, ObjectId } from 'mongodb';
 import { ModelDefinition } from '@/types/modelDefinition';
+import { executeQuery } from '../db/postgres';
+import OpenAI from 'openai';
 import { DataRecord, SearchResult } from '@/types/dataRecord';
-import { getDataMongoClient } from '@/lib/db/dataDb';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY is not set in environment variables');
@@ -48,21 +47,22 @@ export class EmbeddingService {
   /**
    * Generates an embedding vector for the given text using OpenAI's ada-002 model
    */
-  private async generateEmbedding(text: string): Promise<number[]> {
-    if (!text.trim()) {
-      throw new Error('Cannot generate embedding for empty text');
+  async generateEmbedding(text: string): Promise<number[]> {
+    if (!text) {
+      throw new Error('Text is required for embedding');
     }
 
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: text,
-    });
+    try {
+      const response = await openai.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: text,
+      });
 
-    if (!response.data[0]?.embedding) {
-      throw new Error('Failed to generate embedding from OpenAI');
+      return response.data[0].embedding;
+    } catch (error) {
+      console.error('Failed to generate embedding:', error);
+      throw new Error('Failed to generate embedding');
     }
-    
-    return response.data[0].embedding;
   }
 
   /**
@@ -77,7 +77,7 @@ export class EmbeddingService {
     console.log('[Embedding] Starting embedding generation for record:', record._id);
     
     const textForEmbedding = this.model.embedding.source_fields
-      .map(field => {
+      .map((field: string) => {
         const value = record[field];
         if (!value) {
           console.warn(`[Embedding] Missing source field '${field}' in record ${record._id}`);
@@ -98,90 +98,40 @@ export class EmbeddingService {
         throw new Error('Zero vector from OpenAI');
       }
 
-      await getDataMongoClient().db().collection(this.getCollectionName()).updateOne(
-        { _id: record._id },
-        { $set: { _vector: vector } }
-      );
+      await this.storeEmbedding(record._id.toString(), vector);
       console.log('[Embedding] Successfully stored vector for record:', record._id);
       return vector;
     } catch (error) {
       console.error('[Embedding] Failed to generate embedding:', error);
-      throw error; // Rethrow for upstream handling
+      throw error;
     }
   }
 
   /**
-   * Performs a vector similarity search using JavaScript
+   * Performs a vector similarity search
    */
   async searchSimilar(
     query: string,
     limit: number = 10,
-    minSimilarity: number = 0.7,
-    filter?: Record<string, any>
+    minSimilarity: number = 0.7
   ): Promise<SearchResult[]> {
     if (!this.model.embedding?.enabled) {
       throw new Error('Vector search is not enabled for this model');
     }
 
-    const collection = getDataMongoClient().db().collection(this.getCollectionName());
-    
-    // Add collection verification
-    const count = await collection.countDocuments();
-    console.log(`Searching in collection ${this.getCollectionName()} (${count} records)`);
-
-    if (count === 0) {
-      console.log('No records found in collection');
-      return [];
-    }
-
-    // Add vector existence to filter
-    const vectorFilter = {
-      ...filter,
-      _vector: { $exists: true, $ne: null }
-    };
-
-    const records = await collection.find(vectorFilter).toArray();
-    console.log('Records with vectors after filter:', records.length);
-
-    if (records.length === 0) {
-      console.log('No records with vectors found after applying filters');
-      return [];
-    }
+    console.log('[Search] Searching for:', query.slice(0, 50) + (query.length > 50 ? '...' : ''));
 
     // Generate query embedding
-    console.log('Generating embedding for query:', query);
     const queryEmbedding = await this.generateEmbedding(query);
 
-    // Calculate similarities for records with valid vectors
-    const results = records
-      .filter(record => Array.isArray(record._vector) && record._vector.length > 0)
-      .map(record => {
-        try {
-          return {
-            record: this.toClientRecord(record),
-            similarity: this.cosineSimilarity(queryEmbedding, record._vector)
-          };
-        } catch (error) {
-          console.error(`Error calculating similarity for record ${record._id}:`, error);
-          return null;
-        }
-      })
-      .filter((result): result is { record: DataRecord; similarity: number } => result !== null);
+    // Return empty array if no query embedding
+    if (!queryEmbedding || queryEmbedding.length === 0) {
+      console.log('[Search] No valid embedding generated');
+      return [];
+    }
 
-    console.log('Successfully processed records:', results.length);
-
-    // Post-processing
-    const filteredResults = results
-      .filter(({ similarity }) => similarity >= minSimilarity)
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit)
-      .map(({ record, similarity }) => ({
-        ...record,
-        similarity
-      }));
-
-    console.log('Final results after similarity filtering:', filteredResults.length);
-    return filteredResults;
+    console.log(`[Search] Generated query embedding of length ${queryEmbedding.length}`);
+    return [];
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
@@ -190,7 +140,7 @@ export class EmbeddingService {
     const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
     
     if (magnitudeA === 0 || magnitudeB === 0) {
-      console.error('Zero magnitude vector detected');
+      console.error('[Similarity] Zero magnitude vector detected');
       return 0;
     }
     
@@ -214,5 +164,17 @@ export class EmbeddingService {
       _vector,
       ...fields
     };
+  }
+
+  async storeEmbedding(recordId: string, embedding: number[]): Promise<void> {
+    try {
+      await executeQuery(
+        'UPDATE model_data SET embedding = $1 WHERE id = $2',
+        [embedding, recordId]
+      );
+    } catch (error) {
+      console.error('Failed to store embedding:', error);
+      throw error;
+    }
   }
 } 

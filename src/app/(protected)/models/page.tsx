@@ -1,15 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusIcon, Loader2Icon, DatabaseIcon, SearchIcon, LinkIcon, ChevronRightIcon, PencilIcon, CompassIcon, TrashIcon, MoreVerticalIcon } from 'lucide-react';
+import { PlusIcon, Loader2Icon, DatabaseIcon, SearchIcon, LinkIcon, ChevronRightIcon, PencilIcon, CompassIcon, TrashIcon, MoreVerticalIcon, ArchiveIcon } from 'lucide-react';
 import { ModelDefinition } from '@/types/modelDefinition';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Section } from '@/components/layout/Section';
 
 export default function ModelsPage() {
   const [models, setModels] = useState<ModelDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchModels();
@@ -87,116 +100,182 @@ export default function ModelsPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold text-text">Data Models</h1>
-        <Link
-          href="/models/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <PlusIcon className="w-5 h-5" />
-          <span>New Model</span>
-        </Link>
-      </div>
+    <PageContainer maxWidth="6xl">
+      <PageHeader 
+        title="Models"
+        description="Create and manage your data models"
+        actions={
+          <Button className="bg-primary text-white hover:bg-primary/90" asChild>
+            <Link href="/models/new">
+              <PlusIcon className="mr-2 h-4 w-4" />
+              New Model
+            </Link>
+          </Button>
+        }
+      />
 
-      {models.length === 0 ? (
-        <div className="text-center py-12 bg-surface rounded-lg">
-          <h3 className="text-lg font-medium text-text-secondary mb-2">No models defined yet</h3>
-          <p className="text-text-tertiary mb-6">Create your first data model to get started</p>
-          <Link
-            href="/models/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Create Model</span>
-          </Link>
+      <Section>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1">
+            <Input
+              placeholder="Search models..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="show-archived" className="text-sm font-medium">
+              Show Archived
+            </Label>
+            <Switch
+              id="show-archived"
+              checked={showArchived}
+              onCheckedChange={setShowArchived}
+            />
+          </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {models.map((model) => (
-            <div
-              key={model.id}
-              className="p-6 bg-surface rounded-lg hover:bg-surface-hover transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-text">{model.name}</h3>
-                  {model.description && (
-                    <p className="text-text-secondary mt-1">{model.description}</p>
+
+        {models.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 p-12 text-center">
+            <DatabaseIcon className="h-12 w-12 text-muted-foreground" />
+            <h3 className="text-xl font-semibold">No models defined yet</h3>
+            <p className="text-sm text-muted-foreground">
+              Create your first data model to get started
+            </p>
+            <Button className="bg-primary text-white hover:bg-primary/90">
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Create Model
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {models
+              .filter(model => showArchived || (model.status || 'active') === 'active')
+              .map((model) => (
+                <div
+                  key={model.id}
+                  className={cn(
+                    'group p-4 border-b last:border-b-0 hover:bg-surface-hover transition-colors',
+                    model.status === 'archived' && 'opacity-70'
                   )}
-                  <div className="flex items-center gap-6 mt-2 text-sm text-text-tertiary">
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <DatabaseIcon className="w-4 h-4 text-muted-foreground" />
+                        <h3 className="font-semibold text-text">{model.name}</h3>
+                        {model.status === 'archived' && (
+                          <Badge variant="outline" className="text-xs py-1 px-2">
+                            Archived
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {model.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {model.description}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>{Object.keys(model.fields).length} fields</span>
+                        {model.embedding?.enabled && (
+                          <span className="flex items-center gap-1 text-success">
+                            <SearchIcon className="w-3.5 h-3.5" />
+                            Vector Search
+                          </span>
+                        )}
+                        {model.relationships && Object.keys(model.relationships).length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <LinkIcon className="w-3.5 h-3.5" />
+                            {Object.keys(model.relationships).length} relationships
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-2">
-                      <DatabaseIcon className="w-4 h-4" />
-                      <span>{Object.keys(model.fields).length} fields</span>
+                      {model.status === 'active' && (
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          className="group transition-all hover:scale-[1.02]"
+                          asChild
+                        >
+                          <Link href={`/models/${model.id}/explore`}>
+                            <CompassIcon className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
+                            <span>Explore</span>
+                          </Link>
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVerticalIcon className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            asChild
+                            className="focus:bg-accent/10"
+                          >
+                            <Link href={`/models/${model.id}`}>
+                              <PencilIcon className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          
+                          {model.status === 'active' ? (
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/models/${model.id}/archive`, {
+                                    method: 'POST',
+                                    credentials: 'same-origin'
+                                  });
+                                  if (!response.ok) throw new Error('Failed to archive model');
+                                  toast.success('Model archived successfully');
+                                  fetchModels();
+                                } catch (error: any) {
+                                  toast.error(error.message);
+                                }
+                              }}
+                              className="text-warning focus:bg-warning/10"
+                            >
+                              <ArchiveIcon className="mr-2 h-4 w-4" />
+                              <span>Archive</span>
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/models/${model.id}/restore`, {
+                                    method: 'POST',
+                                    credentials: 'same-origin'
+                                  });
+                                  if (!response.ok) throw new Error('Failed to restore model');
+                                  toast.success('Model restored successfully');
+                                  fetchModels();
+                                } catch (error: any) {
+                                  toast.error(error.message);
+                                }
+                              }}
+                              className="text-success focus:bg-success/10"
+                            >
+                              <ArchiveIcon className="mr-2 h-4 rotate-180" />
+                              <span>Restore</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    {model.embedding?.enabled && (
-                      <div className="flex items-center gap-2">
-                        <SearchIcon className="w-4 h-4 text-green-500" />
-                        <span className="text-green-600">Vector Search Enabled</span>
-                      </div>
-                    )}
-                    {model.relationships && Object.keys(model.relationships).length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <LinkIcon className="w-4 h-4" />
-                        <span>{Object.keys(model.relationships).length} relationships</span>
-                      </div>
-                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={`/models/${model.id}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-surface-hover text-text rounded-lg hover:bg-surface-hover/80 transition-colors"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                    <span>Edit</span>
-                  </Link>
-                  <Link
-                    href={`/models/${model.id}/explore`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                  >
-                    <CompassIcon className="w-4 h-4" />
-                    <span>Explore</span>
-                  </Link>
-                  <div className="relative">
-                    <button
-                      className="p-2 text-text-secondary hover:bg-surface-hover rounded-lg transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const menu = document.getElementById(`model-menu-${model.id}`);
-                        menu?.classList.toggle('hidden');
-                      }}
-                      onBlur={(e) => {
-                        const menu = document.getElementById(`model-menu-${model.id}`);
-                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                          menu?.classList.add('hidden');
-                        }
-                      }}
-                    >
-                      <MoreVerticalIcon className="w-4 h-4" />
-                    </button>
-                    <div
-                      id={`model-menu-${model.id}`}
-                      className="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-border z-10"
-                      onMouseLeave={() => {
-                        const menu = document.getElementById(`model-menu-${model.id}`);
-                        menu?.classList.add('hidden');
-                      }}
-                    >
-                      <button
-                        onClick={() => handleDelete(model.id)}
-                        className="w-full px-4 py-2 text-left text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        Delete Model
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+              ))}
+          </div>
+        )}
+      </Section>
+    </PageContainer>
   );
 } 

@@ -11,6 +11,10 @@ import { DataRecord } from '@/types/dataRecord';
 import { DataTable } from '@/components/data/DataTable';
 import { PaginationControls } from '@/components/data/PaginationControls';
 import { RecordForm } from '@/components/data/RecordForm';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Section } from '@/components/layout/Section';
+import { Button } from '@/components/ui/button';
 
 export default function ExploreModelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -237,27 +241,26 @@ export default function ExploreModelPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <Link
-          href="/models"
-          className="p-2 hover:bg-surface rounded-lg transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold">{model.name}</h1>
-          {model.description && (
-            <p className="text-text-secondary mt-1">{model.description}</p>
-          )}
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={model?.name || 'Loading...'}
+        description={model?.description}
+        backHref="/models"
+        actions={
+          <Button 
+            onClick={() => setShowForm(true)}
+            className="bg-primary text-white hover:bg-primary/90"
+          >
+            <PlusIcon className="w-5 h-5 mr-2" />
+            Add Record
+          </Button>
+        }
+      />
 
       {showForm || editingRecord ? (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-border/40">
-          <h2 className="text-xl font-medium mb-6">
-            {editingRecord ? 'Edit Record' : 'New Record'}
-          </h2>
+        <Section
+          title={editingRecord ? 'Edit Record' : 'New Record'}
+        >
           <RecordForm
             model={model}
             initialData={editingRecord || undefined}
@@ -267,9 +270,9 @@ export default function ExploreModelPage({ params }: { params: Promise<{ id: str
               setEditingRecord(null);
             }}
           />
-        </div>
+        </Section>
       ) : (
-        <>
+        <Section>
           <div className="flex justify-between items-center mb-6">
             {model?.embedding?.enabled && (
               <div className="flex-1 max-w-md">
@@ -304,13 +307,6 @@ export default function ExploreModelPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
             )}
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              <PlusIcon className="w-5 h-5" />
-              <span>Add Record</span>
-            </button>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-border/40">
@@ -329,8 +325,8 @@ export default function ExploreModelPage({ params }: { params: Promise<{ id: str
               onPageSizeChange={setPageSize}
             />
           </div>
-        </>
+        </Section>
       )}
-    </div>
+    </PageContainer>
   );
 } 

@@ -5,6 +5,7 @@
 
   /* Primary colors - Dark Sea Green */
   --primary: #1d494c;          /* dark sea-green */
+  --primary-foreground: #FFFFFF; /* white */
   --primary-hover: #2a5f6b;    /* medium sea-green */
   --primary-focus: #358873;    /* slightly brighter sea-green */
 

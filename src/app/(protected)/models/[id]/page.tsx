@@ -10,6 +10,9 @@ import { ModelDefinition, UpdateModelDefinitionInput, CreatableFieldDefinition }
 import { BasicInfoSection } from '@/components/models/BasicInfoSection';
 import { FieldsSection } from '@/components/models/FieldsSection';
 import { VectorSearchSection } from '@/components/models/VectorSearchSection';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Section } from '@/components/layout/Section';
 
 export default function EditModelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -121,18 +124,23 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <Link
-          href="/models"
-          className="p-2 hover:bg-surface rounded-lg transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <h1 className="text-2xl font-semibold">Edit Model</h1>
-      </div>
+    <PageContainer maxWidth="5xl">
+      <PageHeader
+        title="Edit Model"
+        backHref="/models"
+        actions={
+          <button
+            type="submit"
+            disabled={submitting || (model.embedding?.enabled && (!model.embedding.source_fields || model.embedding.source_fields.length === 0))}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          >
+            <SaveIcon className="w-5 h-5" />
+            <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
+          </button>
+        }
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-12">
+      <form onSubmit={handleSubmit} className="space-y-8">
         <BasicInfoSection 
           model={model} 
           onChange={updates => setModel(prev => prev ? { ...prev, ...updates } : null)} 
@@ -147,19 +155,7 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
           model={model} 
           onChange={updates => setModel(prev => prev ? { ...prev, ...updates } : null)} 
         />
-
-        {/* Submit Button */}
-        <div className="flex justify-end sticky bottom-6 pt-6">
-          <button
-            type="submit"
-            disabled={submitting || (model.embedding?.enabled && (!model.embedding.source_fields || model.embedding.source_fields.length === 0))}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            <SaveIcon className="w-5 h-5" />
-            <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
-          </button>
-        </div>
       </form>
-    </div>
+    </PageContainer>
   );
 } 

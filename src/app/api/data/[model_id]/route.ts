@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } from '@/lib/api/middleware';
 import { ModelService } from '@/lib/models/modelService';
-import { DataService } from '@/lib/data/dataService';
-import { EmbeddingService } from '@/lib/embeddings/embeddingService';
-import { connectToDataDatabase, getDataMongoClient } from '@/lib/db/dataDb';
+import { PostgresDataService } from '@/lib/data/postgresDataService';
 
 type ModelRouteContext = {
   params: Promise<{ model_id: string }>;
 };
 
 const modelService = new ModelService();
-
-async function verifyModelOwnership(modelId: string, userId: string) {
-  const model = await modelService.getModelDefinition(modelId);
-  if (model.owner_id !== userId) {
-    throw new Error('Unauthorized - You do not own this model');
-  }
-  return model;
-}
 
 export async function GET(
   request: NextRequest,
@@ -26,21 +16,14 @@ export async function GET(
   const params = await context.params;
   return withAuth(request, async (authReq) => {
     try {
-      // Add connection check
-      await connectToDataDatabase();
-      
-      const client = getDataMongoClient();
-      const db = client.db();
-
-      const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
+      const userId = authReq.auth.payload.user_id;
       const { model_id } = params;
 
-      // Verify model ownership
-      const model = await verifyModelOwnership(model_id, userId);
+      // Verify model ownership and get model definition
+      const model = await modelService.validateCrudOperation(model_id, userId);
 
-      // Initialize data service with model
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      // Initialize data service
+      const dataService = new PostgresDataService(model);
 
       // Check if this is a get by ID request
       const { searchParams } = new URL(request.url);
@@ -53,13 +36,11 @@ export async function GET(
       } else {
         // List/query records
         const filter = searchParams.get('filter') ? JSON.parse(searchParams.get('filter')!) : undefined;
-        const include = searchParams.get('include') ? JSON.parse(searchParams.get('include')!) : undefined;
         const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
 
         const { records, total } = await dataService.listRecords({
           filter,
-          include,
           page,
           limit
         });
@@ -84,15 +65,14 @@ export async function POST(
   const params = await context.params;
   return withAuth(request, async (authReq) => {
     try {
-      const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
+      const userId = authReq.auth.payload.user_id;
       const { model_id } = params;
 
-      // Verify model ownership
-      const model = await verifyModelOwnership(model_id, userId);
+      // Verify model ownership and get model definition
+      const model = await modelService.validateCrudOperation(model_id, userId);
 
-      // Initialize data service with model
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      // Initialize data service
+      const dataService = new PostgresDataService(model);
 
       // Create record
       const body = await authReq.json();
@@ -119,7 +99,7 @@ export async function PUT(
   const params = await context.params;
   return withAuth(request, async (authReq) => {
     try {
-      const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
+      const userId = authReq.auth.payload.user_id;
       const { model_id } = params;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
@@ -128,12 +108,11 @@ export async function PUT(
         return createErrorResponse('Record ID is required', 400);
       }
 
-      // Verify model ownership
-      const model = await verifyModelOwnership(model_id, userId);
+      // Verify model ownership and get model definition
+      const model = await modelService.validateCrudOperation(model_id, userId);
 
-      // Initialize data service with model
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      // Initialize data service
+      const dataService = new PostgresDataService(model);
 
       // Update record
       const body = await authReq.json();
@@ -155,12 +134,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ model_id: string }> }
+  context: ModelRouteContext
 ): Promise<Response> {
   const params = await context.params;
   return withAuth(request, async (authReq) => {
     try {
-      const userId = 'sub' in authReq.auth.payload ? authReq.auth.payload.sub : authReq.auth.payload.user_id;
+      const userId = authReq.auth.payload.user_id;
       const { model_id } = params;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
@@ -169,12 +148,11 @@ export async function DELETE(
         return createErrorResponse('Record ID is required', 400);
       }
 
-      // Verify model ownership
-      const model = await verifyModelOwnership(model_id, userId);
+      // Verify model ownership and get model definition
+      const model = await modelService.validateCrudOperation(model_id, userId);
 
-      // Initialize data service with model
-      const dataService = new DataService(model);
-      await dataService.initializeCollection();
+      // Initialize data service
+      const dataService = new PostgresDataService(model);
 
       // Delete record
       await dataService.deleteRecord(id);
