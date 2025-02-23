@@ -5,10 +5,10 @@ import { useParams } from 'next/navigation';
 import { EnhancedDataTable } from '@/components/data/EnhancedDataTable';
 import { ViewSelector } from '@/components/data/ViewSelector';
 import { ViewEditor } from '@/components/data/ViewEditor';
-import type { ModelView, ViewColumnConfig } from '@/types/viewDefinition';
+import type { ModelView, ViewConfig, ViewColumnConfig } from '@/types/viewDefinition';
 import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Save } from 'lucide-react';
 import { useModelData } from '@/hooks/useModelData';
 import { useViewManagement } from '@/hooks/useViewManagement';
 import useViewStore from '@/lib/stores/viewStore';
@@ -76,6 +76,10 @@ export default function ExplorePage() {
   const params = useParams();
   const modelId = typeof params.id === 'string' ? params.id : '';
   
+  // Track if initial data load has happened
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  
   const {
     data,
     isLoading: isLoadingData,
@@ -86,18 +90,13 @@ export default function ExplorePage() {
   } = useModelData({ modelId });
 
   const {
-    isEditing,
-    editingView,
     currentView,
     loading: isLoadingViews,
     error: viewError,
     handleViewSelect: baseHandleViewSelect,
     handleCreateView,
-    handleEditView,
-    handleDeleteView,
     handleSaveView,
-    handleViewConfigChange,
-    setIsEditing,
+    handleViewConfigChange: baseHandleViewConfigChange,
   } = useViewManagement({ modelId });
 
   const { views, activeView } = useViewStore();
@@ -109,54 +108,73 @@ export default function ExplorePage() {
   // Handle view name edit
   const handleViewNameEdit = React.useCallback((newName: string) => {
     if (!currentView || newName === currentView.name) return;
-    
+    setHasUnsavedChanges(true);
     handleSaveView({
       ...currentView,
       name: newName
     });
   }, [currentView, handleSaveView]);
 
-  // Track if this is the initial load
-  const initialLoadRef = React.useRef(true);
-
-  // Track the last loaded view ID and model ID
-  const lastLoadedRef = React.useRef<{ viewId: string | null; modelId: string | null }>({
-    viewId: null,
-    modelId: null
-  });
-
-  // Load initial data
+  // Load initial data when views are ready
   React.useEffect(() => {
-    if (!modelId) return;
-    loadModelData(1, 10);
-  }, [modelId]); // Only depend on modelId to load initial data
-
-  // Handle view changes
-  React.useEffect(() => {
-    if (!currentView?.id) return;
+    if (!modelId || isLoadingViews || !currentView) return;
     
-    // Only load if this is a different view
-    if (lastLoadedRef.current.viewId !== currentView.id) {
-      lastLoadedRef.current.viewId = currentView.id;
+    if (isInitialLoad) {
       loadModelData(1, 10);
-      setEditedName(currentView.name);
+      setIsInitialLoad(false);
     }
-  }, [currentView, loadModelData]);
+  }, [modelId, isLoadingViews, currentView, isInitialLoad, loadModelData]);
+
+  // Update edited name when current view changes
+  React.useEffect(() => {
+    if (currentView) {
+      setEditedName(currentView.name);
+      setHasUnsavedChanges(false);
+    }
+  }, [currentView]);
 
   // Handle view selection
   const handleViewSelect = React.useCallback((viewId: string) => {
     baseHandleViewSelect(viewId);
+    setIsInitialLoad(true); // Reset initial load flag to trigger data reload
+    setHasUnsavedChanges(false);
   }, [baseHandleViewSelect]);
 
+  // Handle pagination changes
   const handlePaginationChange = React.useCallback((pageIndex: number, pageSize: number) => {
     if (!currentView) return;
     loadModelData(pageIndex + 1, pageSize);
   }, [currentView, loadModelData]);
 
+  // Handle view config changes (filters, sorting, etc.)
+  const handleViewConfigChange = React.useCallback(async (configUpdate: Partial<ViewConfig>) => {
+    try {
+      await baseHandleViewConfigChange(configUpdate);
+      setHasUnsavedChanges(true);
+      
+      if (pagination) {
+        handlePaginationChange(0, pagination.pageSize);
+      }
+    } catch (error) {
+      console.error('Error updating view config:', error);
+    }
+  }, [baseHandleViewConfigChange, pagination, handlePaginationChange]);
+
+  // Handle saving the current view
+  const handleSaveCurrentView = React.useCallback(async () => {
+    if (!currentView) return;
+    
+    try {
+      await handleSaveView(currentView);
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Error saving view:', error);
+    }
+  }, [currentView, handleSaveView]);
+
   const getColumns = React.useCallback((view: ModelView): ColumnDef<Record<string, any>>[] => {
     if (!view?.config?.columns) return [];
     
-    // Only return columns that are marked as visible
     return view.config.columns
       .filter((col: ViewColumnConfig) => col.visible)
       .map((col: ViewColumnConfig) => ({
@@ -168,8 +186,12 @@ export default function ExplorePage() {
       }));
   }, []);
 
+  // Determine overall loading state
+  const isLoading = isLoadingViews || (isInitialLoad && isLoadingData);
+  const error = viewError || dataError;
+
   // Show loading state during initial load
-  if (isLoadingViews || isLoadingData || !views) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-muted-foreground flex flex-col items-center gap-4">
@@ -187,7 +209,7 @@ export default function ExplorePage() {
   const safeViews = views || [];
 
   // Show error state if either views or data failed to load
-  if (viewError || dataError) {
+  if (error) {
     return (
       <div className="container py-8">
         <div className="p-6 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
@@ -197,7 +219,7 @@ export default function ExplorePage() {
             </svg>
             <div>
               <h3 className="font-semibold">Error Loading Data</h3>
-              <p className="text-sm mt-1">{viewError || dataError}</p>
+              <p className="text-sm mt-1">{error}</p>
             </div>
           </div>
         </div>
@@ -208,14 +230,26 @@ export default function ExplorePage() {
   return (
     <div className="space-y-6">
       <div className="border-b border-border pb-4">
-        <div className="container flex items-center gap-2 py-4">
-          <Link 
-            href="/models" 
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-          <h1 className="text-lg font-semibold">Explore Data</h1>
+        <div className="container flex items-center justify-between py-4">
+          <div className="flex items-center gap-2">
+            <Link 
+              href="/models" 
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Link>
+            <h1 className="text-lg font-semibold">Explore Data</h1>
+          </div>
+          
+          {currentView && hasUnsavedChanges && (
+            <button
+              onClick={handleSaveCurrentView}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+            >
+              <Save className="h-4 w-4" />
+              <span>Save Changes</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -226,8 +260,6 @@ export default function ExplorePage() {
             activeViewId={activeView}
             onViewSelect={handleViewSelect}
             onCreateView={handleCreateView}
-            onEditView={handleEditView}
-            onDeleteView={handleDeleteView}
             isLoading={isLoadingViews}
           />
           {currentView && (
@@ -244,35 +276,17 @@ export default function ExplorePage() {
           )}
         </div>
 
-        {isEditing ? (
-          <ViewEditor
-            view={editingView}
-            availableColumns={availableColumns}
-            onSave={handleSaveView}
-            onCancel={() => setIsEditing(false)}
-          />
-        ) : currentView ? (
+        {currentView ? (
           <div className="bg-card border border-border rounded-lg overflow-hidden">
-            {isLoadingData ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-muted-foreground flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Loading data...</span>
-                </div>
-              </div>
-            ) : (
-              <EnhancedDataTable
-                data={data}
-                columns={getColumns(currentView)}
-                viewConfig={currentView.config}
-                pagination={pagination}
-                onPaginationChange={handlePaginationChange}
-                onConfigChange={handleViewConfigChange}
-              />
-            )}
+            <EnhancedDataTable
+              data={data}
+              columns={getColumns(currentView)}
+              viewConfig={currentView.config}
+              pagination={pagination}
+              onPaginationChange={handlePaginationChange}
+              onConfigChange={handleViewConfigChange}
+              isLoading={isLoadingData && !isInitialLoad}
+            />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-64 bg-card border border-border rounded-lg">

@@ -135,8 +135,7 @@ export function ViewEditor({
     }
   });
 
-  const { register, handleSubmit, formState: { errors }, watch } = form;
-  const columns = watch('config.columns');
+  const { register, handleSubmit, formState: { errors } } = form;
 
   return (
     <form onSubmit={handleSubmit(onSave)} className="space-y-6">
@@ -149,22 +148,6 @@ export function ViewEditor({
         {errors.name?.message && (
           <p className="text-sm text-red-500">{errors.name.message}</p>
         )}
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium">Visible Columns</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {columns.map((column, index) => (
-            <label key={column.field} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                {...register(`config.columns.${index}.visible`)}
-                className="rounded border-gray-300"
-              />
-              <span className="text-sm">{column.field}</span>
-            </label>
-          ))}
-        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4 border-t">

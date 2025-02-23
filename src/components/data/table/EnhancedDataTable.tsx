@@ -15,7 +15,7 @@ import {
 import type { ViewConfig } from '@/types/viewDefinition';
 import { PaginationControls } from './PaginationControls';
 import { TableFilterSelector } from './TableFilterSelector';
-import { ArrowUpDown, Filter } from 'lucide-react';
+import { ArrowUpDown, Filter, Columns } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -29,6 +29,9 @@ import {
   Alert,
   AlertDescription,
 } from './TableComponents';
+import { ColumnSelector } from './ColumnSelector';
+import { DataTableHeader } from './TableHeader';
+import { DataTableBody } from './TableBody';
 
 interface EnhancedDataTableProps<T> {
   data: T[];
@@ -44,6 +47,12 @@ interface EnhancedDataTableProps<T> {
   onPaginationChange?: (pageIndex: number, pageSize: number) => void;
   isLoading?: boolean;
   error?: string | null;
+}
+
+interface TableFilter {
+  id: string;
+  value: any;
+  operator: 'equals' | 'notEquals' | 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'in' | 'notIn' | 'isNull' | 'isNotNull';
 }
 
 export function EnhancedDataTable<T>({
@@ -67,89 +76,48 @@ export function EnhancedDataTable<T>({
     [columns]
   );
 
-  // Initialize sorting state with validation
-  const [sorting, setSorting] = React.useState<SortingState>(
-    viewConfig.sorting
-      .filter((sort: { field: string }) => validColumnIds.has(sort.field))
-      .map((sort: { field: string; direction: 'asc' | 'desc' }) => ({
-        id: sort.field,
-        desc: sort.direction === 'desc'
-      }))
-  );
-  
-  // Initialize filter state with validation
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    viewConfig.filters
+  // Convert view filters to table filters
+  const viewFiltersToTableFilters = React.useCallback((filters: typeof viewConfig.filters): TableFilter[] => {
+    return filters
       .filter((filter) => validColumnIds.has(filter.field))
       .map((filter) => ({
         id: filter.field,
         value: filter.value ?? '',
         operator: filter.operator
-      }))
+      }));
+  }, [validColumnIds]);
+
+  // Convert view sorting to table sorting
+  const viewSortingToTableSorting = React.useCallback((sorting: typeof viewConfig.sorting) => {
+    return sorting
+      .filter((sort) => validColumnIds.has(sort.field))
+      .map((sort) => ({
+        id: sort.field,
+        desc: sort.direction === 'desc'
+      }));
+  }, [validColumnIds]);
+
+  // Initialize states from view config
+  const [columnFilters, setColumnFilters] = React.useState<TableFilter[]>(() => 
+    viewFiltersToTableFilters(viewConfig.filters)
+  );
+  
+  const [sorting, setSorting] = React.useState(() => 
+    viewSortingToTableSorting(viewConfig.sorting)
   );
 
-  const [hasChanges, setHasChanges] = React.useState(false);
   const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
+  const [isColumnSelectorOpen, setIsColumnSelectorOpen] = React.useState(false);
+  const columnSelectorRef = React.useRef<HTMLDivElement>(null);
 
-  // Sync sorting changes back to view config
-  React.useEffect(() => {
-    const newSorting = sorting
-      .filter(sort => validColumnIds.has(String(sort.id)))
-      .map(sort => ({
-        field: String(sort.id),
-        direction: sort.desc ? ('desc' as const) : ('asc' as const)
-      }));
-
-    // Only update if sorting has actually changed
-    if (JSON.stringify(newSorting) !== JSON.stringify(viewConfig.sorting)) {
-      setHasChanges(true);
-    }
-  }, [sorting, viewConfig.sorting, validColumnIds]);
-
-  // Sync filter changes back to view config
-  React.useEffect(() => {
-    const newFilters = columnFilters
-      .filter(filter => validColumnIds.has(String(filter.id)))
-      .map(filter => ({
-        field: String(filter.id),
-        operator: (filter as any).operator || 'contains' as const,
-        value: filter.value ?? '',
-        conjunction: 'and' as const
-      }));
-
-    // Only update if filters have actually changed
-    if (JSON.stringify(newFilters) !== JSON.stringify(viewConfig.filters)) {
-      setHasChanges(true);
-    }
-  }, [columnFilters, viewConfig.filters, validColumnIds]);
-
-  const handleSaveChanges = React.useCallback(() => {
-    if (onConfigChange) {
-      const newConfig: Partial<ViewConfig> = {
-        ...viewConfig,
-        sorting: sorting
-          .filter(sort => validColumnIds.has(String(sort.id)))
-          .map(sort => ({
-            field: String(sort.id),
-            direction: sort.desc ? ('desc' as const) : ('asc' as const)
-          })),
-        filters: columnFilters
-          .filter(filter => validColumnIds.has(String(filter.id)))
-          .map(filter => ({
-            field: String(filter.id),
-            operator: (filter as any).operator || 'contains' as const,
-            value: filter.value ?? '',
-            conjunction: 'and' as const
-          }))
-      };
-
-      // Only update if there are actual changes
-      if (JSON.stringify(newConfig) !== JSON.stringify(viewConfig)) {
-        onConfigChange(newConfig);
-        setHasChanges(false);
-      }
-    }
-  }, [sorting, columnFilters, validColumnIds, viewConfig, onConfigChange]);
+  // Helper function to check if a column has an active filter
+  const hasActiveFilter = React.useCallback((columnId: string) => {
+    return viewConfig.filters.some(f => 
+      f.field === columnId && 
+      f.value != null && 
+      f.value !== ''
+    );
+  }, [viewConfig.filters]);
 
   const table = useReactTable({
     data,
@@ -162,8 +130,52 @@ export function EnhancedDataTable<T>({
         pageSize: pagination.pageSize,
       } : undefined,
     },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: (updater) => {
+      const newSorting = typeof updater === 'function' ? updater(sorting) : updater;
+      setSorting(newSorting);
+      
+      if (onConfigChange) {
+        const viewSorting = newSorting.map(sort => ({
+          field: String(sort.id),
+          direction: sort.desc ? ('desc' as const) : ('asc' as const)
+        }));
+        
+        onConfigChange({
+          ...viewConfig,
+          sorting: viewSorting
+        });
+      }
+    },
+    onColumnFiltersChange: async (updater) => {
+      const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
+      const tableFilters = newFilters.map(filter => ({
+        id: filter.id,
+        value: filter.value,
+        operator: (filter as any).operator || 'contains'
+      })) as TableFilter[];
+      
+      setColumnFilters(tableFilters);
+      
+      if (onConfigChange) {
+        const viewFilters = tableFilters.map(filter => ({
+          field: String(filter.id),
+          operator: filter.operator,
+          value: filter.value ?? '',
+          conjunction: 'and' as const
+        }));
+
+        // Update view config with new filters
+        await onConfigChange({
+          ...viewConfig,
+          filters: viewFilters
+        });
+        
+        // Reset to first page when filters change
+        if (onPaginationChange && pagination) {
+          onPaginationChange(0, pagination.pageSize);
+        }
+      }
+    },
     onPaginationChange: onPaginationChange ? 
       (updater) => {
         if (typeof updater === 'function') {
@@ -175,159 +187,86 @@ export function EnhancedDataTable<T>({
       } : undefined,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    manualFiltering: true,
     manualPagination: Boolean(pagination),
     pageCount: pagination?.pageCount ?? -1,
   });
 
-  const content = React.useMemo(() => {
-    if (error) {
-      return (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      );
-    }
+  // Sync view config changes to table state
+  React.useEffect(() => {
+    const tableFilters = viewFiltersToTableFilters(viewConfig.filters);
+    const tableSorting = viewSortingToTableSorting(viewConfig.sorting);
+    
+    setColumnFilters(tableFilters);
+    setSorting(tableSorting);
+  }, [viewConfig, viewFiltersToTableFilters, viewSortingToTableSorting]);
 
+  // Handle click outside for column selector
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (columnSelectorRef.current && !columnSelectorRef.current.contains(event.target as Node)) {
+        setIsColumnSelectorOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  if (error) {
     return (
-      <Card>
-        <div className="mb-2 flex items-center justify-end">
-          {hasChanges && (
-            <button
-              onClick={handleSaveChanges}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-md",
-                "bg-blue-600 text-white hover:bg-blue-700",
-                "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              )}
-            >
-              Save Changes
-            </button>
-          )}
-        </div>
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : (
-                        <div className="relative">
-                          <div className="flex items-center space-x-2 h-6">
-                            <div
-                              className={cn(
-                                "flex items-center gap-1 flex-1 min-w-0",
-                                header.column.getCanSort() && "cursor-pointer select-none",
-                              )}
-                              onClick={header.column.getToggleSortingHandler()}
-                            >
-                              <span className="truncate">
-                                {flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                              </span>
-                              {header.column.getCanSort() && (
-                                <ArrowUpDown className="w-3 h-3 flex-shrink-0 text-gray-400" />
-                              )}
-                            </div>
-                            {header.column.getCanFilter() && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveFilter(activeFilter === header.id ? null : header.id);
-                                }}
-                                className={cn(
-                                  "flex-shrink-0 w-6 h-6 inline-flex items-center justify-center rounded-md hover:bg-gray-100",
-                                  activeFilter === header.id && "bg-blue-50 text-blue-600",
-                                  "focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
-                                )}
-                              >
-                                <Filter className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                          {activeFilter === header.id && header.column.getCanFilter() && (
-                            <div className="absolute left-0 mt-2 z-10">
-                              <TableFilterSelector
-                                field={header.column.id}
-                                value={(header.column.getFilterValue() as string) ?? ""}
-                                onChange={(value, operator) => {
-                                  header.column.setFilterValue(value);
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: pagination?.pageSize || 10 }).map((_, index) => (
-                  <TableRow key={`loading-${index}`}>
-                    {columns.map((_, colIndex) => (
-                      <TableCell key={`loading-cell-${colIndex}`}>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : data.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center">
-                    No records found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        
-        {pagination && (
-          <div className="mt-4">
-            <PaginationControls
-              currentPage={Math.max(1, (pagination.pageIndex || 0) + 1)}
-              totalPages={Math.max(1, pagination.pageCount)}
-              pageSize={pagination.pageSize}
-              totalItems={pagination.total}
-              onPageChange={(page) => onPaginationChange?.(page - 1, pagination.pageSize)}
-              onPageSizeChange={(size) => onPaginationChange?.(0, size)}
+  return (
+    <Card>
+      <div className="rounded-md border">
+        <div className="flex items-center justify-between gap-2 p-2 border-b">
+          <div className="flex items-center gap-2">
+            <ColumnSelector
+              viewConfig={viewConfig}
+              onConfigChange={onConfigChange}
             />
           </div>
-        )}
-      </Card>
-    );
-  }, [
-    error,
-    hasChanges,
-    handleSaveChanges,
-    table,
-    isLoading,
-    data.length,
-    columns,
-    pagination,
-    onPaginationChange,
-    activeFilter
-  ]);
+        </div>
 
-  return content;
+        <Table>
+          <TableHeader>
+            <DataTableHeader
+              headerGroups={table.getHeaderGroups()}
+              viewConfig={viewConfig}
+              onConfigChange={onConfigChange}
+            />
+          </TableHeader>
+          <TableBody>
+            <DataTableBody
+              data={data}
+              rows={table.getRowModel().rows}
+              columns={columns}
+              isLoading={isLoading}
+              pageSize={pagination?.pageSize}
+            />
+          </TableBody>
+        </Table>
+      </div>
+      
+      {pagination && (
+        <div className="mt-4">
+          <PaginationControls
+            currentPage={Math.max(1, (pagination.pageIndex || 0) + 1)}
+            totalPages={Math.max(1, pagination.pageCount)}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.total}
+            onPageChange={(page) => onPaginationChange?.(page - 1, pagination.pageSize)}
+            onPageSizeChange={(size) => onPaginationChange?.(0, size)}
+          />
+        </div>
+      )}
+    </Card>
+  );
 } 

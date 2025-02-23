@@ -106,7 +106,7 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
   const handleDeleteView = async (viewId: string) => {
     try {
       setLoading(true);
-      await viewService.deleteView(viewId);
+      await viewService.deleteView(modelId, viewId);
       removeView(viewId);
       
       // If we deleted the active view, switch to another view
@@ -139,13 +139,17 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
       
       if (editingView?.id) {
         // Update existing view
-        savedView = await viewService.updateView(editingView.id, {
-          name: formData.name,
-          description: formData.description || undefined,
-          config: formData.config,
-          is_default: formData.is_default === true,
-          is_public: formData.is_public === true,
-        });
+        savedView = await viewService.updateView(
+          modelId,
+          editingView.id,
+          {
+            name: formData.name,
+            description: formData.description || undefined,
+            config: formData.config,
+            is_default: formData.is_default === true,
+            is_public: formData.is_public === true,
+          }
+        );
         updateView(editingView.id, savedView);
         setActiveView(savedView.id);
       } else {
@@ -189,12 +193,20 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         realtime: configUpdate.realtime || baseConfig.realtime,
       };
 
-      const updatedView = await viewService.updateView(currentView.id, {
-        config: updatedConfig,
-      });
+      // Update the view in the database
+      const updatedView = await viewService.updateView(
+        modelId,
+        currentView.id,
+        {
+          config: updatedConfig,
+        }
+      );
+
+      // Update the view in the store
       updateView(currentView.id, updatedView);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to update view configuration');
+      throw error;
     }
   };
 

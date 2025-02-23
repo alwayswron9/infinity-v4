@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
+import useViewStore from '@/lib/stores/viewStore';
+import type { ModelView } from '@/types/viewDefinition';
 
 interface UseModelDataOptions {
   modelId: string;
@@ -46,7 +48,29 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/data/${modelId}?page=${page}&limit=${limit}`);
+      
+      // Get the current view from the store
+      const currentView = useViewStore.getState().views?.find(
+        (v: ModelView) => v.id === useViewStore.getState().activeView
+      );
+
+      // Build query params including filters and sorting
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
+
+      // Add filters if present
+      if (currentView?.config?.filters?.length) {
+        params.append('filters', JSON.stringify(currentView.config.filters));
+      }
+
+      // Add sorting if present
+      if (currentView?.config?.sorting?.length) {
+        params.append('sorting', JSON.stringify(currentView.config.sorting));
+      }
+
+      const response = await fetch(`/api/data/${modelId}?${params.toString()}`);
       
       // If this request is no longer the current one, ignore the result
       if (currentRequestRef.current !== requestId) {

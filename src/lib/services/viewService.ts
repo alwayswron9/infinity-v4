@@ -25,10 +25,6 @@ class ViewService {
     return this.fetchWithAuth(`/api/models/${modelId}/views`);
   }
 
-  async getView(modelId: string, viewId: string): Promise<ModelView> {
-    return this.fetchWithAuth(`/api/models/${modelId}/views/${viewId}`);
-  }
-
   async createView(
     modelId: string,
     name: string,
@@ -50,6 +46,7 @@ class ViewService {
   }
 
   async updateView(
+    modelId: string,
     viewId: string,
     updates: {
       name?: string;
@@ -59,14 +56,14 @@ class ViewService {
       is_public?: boolean;
     }
   ): Promise<ModelView> {
-    return this.fetchWithAuth(`/api/views/${viewId}`, {
+    return this.fetchWithAuth(`/api/models/${modelId}/views?viewId=${viewId}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   }
 
-  async deleteView(viewId: string): Promise<void> {
-    await this.fetchWithAuth(`/api/views/${viewId}`, {
+  async deleteView(modelId: string, viewId: string): Promise<void> {
+    await this.fetchWithAuth(`/api/models/${modelId}/views?viewId=${viewId}`, {
       method: 'DELETE',
     });
   }

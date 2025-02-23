@@ -10,8 +10,8 @@ interface ViewSelectorProps {
   activeViewId: string | null;
   onViewSelect: (viewId: string) => void;
   onCreateView: () => void;
-  onEditView: (viewId: string) => void;
-  onDeleteView: (viewId: string) => void;
+  onEditView?: (viewId: string) => void;
+  onDeleteView?: (viewId: string) => void;
   isLoading?: boolean;
 }
 
@@ -99,13 +99,13 @@ export function ViewSelector({
                 </button>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => onEditView(view.id)}
+                    onClick={() => onEditView?.(view.id)}
                     className="rounded-sm p-1 hover:bg-muted"
                   >
                     <Pencil className="h-3 w-3" />
                   </button>
                   <button
-                    onClick={() => onDeleteView(view.id)}
+                    onClick={() => onDeleteView?.(view.id)}
                     className="rounded-sm p-1 hover:bg-muted text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-3 w-3" />
