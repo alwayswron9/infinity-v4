@@ -1,281 +1,264 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { PlusIcon, Loader2Icon, DatabaseIcon, SearchIcon, LinkIcon, ChevronRightIcon, PencilIcon, CompassIcon, TrashIcon, MoreVerticalIcon, ArchiveIcon } from 'lucide-react';
-import { ModelDefinition } from '@/types/modelDefinition';
-import { toast } from 'react-hot-toast';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { useModels } from '@/hooks/useModels';
+import { Search, Database, Plus, ArrowUpDown, Compass, FileInput } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PageContainer } from '@/components/layout/PageContainer';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Section } from '@/components/layout/Section';
+import { ModelActionsMenu } from '@/components/models/ModelActionsMenu';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { SideDrawer } from '@/components/layout/SideDrawer';
+import { ModelDataForm } from '@/components/models/ModelDataForm';
+import { toast } from 'sonner';
 
 export default function ModelsPage() {
-  const [models, setModels] = useState<ModelDefinition[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const {
+    filteredModels,
+    loading,
+    error,
+    searchQuery,
+    showArchived,
+    setSearchQuery,
+    setShowArchived,
+    loadModels,
+    handleArchiveToggle,
+    handleDeleteModel,
+  } = useModels();
+
+  // State for the add data drawer
+  const [isAddDataOpen, setIsAddDataOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchModels();
-  }, []);
+    loadModels();
+  }, [loadModels]);
 
-  const fetchModels = async () => {
-    try {
-      console.log('Making fetch request to /api/models');
-      const response = await fetch('/api/models', {
-        credentials: 'same-origin'
-      });
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to fetch models:', errorData);
-        throw new Error(errorData.error?.message || 'Failed to fetch models');
-      }
-
-      const data = await response.json();
-      console.log('Received models:', data);
-
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to fetch models');
-      }
-
-      setModels(data.data);
-    } catch (err: any) {
-      const message = err.message || 'Error loading models';
-      setError(message);
-      toast.error(message);
-      console.error('Error in fetchModels:', err);
-    } finally {
-      setLoading(false);
-    }
+  // Handle adding data to a model
+  const handleAddData = async (modelId: string) => {
+    setSelectedModel(modelId);
+    setIsAddDataOpen(true);
   };
 
-  const handleDelete = async (modelId: string) => {
-    if (!confirm('Are you sure you want to delete this model? This action cannot be undone.')) return;
+  // Handle form submission
+  const handleSubmitData = async (data: Record<string, any>) => {
+    if (!selectedModel) return;
 
     try {
-      const response = await fetch(`/api/models?id=${modelId}`, {
-        method: 'DELETE',
-        credentials: 'same-origin'
+      const response = await fetch(`/api/data/${selectedModel}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fields: data }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to delete model');
+        throw new Error(error.error?.message || 'Failed to add data');
       }
 
-      toast.success('Model deleted successfully');
-      fetchModels();
+      toast.success('Data added successfully');
+      setIsAddDataOpen(false);
     } catch (error: any) {
       toast.error(error.message);
+      throw error; // Re-throw to be handled by the form
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="bg-red-50 text-red-500 p-4 rounded-lg">
-          {error}
-        </div>
-      </div>
-    );
-  }
+  // Get the selected model definition
+  const selectedModelDef = selectedModel 
+    ? filteredModels.find(m => m.id === selectedModel)
+    : null;
 
   return (
-    <PageContainer maxWidth="6xl">
-      <PageHeader 
-        title="Models"
-        description="Create and manage your data models"
-        actions={
-          <Button className="bg-primary text-white hover:bg-primary/90" asChild>
-            <Link href="/models/new">
-              <PlusIcon className="mr-2 h-4 w-4" />
-              New Model
-            </Link>
-          </Button>
-        }
-      />
-
-      <Section>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1">
-            <Input
-              placeholder="Search models..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="show-archived" className="text-sm font-medium">
-              Show Archived
-            </Label>
-            <Switch
-              id="show-archived"
-              checked={showArchived}
-              onCheckedChange={setShowArchived}
-            />
-          </div>
+    <div className="container py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Models</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            Create and manage your data models
+          </p>
         </div>
+        <Link
+          href="/models/new"
+          className={cn(
+            "inline-flex items-center justify-center rounded-md text-sm font-medium",
+            "transition-colors focus-visible:outline-none focus-visible:ring-1",
+            "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+            "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+            "h-9 px-4 py-2"
+          )}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New Model
+        </Link>
+      </div>
 
-        {models.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 p-12 text-center">
-            <DatabaseIcon className="h-12 w-12 text-muted-foreground" />
-            <h3 className="text-xl font-semibold">No models defined yet</h3>
-            <p className="text-sm text-muted-foreground">
-              Create your first data model to get started
-            </p>
-            <Button className="bg-primary text-white hover:bg-primary/90">
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Create Model
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {models
-              .filter(model => showArchived || (model.status || 'active') === 'active')
-              .map((model) => (
-                <div
-                  key={model.id}
-                  className={cn(
-                    'group p-4 border-b last:border-b-0 hover:bg-surface-hover transition-colors',
-                    model.status === 'archived' && 'opacity-70'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <DatabaseIcon className="w-4 h-4 text-muted-foreground" />
-                        <h3 className="font-semibold text-text">{model.name}</h3>
-                        {model.status === 'archived' && (
-                          <Badge variant="outline" className="text-xs py-1 px-2">
-                            Archived
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {model.description && (
-                        <p className="text-sm text-muted-foreground">
-                          {model.description}
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>{Object.keys(model.fields).length} fields</span>
-                        {model.embedding?.enabled && (
-                          <span className="flex items-center gap-1 text-success">
-                            <SearchIcon className="w-3.5 h-3.5" />
-                            Vector Search
-                          </span>
-                        )}
-                        {model.relationships && Object.keys(model.relationships).length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <LinkIcon className="w-3.5 h-3.5" />
-                            {Object.keys(model.relationships).length} relationships
-                          </span>
-                        )}
-                      </div>
-                    </div>
+      <div className="flex items-center justify-between space-x-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
+          <input
+            type="text"
+            placeholder="Search models..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={cn(
+              "w-full rounded-md border border-border-primary bg-surface pl-9 pr-4 py-2",
+              "text-sm placeholder:text-text-secondary",
+              "focus:outline-none focus:ring-1 focus:ring-primary",
+              "transition-shadow"
+            )}
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-archived"
+            checked={showArchived}
+            onCheckedChange={setShowArchived}
+          />
+          <Label htmlFor="show-archived">Show archived</Label>
+        </div>
+      </div>
 
-                    <div className="flex items-center gap-2">
-                      {model.status === 'active' && (
-                        <Button
-                          variant="tertiary"
-                          size="sm"
-                          className="group transition-all hover:scale-[1.02]"
-                          asChild
-                        >
-                          <Link href={`/models/${model.id}/explore`}>
-                            <CompassIcon className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
-                            <span>Explore</span>
-                          </Link>
-                        </Button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVerticalIcon className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            asChild
-                            className="focus:bg-accent/10"
-                          >
-                            <Link href={`/models/${model.id}`}>
-                              <PencilIcon className="mr-2 h-4 w-4" />
-                              <span>Edit</span>
-                            </Link>
-                          </DropdownMenuItem>
-                          
-                          {model.status === 'active' ? (
-                            <DropdownMenuItem
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch(`/api/models/${model.id}/archive`, {
-                                    method: 'POST',
-                                    credentials: 'same-origin'
-                                  });
-                                  if (!response.ok) throw new Error('Failed to archive model');
-                                  toast.success('Model archived successfully');
-                                  fetchModels();
-                                } catch (error: any) {
-                                  toast.error(error.message);
-                                }
-                              }}
-                              className="text-warning focus:bg-warning/10"
-                            >
-                              <ArchiveIcon className="mr-2 h-4 w-4" />
-                              <span>Archive</span>
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch(`/api/models/${model.id}/restore`, {
-                                    method: 'POST',
-                                    credentials: 'same-origin'
-                                  });
-                                  if (!response.ok) throw new Error('Failed to restore model');
-                                  toast.success('Model restored successfully');
-                                  fetchModels();
-                                } catch (error: any) {
-                                  toast.error(error.message);
-                                }
-                              }}
-                              className="text-success focus:bg-success/10"
-                            >
-                              <ArchiveIcon className="mr-2 h-4 rotate-180" />
-                              <span>Restore</span>
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+      <div className="rounded-md border border-border-primary">
+        <div className="overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-surface border-b border-border-primary">
+              <tr>
+                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">
+                  <div className="flex items-center space-x-1">
+                    <span>Name</span>
+                    <ArrowUpDown className="h-4 w-4" />
                   </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </Section>
-    </PageContainer>
+                </th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Description</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Fields</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Vector Search</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Status</th>
+                <th className="w-[120px]"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-primary">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-text-secondary">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <span>Loading models...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-error">
+                    {error}
+                  </td>
+                </tr>
+              ) : filteredModels.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-text-secondary">
+                    No models found
+                  </td>
+                </tr>
+              ) : (
+                filteredModels.map((model) => (
+                  <tr key={model.id} className="hover:bg-surface-hover">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
+                        <Database className="h-4 w-4 text-text-secondary" />
+                        <span className="font-medium">{model.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-text-secondary">
+                      {model.description || '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center rounded-full bg-surface px-2 py-1 text-xs">
+                        {Object.keys(model.fields).length} fields
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {model.embedding?.enabled ? (
+                        <span className="inline-flex items-center rounded-full bg-success/10 text-success px-2 py-1 text-xs">
+                          Enabled
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-surface px-2 py-1 text-xs">
+                          Disabled
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge
+                        variant={model.status === 'archived' ? 'secondary' : 'default'}
+                        className="text-xs"
+                      >
+                        {model.status || 'active'}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleAddData(model.id)}
+                          disabled={model.status === 'archived'}
+                          className="h-8 w-8"
+                        >
+                          <FileInput className="h-4 w-4" />
+                        </Button>
+                        <Link
+                          href={`/models/${model.id}/explore`}
+                          className={cn(
+                            "inline-flex items-center justify-center rounded-md text-sm",
+                            "transition-colors focus-visible:outline-none focus-visible:ring-1",
+                            "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+                            "hover:bg-surface-hover",
+                            "h-8 w-8"
+                          )}
+                        >
+                          <Compass className="h-4 w-4" />
+                        </Link>
+                        <ModelActionsMenu
+                          modelId={model.id}
+                          modelName={model.name}
+                          isArchived={model.status === 'archived'}
+                          onArchiveToggle={() => handleArchiveToggle(model.id)}
+                          onDelete={() => handleDeleteModel(model.id)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add Data Drawer */}
+      {selectedModelDef && (
+        <SideDrawer
+          isOpen={isAddDataOpen}
+          onClose={() => {
+            setIsAddDataOpen(false);
+            setSelectedModel(null);
+          }}
+          title={`Add Data to ${selectedModelDef.name}`}
+        >
+          <ModelDataForm
+            model={selectedModelDef}
+            onSubmit={handleSubmitData}
+            onCancel={() => {
+              setIsAddDataOpen(false);
+              setSelectedModel(null);
+            }}
+          />
+        </SideDrawer>
+      )}
+    </div>
   );
 } 

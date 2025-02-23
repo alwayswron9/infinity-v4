@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } from '@/lib/api/middleware';
+import { withAuth, AuthenticatedRequest, createErrorResponse } from '@/lib/api/middleware';
 import { ModelService } from '@/lib/models/modelService';
 import { PostgresDataService } from '@/lib/data/postgresDataService';
-
-type ModelRouteContext = {
-  params: Promise<{ model_id: string }>;
-};
 
 const modelService = new ModelService();
 
 export async function GET(
   request: NextRequest,
-  context: ModelRouteContext
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await context.params;
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
 
       // Verify model ownership and get model definition
       const model = await modelService.validateCrudOperation(model_id, userId);
@@ -38,6 +34,7 @@ export async function GET(
         const filter = searchParams.get('filter') ? JSON.parse(searchParams.get('filter')!) : undefined;
         const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
+        const sorting = searchParams.get('sorting') ? JSON.parse(searchParams.get('sorting')!) : undefined;
 
         const { records, total } = await dataService.listRecords({
           filter,
@@ -55,18 +52,18 @@ export async function GET(
       console.error('Error fetching record(s):', error);
       return createErrorResponse(error.message || 'Failed to fetch record(s)', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 }
 
 export async function POST(
   request: NextRequest,
-  context: ModelRouteContext
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await context.params;
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
 
       // Verify model ownership and get model definition
       const model = await modelService.validateCrudOperation(model_id, userId);
@@ -89,18 +86,18 @@ export async function POST(
       console.error('Error creating record:', error);
       return createErrorResponse(error.message || 'Failed to create record', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 }
 
 export async function PUT(
   request: NextRequest,
-  context: ModelRouteContext
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await context.params;
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
       
@@ -129,18 +126,18 @@ export async function PUT(
       console.error('Error updating record:', error);
       return createErrorResponse(error.message || 'Failed to update record', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 }
 
 export async function DELETE(
   request: NextRequest,
-  context: ModelRouteContext
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await context.params;
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const { model_id } = params;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
       
@@ -162,5 +159,5 @@ export async function DELETE(
       console.error('Error deleting record:', error);
       return createErrorResponse(error.message || 'Failed to delete record', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 } 

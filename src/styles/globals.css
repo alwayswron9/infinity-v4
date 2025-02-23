@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #FFFFFF;
+    --foreground: #1E293B;
+    --primary: #5c1a70;
+    --primary-foreground: #FFFFFF;
+    --primary-hover: #410e50;
+    --primary-focus: #6e3181;
+    --secondary: #94A3B8;
+    --secondary-hover: #64748B;
+    --secondary-focus: #475569;
+    --border-primary: #E2E8F0;
+    --border-focus: #358873;
+    --success: #059669;
+    --error: #DC2626;
+    --warning: #D97706;
+    --info: #2563EB;
+    --text-primary: #1E293B;
+    --text-secondary: #475569;
+    --text-disabled: #94A3B8;
+    --text-placeholder: #94A3B8;
+    --bg-input: #F1F5F9;
+    --bg-error: #FEE2E2;
+    --bg-success: #D1FAE5;
+    --surface: #FFFFFF;
+    --surface-hover: #F8FAFC;
+    --overlay: rgba(0, 0, 0, 0.1);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium
+           transition-colors focus-visible:outline-none focus-visible:ring-1
+           focus-visible:ring-border-focus disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground shadow hover:bg-primary-hover;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white shadow-sm hover:bg-secondary-hover;
+  }
+
+  .btn-ghost {
+    @apply hover:bg-surface-hover hover:text-text-primary;
+  }
+
+  .input {
+    @apply flex h-9 w-full rounded-md border border-border bg-bg-input px-3 py-1
+           text-sm shadow-sm transition-colors file:border-0 file:bg-transparent
+           file:text-sm file:font-medium placeholder:text-text-placeholder
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold
+           transition-colors focus:outline-none focus:ring-2 focus:ring-border-focus
+           focus:ring-offset-2;
+  }
+
+  .badge-primary {
+    @apply border-transparent bg-primary text-primary-foreground;
+  }
+
+  .badge-secondary {
+    @apply border-transparent bg-secondary text-white;
+  }
+
+  .badge-outline {
+    @apply border-border text-text-primary;
+  }
+} 

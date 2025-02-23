@@ -13,6 +13,7 @@ export default {
         foreground: "var(--foreground)",
         primary: {
           DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
           hover: "var(--primary-hover)",
           focus: "var(--primary-focus)",
         },

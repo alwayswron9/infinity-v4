@@ -1,44 +1,43 @@
-:root {
-  /* Base colors */
-  --background: #FFFFFF;       /* pure white */
-  --foreground: #1E293B;       /* slate-800 */
+/* Theme-specific styles that can't be handled by Tailwind */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: var(--primary);
+  --rdp-background-color: var(--surface);
+  --rdp-accent-color-dark: var(--primary-hover);
+  --rdp-background-color-dark: var(--surface-hover);
+  --rdp-outline: 2px solid var(--border-focus);
+  --rdp-outline-selected: 2px solid var(--primary-focus);
+  --rdp-selected-color: var(--primary-foreground);
+  margin: 1em;
+}
 
-  /* Primary colors - Dark Sea Green */
-  --primary: #1d494c;          /* dark sea-green */
-  --primary-foreground: #FFFFFF; /* white */
-  --primary-hover: #2a5f6b;    /* medium sea-green */
-  --primary-focus: #358873;    /* slightly brighter sea-green */
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
 
-  /* Secondary colors */
-  --secondary: #94A3B8;        /* slate-400 */
-  --secondary-hover: #64748B;  /* slate-500 */
-  --secondary-focus: #475569;  /* slate-600 */
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
 
-  /* Border colors */
-  --border-primary: #E2E8F0;   /* slate-200 */
-  --border-focus: #358873;     /* sea-green focus */
+::-webkit-scrollbar-thumb {
+  background: var(--secondary);
+  border-radius: 4px;
+}
 
-  /* Status colors */
-  --success: #059669;         /* emerald-600 */
-  --error: #DC2626;          /* red-600 */
-  --warning: #D97706;       /* amber-600 */
-  --info: #2563EB;          /* blue-600 */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-hover);
+}
 
-  /* Text colors */
-  --text-primary: #1E293B;     /* slate-800 */
-  --text-secondary: #475569;   /* slate-600 */
-  --text-disabled: #94A3B8;    /* slate-400 */
-  --text-placeholder: #94A3B8; /* slate-400 */
+/* Focus outline styles */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
 
-  /* Background colors */
-  --bg-input: #F1F5F9;        /* slate-100 */
-  --bg-error: #FEE2E2;        /* red-100 */
-  --bg-success: #D1FAE5;      /* emerald-100 */
-  
-  /* Card and elevated surfaces */
-  --surface: #FFFFFF;         /* white */
-  --surface-hover: #F8FAFC;   /* slate-50 */
-  
-  /* Overlay backgrounds */
-  --overlay: rgba(0, 0, 0, 0.1);
+/* Selection styles */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
 } 
