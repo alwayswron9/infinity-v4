@@ -7,13 +7,13 @@ const modelService = new ModelService();
 
 export async function GET(
   request: NextRequest,
-  context: { params: { model_id: string } }
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await Promise.resolve(context.params);
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const model_id = params.model_id;
 
       // Verify model ownership and get model definition
       const model = await modelService.validateCrudOperation(model_id, userId);
@@ -52,18 +52,18 @@ export async function GET(
       console.error('Error fetching record(s):', error);
       return createErrorResponse(error.message || 'Failed to fetch record(s)', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 }
 
 export async function POST(
   request: NextRequest,
-  context: { params: { model_id: string } }
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await Promise.resolve(context.params);
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const model_id = params.model_id;
 
       // Verify model ownership and get model definition
       const model = await modelService.validateCrudOperation(model_id, userId);
@@ -86,18 +86,18 @@ export async function POST(
       console.error('Error creating record:', error);
       return createErrorResponse(error.message || 'Failed to create record', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 }
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { model_id: string } }
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await Promise.resolve(context.params);
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const model_id = params.model_id;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
       
@@ -126,18 +126,18 @@ export async function PUT(
       console.error('Error updating record:', error);
       return createErrorResponse(error.message || 'Failed to update record', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 }
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { model_id: string } }
+  { params }: { params: Promise<{ model_id: string }> }
 ): Promise<Response> {
-  const params = await Promise.resolve(context.params);
+  const resolvedParams = await params;
+  const model_id = resolvedParams.model_id;
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const model_id = params.model_id;
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
       
@@ -159,5 +159,5 @@ export async function DELETE(
       console.error('Error deleting record:', error);
       return createErrorResponse(error.message || 'Failed to delete record', error.status || 500);
     }
-  }, { params });
+  }, { params: resolvedParams });
 } 

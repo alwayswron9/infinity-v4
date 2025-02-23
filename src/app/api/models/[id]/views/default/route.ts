@@ -3,13 +3,13 @@ import { withAuth, AuthenticatedRequest, createErrorResponse } from '@/lib/api/m
 import { pool } from '@/lib/db/postgres';
 
 type RouteContext = {
-  params: { id: string };
+  params: Record<string, string | string[]>;
 };
 
 async function handleGet(req: AuthenticatedRequest, context: RouteContext) {
   try {
     const userId = req.auth.payload.sub;
-    const modelId = context.params.id;
+    const modelId = context.params.id as string;
 
     // First try to get user's default view
     const { rows: [userDefault] } = await pool.query(
@@ -98,7 +98,7 @@ async function handleGet(req: AuthenticatedRequest, context: RouteContext) {
 async function handlePut(req: AuthenticatedRequest, context: RouteContext) {
   try {
     const userId = req.auth.payload.sub;
-    const modelId = context.params.id;
+    const modelId = context.params.id as string;
     const { viewId } = await req.json();
 
     // Begin transaction
@@ -139,8 +139,18 @@ async function handlePut(req: AuthenticatedRequest, context: RouteContext) {
   }
 }
 
-export const GET = (req: NextRequest, context: RouteContext) => 
-  withAuth(req, handleGet, context);
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(req, handleGet, { params: resolvedParams });
+}
 
-export const PUT = (req: NextRequest, context: RouteContext) => 
-  withAuth(req, handlePut, context); 
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(req, handlePut, { params: resolvedParams });
+} 

@@ -133,175 +133,34 @@ async function handleDelete(req: AuthenticatedRequest, context: RouteContext<{ i
   }
 }
 
-export const GET = (req: NextRequest, context: RouteContext<{ id: string }>) => 
-  withAuth(req, handleGet, context);
-
-export const POST = (req: NextRequest, context: RouteContext<{ id: string }>) => 
-  withAuth(req, handlePost, context);
-
-export const PUT = (req: NextRequest, context: RouteContext<{ id: string }>) => 
-  withAuth(req, handlePut, context);
-
-export const DELETE = (req: NextRequest, context: RouteContext<{ id: string }>) => 
-  withAuth(req, handleDelete, context);
-
-// GET /api/models/[id]/views
-export async function GET_DB(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const result = await executeQuery(
-      `SELECT * FROM model_views 
-       WHERE model_id = $1 
-       AND (owner_id = $2 OR is_public = true)
-       ORDER BY created_at DESC`,
-      [params.id, user.id]
-    );
-
-    return NextResponse.json(result.rows);
-  } catch (error) {
-    console.error('Error fetching views:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch views' },
-      { status: 500 }
-    );
-  }
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(req, handleGet, { params: resolvedParams });
 }
 
-// POST /api/models/[id]/views
-export async function POST_DB(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const user = await getCurrentUser();
-    if (!user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    
-    // Validate config
-    const validatedConfig = ViewConfigSchema.parse(body.config);
-
-    // Check if default view exists if this is marked as default
-    if (body.is_default) {
-      const defaultViewResult = await executeQuery(
-        'SELECT id FROM model_views WHERE model_id = $1 AND is_default = true',
-        [params.id]
-      );
-
-      if (defaultViewResult.rows.length > 0) {
-        return NextResponse.json(
-          { error: 'A default view already exists' },
-          { status: 400 }
-        );
-      }
-    }
-
-    const result = await executeQuery(
-      `INSERT INTO model_views (
-        name, description, config, is_default, is_public,
-        model_id, owner_id, created_at, updated_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-      ) RETURNING *`,
-      [
-        body.name,
-        body.description || '',
-        validatedConfig,
-        body.is_default || false,
-        body.is_public || false,
-        params.id,
-        user.id
-      ]
-    );
-
-    return NextResponse.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error creating view:', error);
-    return NextResponse.json(
-      { error: 'Failed to create view' },
-      { status: 500 }
-    );
-  }
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(req, handlePost, { params: resolvedParams });
 }
 
-// PUT /api/models/[id]/views/[viewId]
-export async function PUT_DB(
-  request: Request,
-  { params }: { params: { id: string; viewId: string } }
-) {
-  try {
-    const body = await request.json();
-    const { name, description, config, is_default, is_public } = body;
-
-    const { rows: [view] } = await pool.query(
-      `UPDATE model_views SET
-        name = COALESCE($1, name),
-        description = COALESCE($2, description),
-        config = COALESCE($3, config),
-        is_default = COALESCE($4, is_default),
-        is_public = COALESCE($5, is_public),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6 AND model_id = $7
-      RETURNING *`,
-      [name, description, config, is_default, is_public, params.viewId, params.id]
-    );
-
-    if (!view) {
-      return NextResponse.json(
-        { error: 'View not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(view);
-  } catch (error) {
-    console.error('Error updating view:', error);
-    return NextResponse.json(
-      { error: 'Failed to update view' },
-      { status: 500 }
-    );
-  }
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(req, handlePut, { params: resolvedParams });
 }
 
-// DELETE /api/models/[id]/views/[viewId]
-export async function DELETE_DB(
-  request: Request,
-  { params }: { params: { id: string; viewId: string } }
-) {
-  try {
-    const { rowCount } = await pool.query(
-      'DELETE FROM model_views WHERE id = $1 AND model_id = $2',
-      [params.viewId, params.id]
-    );
-
-    if (rowCount === 0) {
-      return NextResponse.json(
-        { error: 'View not found' },
-        { status: 404 }
-      );
-    }
-
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    console.error('Error deleting view:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete view' },
-      { status: 500 }
-    );
-  }
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(req, handleDelete, { params: resolvedParams });
 } 

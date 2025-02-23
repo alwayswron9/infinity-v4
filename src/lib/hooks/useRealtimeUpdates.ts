@@ -26,7 +26,7 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions) {
   } = options;
 
   // Refs for batch processing
-  const batchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const batchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const batchedEventsRef = useRef<ModelDataEvent[]>([]);
 
   // Process batched events
