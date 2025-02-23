@@ -120,8 +120,21 @@ export class EmbeddingService {
     }
 
     console.log('[Search] Searching for:', query.slice(0, 50) + (query.length > 50 ? '...' : ''));
+    console.log('[Search] Model ID:', this.model.id);
+    console.log('[Search] Min Similarity:', minSimilarity);
 
     try {
+      // First check if we have any records with embeddings
+      const checkResults = await executeQuery(
+        `SELECT COUNT(*) as count 
+         FROM model_data 
+         WHERE model_id = $1 
+         AND embedding IS NOT NULL`,
+        [this.model.id]
+      );
+      
+      console.log('[Search] Found records with embeddings:', checkResults.rows[0].count);
+
       // Generate query embedding
       const queryEmbedding = await this.generateEmbedding(query);
 
@@ -132,6 +145,10 @@ export class EmbeddingService {
       }
 
       console.log(`[Search] Generated query embedding of length ${queryEmbedding.length}`);
+
+      // Use a lower minimum similarity threshold to get more results
+      const effectiveMinSimilarity = Math.min(minSimilarity, 0.3);
+      console.log('[Search] Using effective min similarity:', effectiveMinSimilarity);
 
       // Perform similarity search using PostgreSQL
       const results = await executeQuery(
@@ -152,22 +169,24 @@ export class EmbeddingService {
         [
           `[${queryEmbedding.join(',')}]`,
           this.model.id,
-          minSimilarity,
+          effectiveMinSimilarity,
           limit
         ]
       );
 
-      console.log(`[Search] Found ${results.rows.length} results with similarity >= ${minSimilarity}`);
+      console.log(`[Search] Found ${results.rows.length} results with similarity >= ${effectiveMinSimilarity}`);
+      if (results.rows.length > 0) {
+        console.log('[Search] First result similarity:', results.rows[0].similarity);
+      }
 
       // Transform results to include similarity score but exclude vector
-      return results.rows.map(row => {
-        const record = this.toClientRecord(row);
-        const { _vector, ...recordWithoutVector } = record;
-        return {
-          ...recordWithoutVector,
-          similarity: row.similarity
-        };
-      });
+      return results.rows.map(row => ({
+        _id: row.id,
+        _created_at: new Date(row.created_at),
+        _updated_at: new Date(row.updated_at),
+        ...row.data,
+        similarity: row.similarity
+      }));
     } catch (error) {
       console.error('[Search] Failed to perform search:', error);
       throw error;
