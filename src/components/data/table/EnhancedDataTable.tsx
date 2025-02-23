@@ -15,7 +15,7 @@ import {
 import type { ViewConfig } from '@/types/viewDefinition';
 import { PaginationControls } from './PaginationControls';
 import { TableFilterSelector } from './TableFilterSelector';
-import { ArrowUpDown, Filter, Columns } from 'lucide-react';
+import { ArrowUpDown, Filter, Columns, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -29,6 +29,7 @@ import {
   Alert,
   AlertDescription,
 } from './TableComponents';
+import { Button } from '@/components/ui/button';
 import { ColumnSelector } from './ColumnSelector';
 import { DataTableHeader } from './TableHeader';
 import { DataTableBody } from './TableBody';
@@ -47,6 +48,8 @@ interface EnhancedDataTableProps<T> {
   onPaginationChange?: (pageIndex: number, pageSize: number) => void;
   isLoading?: boolean;
   error?: string | null;
+  hasUnsavedChanges?: boolean;
+  onSave?: () => void;
 }
 
 interface TableFilter {
@@ -64,6 +67,8 @@ export function EnhancedDataTable<T>({
   onPaginationChange,
   isLoading = false,
   error = null,
+  hasUnsavedChanges = false,
+  onSave,
 }: EnhancedDataTableProps<T>) {
   // Get valid column IDs
   const validColumnIds = React.useMemo(() => 
@@ -224,39 +229,147 @@ export function EnhancedDataTable<T>({
   }
 
   return (
-    <Card>
-      <div className="rounded-md border">
-        <div className="flex items-center justify-between gap-2 p-2 border-b">
-          <div className="flex items-center gap-2">
-            <ColumnSelector
-              viewConfig={viewConfig}
-              onConfigChange={onConfigChange}
-            />
-          </div>
+    <Card className="flex flex-col h-full">
+      {/* Controls Header */}
+      <div className="px-4 py-3 border-b">
+        <div className="flex items-center justify-between">
+          <ColumnSelector
+            viewConfig={viewConfig}
+            onConfigChange={onConfigChange}
+          />
+          <Button
+            onClick={onSave}
+            variant={hasUnsavedChanges ? "default" : "secondary"}
+            size="sm"
+            disabled={!hasUnsavedChanges}
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            <span>Save Changes</span>
+          </Button>
         </div>
+      </div>
 
+      {/* Table */}
+      <div className="flex-1 min-h-0">
         <Table>
           <TableHeader>
-            <DataTableHeader
-              headerGroups={table.getHeaderGroups()}
-              viewConfig={viewConfig}
-              onConfigChange={onConfigChange}
-            />
+            <TableRow>
+              {table.getFlatHeaders().map((header) => (
+                <TableHead key={header.id} style={{ width: header.getSize() }}>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex items-center gap-1.5 flex-1 min-w-0",
+                        header.column.getCanSort() && "cursor-pointer select-none",
+                      )}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <span className="truncate">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </span>
+                      {header.column.getCanSort() && (
+                        <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </div>
+                    {header.column.getCanFilter() && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveFilter(activeFilter === header.id ? null : header.id);
+                        }}
+                        className={cn(
+                          "flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md",
+                          "hover:bg-muted transition-colors",
+                          (activeFilter === header.id || hasActiveFilter(header.column.id)) && 
+                            "bg-primary text-primary-foreground hover:bg-primary/90",
+                          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                        )}
+                      >
+                        <Filter className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {activeFilter === header.id && header.column.getCanFilter() && (
+                    <div className="absolute left-0 mt-2 z-50">
+                      <TableFilterSelector
+                        field={header.column.id}
+                        value={(header.column.getFilterValue() as string) ?? ""}
+                        operator={(viewConfig.filters.find(f => f.field === header.column.id))?.operator || 'contains'}
+                        onChange={(value, operator) => {
+                          header.column.setFilterValue(value);
+                          if (onConfigChange) {
+                            const newFilters = [...viewConfig.filters];
+                            const existingFilterIndex = newFilters.findIndex(f => f.field === header.column.id);
+                            if (existingFilterIndex >= 0) {
+                              newFilters[existingFilterIndex] = {
+                                ...newFilters[existingFilterIndex],
+                                value,
+                                operator
+                              };
+                            } else {
+                              newFilters.push({
+                                field: header.column.id,
+                                value,
+                                operator,
+                                conjunction: 'and'
+                              });
+                            }
+                            onConfigChange({
+                              ...viewConfig,
+                              filters: newFilters
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
           </TableHeader>
+
           <TableBody>
-            <DataTableBody
-              data={data}
-              rows={table.getRowModel().rows}
-              columns={columns}
-              isLoading={isLoading}
-              pageSize={pagination?.pageSize}
-            />
+            {isLoading ? (
+              Array.from({ length: pagination?.pageSize || 10 }).map((_, index) => (
+                <TableRow key={`loading-${index}`}>
+                  {columns.map((_, colIndex) => (
+                    <TableCell key={`loading-cell-${colIndex}`}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
+                  No records found
+                </TableCell>
+              </TableRow>
+            ) : (
+              table.getRowModel().rows.map(row => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell
+                      key={cell.id}
+                      style={{ width: cell.column.getSize() }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
-      
+
+      {/* Pagination Footer */}
       {pagination && (
-        <div className="mt-4">
+        <div className="px-4 py-3 border-t">
           <PaginationControls
             currentPage={Math.max(1, (pagination.pageIndex || 0) + 1)}
             totalPages={Math.max(1, pagination.pageCount)}

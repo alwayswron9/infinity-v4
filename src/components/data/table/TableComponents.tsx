@@ -2,53 +2,169 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 // Basic table components
-export const Table: React.FC<React.HTMLProps<HTMLTableElement>> = ({ children, ...props }) => (
-  <table {...props} className="w-full">{children}</table>
-);
+export function Table({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("relative w-full h-full flex flex-col", className)}>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full border-collapse table-fixed">
+          {props.children}
+        </table>
+      </div>
+    </div>
+  );
+}
 
-export const TableHeader: React.FC<React.HTMLProps<HTMLTableSectionElement>> = ({ children, ...props }) => (
-  <thead {...props}>{children}</thead>
-);
+export function TableHeader({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <thead
+      className={cn(
+        "sticky top-0 z-20 bg-background",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-export const TableBody: React.FC<React.HTMLProps<HTMLTableSectionElement>> = ({ children, ...props }) => (
-  <tbody {...props}>{children}</tbody>
-);
+export function TableBody({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tbody
+      className={cn(
+        "divide-y divide-border bg-background",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-export const TableRow: React.FC<React.HTMLProps<HTMLTableRowElement>> = ({ children, ...props }) => (
-  <tr {...props} className="border-b hover:bg-gray-50">{children}</tr>
-);
+export function TableRow({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableRowElement>) {
+  return (
+    <tr
+      className={cn(
+        "transition-colors hover:bg-muted",
+        "data-[state=selected]:bg-muted",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-export const TableHead: React.FC<React.HTMLProps<HTMLTableCellElement>> = ({ children, ...props }) => (
-  <th {...props} className="px-3 py-2 text-left font-medium text-sm text-gray-600 border-b bg-gray-50">{children}</th>
-);
+export function TableHead({
+  className,
+  ...props
+}: React.ThHTMLAttributes<HTMLTableCellElement>) {
+  return (
+    <th
+      className={cn(
+        "h-10 px-4 text-left bg-background border-b",
+        "align-middle font-medium text-muted-foreground text-sm",
+        "[&:has([role=checkbox])]:pr-0",
+        "first:rounded-tl-md last:rounded-tr-md",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-export const TableCell: React.FC<React.HTMLProps<HTMLTableCellElement>> = ({ children, ...props }) => (
-  <td {...props} className="px-3 py-2 text-sm border-b">{children}</td>
-);
+export function TableCell({
+  className,
+  ...props
+}: React.TdHTMLAttributes<HTMLTableCellElement>) {
+  return (
+    <td
+      className={cn(
+        "px-4 py-2.5 align-middle text-sm",
+        "[&:has([role=checkbox])]:pr-0",
+        "break-words",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
 // Basic card component
-export const Card: React.FC<React.HTMLProps<HTMLDivElement>> = ({ children, ...props }) => (
-  <div {...props} className="rounded-lg border p-4 bg-white">{children}</div>
-);
+export function Card({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border bg-background",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
 // Basic skeleton component
-export const Skeleton: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={cn("animate-pulse bg-gray-200 rounded", className)} />
-);
+export function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "animate-pulse rounded-md bg-muted",
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
 // Basic alert components
-export const Alert: React.FC<{ variant?: 'default' | 'destructive'; children: React.ReactNode }> = ({ variant = 'default', children }) => (
-  <div className={cn(
-    "p-4 rounded-lg",
-    variant === 'destructive' ? 'bg-red-50 text-red-900' : 'bg-blue-50 text-blue-900'
-  )}>
-    {children}
-  </div>
-);
+export function Alert({
+  className,
+  variant = "default",
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & {
+  variant?: "default" | "destructive";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-4",
+        {
+          "bg-destructive/10 text-destructive border-destructive/20":
+            variant === "destructive",
+          "bg-background border-border": variant === "default",
+        },
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-export const AlertDescription: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-sm">{children}</div>
-);
+export function AlertDescription({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <div
+      className={cn("text-sm [&_p]:leading-relaxed", className)}
+      {...props}
+    />
+  );
+}
 
 // Input component for filters
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
@@ -56,8 +172,11 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     <input
       ref={ref}
       className={cn(
-        "flex h-8 w-full rounded-md border px-3 py-1 text-sm shadow-sm",
-        "focus:outline-none focus:ring-1 focus:ring-blue-500",
+        "flex h-9 w-full rounded-md border bg-background",
+        "px-3 py-1 text-sm shadow-sm",
+        "focus:outline-none focus:ring-1 focus:ring-ring",
+        "placeholder:text-muted-foreground",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}

@@ -16,6 +16,11 @@ class ViewService {
       throw new Error(error.error || `HTTP error! status: ${response.status}`);
     }
 
+    // Return undefined for 204 No Content responses
+    if (response.status === 204) {
+      return undefined;
+    }
+
     const responseData = await response.json();
     // Handle both wrapped and unwrapped responses
     return responseData.data || responseData;
@@ -69,12 +74,14 @@ class ViewService {
   }
 
   async getDefaultView(modelId: string): Promise<ModelView> {
-    const views = await this.listViews(modelId);
-    const defaultView = views.find(view => view.is_default);
-    if (!defaultView) {
-      throw new Error('No default view found');
+    try {
+      // First try to get an existing default view
+      const response = await this.fetchWithAuth(`/api/models/${modelId}/views/default`);
+      return response;
+    } catch (error) {
+      console.error('Error getting default view:', error);
+      throw error;
     }
-    return defaultView;
   }
 }
 

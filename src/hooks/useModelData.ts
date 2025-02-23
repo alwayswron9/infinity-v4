@@ -1,6 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 import useViewStore from '@/lib/stores/viewStore';
 import type { ModelView } from '@/types/viewDefinition';
+import { toast } from 'sonner';
+
+// Helper to check if a field is a system field
+const isSystemField = (field: string) => field.startsWith('_');
 
 interface UseModelDataOptions {
   modelId: string;
@@ -11,6 +15,7 @@ interface UseModelDataReturn {
   isLoading: boolean;
   error: string | null;
   availableColumns: string[];
+  systemColumns: string[];
   pagination: {
     pageIndex: number;
     pageSize: number;
@@ -31,6 +36,7 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  const [systemColumns, setSystemColumns] = useState<string[]>([]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -45,6 +51,8 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
     // Create a unique request ID
     const requestId = `${Date.now()}-${Math.random()}`;
     currentRequestRef.current = requestId;
+
+    const loadingToast = toast.loading('Loading data...');
 
     try {
       setIsLoading(true);
@@ -74,6 +82,7 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
       
       // If this request is no longer the current one, ignore the result
       if (currentRequestRef.current !== requestId) {
+        toast.dismiss(loadingToast);
         return;
       }
 
@@ -92,13 +101,32 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
       
       // Extract available columns from the first data item
       if (modelData.data?.length > 0) {
-        const columns = Object.keys(modelData.data[0]).filter(key => key !== '_vector');
-        setAvailableColumns(columns);
+        const allColumns = Object.keys(modelData.data[0]);
+        const [system, regular] = allColumns.reduce<[string[], string[]]>(
+          ([sys, reg], key) => {
+            if (isSystemField(key)) {
+              sys.push(key);
+            } else {
+              reg.push(key);
+            }
+            return [sys, reg];
+          },
+          [[], []]
+        );
+        
+        setSystemColumns(system);
+        setAvailableColumns(regular);
       }
+
+      toast.dismiss(loadingToast);
+      toast.success('Data loaded successfully');
     } catch (error) {
       // Only set error if this is still the current request
       if (currentRequestRef.current === requestId) {
-        setError(error instanceof Error ? error.message : 'Failed to load data');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load data';
+        setError(errorMessage);
+        toast.dismiss(loadingToast);
+        toast.error(errorMessage);
       }
     } finally {
       // Only update loading state if this is still the current request
@@ -113,6 +141,7 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
     isLoading,
     error,
     availableColumns,
+    systemColumns,
     pagination,
     loadModelData,
     setPagination,

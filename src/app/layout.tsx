@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+import "@/styles/globals.css";
 import "@/styles/theme.css";
+import "@/styles/calendar.css";
 import { Providers } from './providers';
 
 const inter = Inter({ 

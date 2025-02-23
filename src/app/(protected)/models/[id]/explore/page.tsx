@@ -2,17 +2,20 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { EnhancedDataTable } from '@/components/data/EnhancedDataTable';
-import { ViewSelector } from '@/components/data/ViewSelector';
-import { ViewEditor } from '@/components/data/ViewEditor';
+import { EnhancedDataTable } from '@/components/data/table/EnhancedDataTable';
+import { ViewSelector } from '@/components/data/table/ViewSelector';
 import type { ModelView, ViewConfig, ViewColumnConfig } from '@/types/viewDefinition';
 import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { ChevronLeft, Save } from 'lucide-react';
+import { ChevronLeft, Save, DatabaseIcon, LayoutDashboardIcon, Plus } from 'lucide-react';
 import { useModelData } from '@/hooks/useModelData';
 import { useViewManagement } from '@/hooks/useViewManagement';
 import useViewStore from '@/lib/stores/viewStore';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { SideDrawer } from '@/components/layout/SideDrawer';
+import { ModelDataForm } from '@/components/models/ModelDataForm';
+import { toast } from 'sonner';
 
 // Add EditableHeading component
 function EditableHeading({ 
@@ -39,6 +42,17 @@ function EditableHeading({
     }
   }, [isEditing]);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent form submission
+      onEditEnd();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onEditEnd();
+    }
+  };
+
   if (isEditing) {
     return (
       <input
@@ -46,13 +60,10 @@ function EditableHeading({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onEditEnd}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onEditEnd();
-          if (e.key === 'Escape') onEditEnd();
-        }}
+        onKeyDown={handleKeyDown}
         className={cn(
           "bg-transparent border-none outline-none focus:ring-0",
-          "text-2xl font-semibold",
+          "text-base font-medium",
           className
         )}
       />
@@ -63,7 +74,7 @@ function EditableHeading({
     <h2 
       onClick={onEditStart}
       className={cn(
-        "text-2xl font-semibold cursor-pointer hover:opacity-80",
+        "text-base font-medium cursor-pointer hover:opacity-80",
         className
       )}
     >
@@ -79,7 +90,33 @@ export default function ExplorePage() {
   // Track if initial data load has happened
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  const [modelName, setModelName] = React.useState<string>('');
+  const [modelDefinition, setModelDefinition] = React.useState<any>(null);
   
+  // State for the add data drawer
+  const [isAddDataOpen, setIsAddDataOpen] = React.useState(false);
+  
+  // Fetch model details
+  React.useEffect(() => {
+    const fetchModelDetails = async () => {
+      try {
+        const response = await fetch(`/api/models?id=${modelId}`);
+        if (!response.ok) throw new Error('Failed to fetch model details');
+        const data = await response.json();
+        if (data.success && data.data) {
+          setModelName(data.data.name);
+          setModelDefinition(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching model details:', error);
+      }
+    };
+
+    if (modelId) {
+      fetchModelDetails();
+    }
+  }, [modelId]);
+
   const {
     data,
     isLoading: isLoadingData,
@@ -97,6 +134,7 @@ export default function ExplorePage() {
     handleCreateView,
     handleSaveView,
     handleViewConfigChange: baseHandleViewConfigChange,
+    handleDeleteView: baseHandleDeleteView,
   } = useViewManagement({ modelId });
 
   const { views, activeView } = useViewStore();
@@ -105,14 +143,45 @@ export default function ExplorePage() {
   const [isEditingName, setIsEditingName] = React.useState(false);
   const [editedName, setEditedName] = React.useState('');
 
+  // Handle view selection
+  const handleViewSelect = React.useCallback((viewId: string) => {
+    baseHandleViewSelect(viewId);
+    setIsInitialLoad(true); // Reset initial load flag to trigger data reload
+    setHasUnsavedChanges(false);
+  }, [baseHandleViewSelect]);
+
+  // Handle view deletion
+  const handleDeleteView = React.useCallback(async (viewId: string) => {
+    if (!baseHandleDeleteView) return;
+    try {
+      await baseHandleDeleteView(viewId);
+      
+      // After successful deletion, if this was the active view, select another view
+      if (activeView === viewId && views.length > 1) {
+        const remainingViews = views.filter(v => v.id !== viewId);
+        const defaultView = remainingViews.find(v => v.is_default);
+        const nextView = defaultView || remainingViews[0];
+        if (nextView) {
+          handleViewSelect(nextView.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting view:', error);
+    }
+  }, [baseHandleDeleteView, activeView, views, handleViewSelect]);
+
   // Handle view name edit
-  const handleViewNameEdit = React.useCallback((newName: string) => {
+  const handleViewNameEdit = React.useCallback(async (newName: string) => {
     if (!currentView || newName === currentView.name) return;
-    setHasUnsavedChanges(true);
-    handleSaveView({
-      ...currentView,
-      name: newName
-    });
+    try {
+      await handleSaveView({
+        ...currentView,
+        name: newName
+      });
+      setHasUnsavedChanges(false);  // Name updates are saved immediately
+    } catch (error) {
+      console.error('Error updating view name:', error);
+    }
   }, [currentView, handleSaveView]);
 
   // Load initial data when views are ready
@@ -133,13 +202,6 @@ export default function ExplorePage() {
     }
   }, [currentView]);
 
-  // Handle view selection
-  const handleViewSelect = React.useCallback((viewId: string) => {
-    baseHandleViewSelect(viewId);
-    setIsInitialLoad(true); // Reset initial load flag to trigger data reload
-    setHasUnsavedChanges(false);
-  }, [baseHandleViewSelect]);
-
   // Handle pagination changes
   const handlePaginationChange = React.useCallback((pageIndex: number, pageSize: number) => {
     if (!currentView) return;
@@ -148,8 +210,18 @@ export default function ExplorePage() {
 
   // Handle view config changes (filters, sorting, etc.)
   const handleViewConfigChange = React.useCallback(async (configUpdate: Partial<ViewConfig>) => {
+    if (!currentView) return;
+    
     try {
+      // Create updated view with new config
+      const updatedView = {
+        ...currentView,
+        config: { ...currentView.config, ...configUpdate }
+      };
+
+      // Update the local state
       await baseHandleViewConfigChange(configUpdate);
+      
       setHasUnsavedChanges(true);
       
       if (pagination) {
@@ -158,14 +230,18 @@ export default function ExplorePage() {
     } catch (error) {
       console.error('Error updating view config:', error);
     }
-  }, [baseHandleViewConfigChange, pagination, handlePaginationChange]);
+  }, [currentView, baseHandleViewConfigChange, pagination, handlePaginationChange]);
 
   // Handle saving the current view
   const handleSaveCurrentView = React.useCallback(async () => {
     if (!currentView) return;
     
     try {
-      await handleSaveView(currentView);
+      // Get the current view from the store to ensure we have the latest state
+      const viewToSave = useViewStore.getState().views.find(v => v.id === currentView.id);
+      if (!viewToSave) return;
+
+      await handleSaveView(viewToSave);
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error('Error saving view:', error);
@@ -173,18 +249,60 @@ export default function ExplorePage() {
   }, [currentView, handleSaveView]);
 
   const getColumns = React.useCallback((view: ModelView): ColumnDef<Record<string, any>>[] => {
+    // If we have modelDefinition, use its fields to ensure all columns are available
+    if (modelDefinition) {
+      const allFields = Object.keys(modelDefinition.fields);
+      
+      // If view doesn't have columns config yet, create it from model fields
+      if (!view?.config?.columns) {
+        return allFields.map(field => ({
+          accessorKey: field,
+          header: field,
+          enableSorting: true,
+          enableColumnFilter: true,
+        }));
+      }
+      
+      // Ensure all model fields are in the view columns
+      const existingFields = new Set(view.config.columns.map(col => col.field));
+      const missingFields = allFields.filter(field => !existingFields.has(field));
+      
+      // Add any missing fields to the columns config
+      const updatedColumns = [
+        ...view.config.columns,
+        ...missingFields.map(field => ({
+          field,
+          visible: true,
+          sortable: true,
+          filterable: true,
+          width: 150
+        }))
+      ];
+      
+      return updatedColumns
+        .filter((col) => col.visible)
+        .map((col) => ({
+          accessorKey: col.field,
+          header: col.field,
+          size: col.width,
+          enableSorting: col.sortable ?? true,
+          enableColumnFilter: col.filterable ?? true,
+        }));
+    }
+    
+    // Fallback to existing behavior if no modelDefinition
     if (!view?.config?.columns) return [];
     
     return view.config.columns
-      .filter((col: ViewColumnConfig) => col.visible)
-      .map((col: ViewColumnConfig) => ({
+      .filter((col) => col.visible)
+      .map((col) => ({
         accessorKey: col.field,
         header: col.field,
         size: col.width,
         enableSorting: col.sortable ?? true,
         enableColumnFilter: col.filterable ?? true,
       }));
-  }, []);
+  }, [modelDefinition]);
 
   // Determine overall loading state
   const isLoading = isLoadingViews || (isInitialLoad && isLoadingData);
@@ -227,57 +345,92 @@ export default function ExplorePage() {
     );
   }
 
+  // Handle form submission
+  const handleSubmitData = async (data: Record<string, any>) => {
+    try {
+      const response = await fetch(`/api/data/${modelId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fields: data }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to add data');
+      }
+
+      toast.success('Data added successfully');
+      setIsAddDataOpen(false);
+      
+      // Reload the data table
+      if (pagination) {
+        handlePaginationChange(0, pagination.pageSize);
+      }
+    } catch (error: any) {
+      toast.error(error.message);
+      throw error;
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="border-b border-border pb-4">
-        <div className="container flex items-center justify-between py-4">
-          <div className="flex items-center gap-2">
+    <div className="flex flex-col h-[calc(100vh-65px)]">
+      <div className="border-b border-border bg-background flex-shrink-0">
+        <div className="container flex items-center justify-between py-3">
+          <div className="flex items-center gap-4">
             <Link 
               href="/models" 
               className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9"
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-lg font-semibold">Explore Data</h1>
+            <div className="flex items-center gap-2">
+              <DatabaseIcon className="h-5 w-5" />
+              <div className="flex flex-col">
+                <h1 className="text-lg font-semibold">{modelName}</h1>
+              </div>
+            </div>
+            {currentView && (
+              <div className="flex items-center gap-2 pl-4 border-l border-border">
+                <LayoutDashboardIcon className="h-4 w-4 text-muted-foreground" />
+                <EditableHeading
+                  value={editedName}
+                  onChange={setEditedName}
+                  isEditing={isEditingName}
+                  onEditStart={() => setIsEditingName(true)}
+                  onEditEnd={() => {
+                    setIsEditingName(false);
+                    handleViewNameEdit(editedName);
+                  }}
+                  className="text-sm"
+                />
+              </div>
+            )}
           </div>
-          
-          {currentView && hasUnsavedChanges && (
-            <button
-              onClick={handleSaveCurrentView}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsAddDataOpen(true)}
+              className="gap-2"
             >
-              <Save className="h-4 w-4" />
-              <span>Save Changes</span>
-            </button>
-          )}
+              <Plus className="h-4 w-4" />
+              Add Data
+            </Button>
+            <ViewSelector
+              views={safeViews}
+              activeViewId={activeView}
+              onViewSelect={handleViewSelect}
+              onCreateView={handleCreateView}
+              onDeleteView={handleDeleteView}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="container space-y-6">
-        <div className="flex items-center justify-between">
-          <ViewSelector
-            views={safeViews}
-            activeViewId={activeView}
-            onViewSelect={handleViewSelect}
-            onCreateView={handleCreateView}
-            isLoading={isLoadingViews}
-          />
-          {currentView && (
-            <EditableHeading
-              value={editedName}
-              onChange={setEditedName}
-              isEditing={isEditingName}
-              onEditStart={() => setIsEditingName(true)}
-              onEditEnd={() => {
-                setIsEditingName(false);
-                handleViewNameEdit(editedName);
-              }}
-            />
-          )}
-        </div>
-
+      <div className="flex-1 min-h-0 container py-4">
         {currentView ? (
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="h-full">
             <EnhancedDataTable
               data={data}
               columns={getColumns(currentView)}
@@ -286,10 +439,12 @@ export default function ExplorePage() {
               onPaginationChange={handlePaginationChange}
               onConfigChange={handleViewConfigChange}
               isLoading={isLoadingData && !isInitialLoad}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onSave={handleSaveCurrentView}
             />
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-64 bg-card border border-border rounded-lg">
+          <div className="flex flex-col items-center justify-center h-full bg-card border border-border rounded-lg">
             <div className="text-muted-foreground mb-4">No view selected</div>
             <button
               onClick={handleCreateView}
@@ -300,6 +455,21 @@ export default function ExplorePage() {
           </div>
         )}
       </div>
+
+      {/* Add Data Drawer */}
+      {modelDefinition && (
+        <SideDrawer
+          isOpen={isAddDataOpen}
+          onClose={() => setIsAddDataOpen(false)}
+          title={`Add Data to ${modelName}`}
+        >
+          <ModelDataForm
+            model={modelDefinition}
+            onSubmit={handleSubmitData}
+            onCancel={() => setIsAddDataOpen(false)}
+          />
+        </SideDrawer>
+      )}
     </div>
   );
 } 

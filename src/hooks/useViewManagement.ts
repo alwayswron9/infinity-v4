@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { viewService } from '@/lib/services/viewService';
 import type { ModelView, ViewConfig } from '@/types/viewDefinition';
 import useViewStore from '@/lib/stores/viewStore';
+import { toast } from 'sonner';
+
+// Helper to check if a field is a system field
+const isSystemField = (field: string) => field.startsWith('_');
+
+// Helper to determine field format type
+const getFieldFormatType = (field: string): ColumnFormatType => {
+  if (field.endsWith('_at')) return 'date';
+  return 'text';
+};
+
+// Column format types
+type ColumnFormatType = 'text' | 'number' | 'boolean' | 'date' | 'custom';
 
 interface UseViewManagementOptions {
   modelId: string;
@@ -53,30 +66,119 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
     const loadViewsData = async () => {
       if (hasInitialLoad) return;
       
+      const loadingToast = toast.loading('Loading views...');
+      
       try {
         setLoading(true);
         setError(null);
-        console.log('Loading views for model:', modelId); // Debug log
         
+        // First try to get all views
         const modelViews = await viewService.listViews(modelId);
-        console.log('Received views:', modelViews); // Debug log
         
         if (Array.isArray(modelViews) && modelViews.length > 0) {
           setViews(modelViews);
           
-          // Set active view if none is selected
-          if (!activeView) {
-            const defaultView = modelViews.find(v => v.is_default);
-            setActiveView(defaultView?.id || modelViews[0].id);
+          // If there's a default view, use it
+          const defaultView = modelViews.find(v => v.is_default);
+          if (defaultView) {
+            setActiveView(defaultView.id);
+          } else {
+            // If no default view but we have views, use the first one
+            setActiveView(modelViews[0].id);
           }
+          
+          toast.dismiss(loadingToast);
+          toast.success('Views loaded successfully');
         } else {
-          console.log('No views found or invalid response'); // Debug log
-          setViews([]);
+          // No views exist, create a default view
+          try {
+            // Get model fields to create default columns
+            const modelResponse = await fetch(`/api/models?id=${modelId}`);
+            if (!modelResponse.ok) {
+              throw new Error('Failed to get model fields');
+            }
+            const { data: model } = await modelResponse.json();
+            if (!model?.fields) {
+              throw new Error('Model fields not found');
+            }
+
+            // Get all available fields including system fields from a sample record
+            const sampleDataResponse = await fetch(`/api/data/${modelId}?limit=1`);
+            if (!sampleDataResponse.ok) {
+              throw new Error('Failed to get sample data');
+            }
+            const sampleData = await sampleDataResponse.json();
+            const sampleRecord = sampleData.data?.[0] || {};
+
+            // Create default config
+            const defaultConfig: ViewConfig = {
+              columns: [
+                // Add user-defined fields (visible by default)
+                ...Object.keys(model.fields).map(field => ({
+                  field,
+                  visible: true,
+                  sortable: true,
+                  filterable: true,
+                  width: 150,
+                  format: {
+                    type: 'text' as ColumnFormatType
+                  }
+                })),
+                // Add system fields (hidden by default)
+                ...Object.keys(sampleRecord)
+                  .filter(field => isSystemField(field))
+                  .map(field => ({
+                    field,
+                    visible: false,
+                    sortable: true,
+                    filterable: true,
+                    width: 150,
+                    format: {
+                      type: getFieldFormatType(field)
+                    }
+                  }))
+              ],
+              sorting: [{
+                field: '_created_at',
+                direction: 'desc'
+              }],
+              filters: [],
+              layout: {
+                density: 'normal',
+                theme: 'system'
+              }
+            };
+
+            // Create the default view
+            const defaultView = await viewService.createView(
+              modelId,
+              'Default View',
+              defaultConfig,
+              'Auto-generated default view',
+              true, // Make it default
+              false // Not public
+            );
+
+            setViews([defaultView]);
+            setActiveView(defaultView.id);
+            toast.dismiss(loadingToast);
+            toast.success('Default view created');
+          } catch (error) {
+            console.error('Error creating default view:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to create default view';
+            setError(errorMessage);
+            setViews([]);
+            toast.dismiss(loadingToast);
+            toast.error(errorMessage);
+          }
         }
       } catch (error) {
-        console.error('Error loading views:', error); // Debug log
-        setError(error instanceof Error ? error.message : 'Failed to load views');
+        console.error('Error loading views:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load views';
+        setError(errorMessage);
         setViews([]);
+        toast.dismiss(loadingToast);
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
         setHasInitialLoad(true);
@@ -90,9 +192,130 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
     setActiveView(viewId);
   };
 
-  const handleCreateView = () => {
-    setEditingView(undefined);
-    setIsEditing(true);
+  // Helper to generate a unique view name
+  const generateUniqueName = (baseName: string, existingViews: ModelView[]): string => {
+    const names = new Set(existingViews.map(v => v.name));
+    let counter = 1;
+    let newName = baseName;
+    
+    while (names.has(newName)) {
+      counter++;
+      newName = `${baseName} ${counter}`;
+    }
+    
+    return newName;
+  };
+
+  const handleCreateView = async () => {
+    // Set loading state immediately
+    setLoading(true);
+    setError(null);
+    const loadingToast = toast.loading('Creating new view...');
+
+    try {
+      // Get the current user
+      const response = await fetch('/api/auth/me');
+      if (!response.ok) {
+        throw new Error('Failed to get user session');
+      }
+      const { user } = await response.json();
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get model fields to create default columns
+      const modelResponse = await fetch(`/api/models?id=${modelId}`);
+      if (!modelResponse.ok) {
+        throw new Error('Failed to get model fields');
+      }
+      const { data: model } = await modelResponse.json();
+      if (!model?.fields) {
+        throw new Error('Model fields not found');
+      }
+
+      // Get all available fields including system fields from a sample record
+      const sampleDataResponse = await fetch(`/api/data/${modelId}?limit=1`);
+      if (!sampleDataResponse.ok) {
+        throw new Error('Failed to get sample data');
+      }
+      const sampleData = await sampleDataResponse.json();
+      const sampleRecord = sampleData.data?.[0] || {};
+
+      // Create default config with all user fields visible and system fields hidden
+      const defaultConfig: ViewConfig = {
+        columns: [
+          // Add user-defined fields (visible by default)
+          ...Object.keys(model.fields).map(field => ({
+            field,
+            visible: true,
+            sortable: true,
+            filterable: true,
+            width: 150,
+            format: {
+              type: 'text' as ColumnFormatType
+            }
+          })),
+          // Add system fields (hidden by default)
+          ...Object.keys(sampleRecord)
+            .filter(field => isSystemField(field))
+            .map(field => ({
+              field,
+              visible: false,
+              sortable: true,
+              filterable: true,
+              width: 150,
+              format: {
+                type: getFieldFormatType(field)
+              }
+            }))
+        ],
+        sorting: [{
+          field: '_created_at',
+          direction: 'desc'
+        }],
+        filters: [],
+        layout: {
+          density: 'normal',
+          theme: 'system'
+        }
+      };
+
+      // Generate a unique name for the new view
+      const viewName = generateUniqueName('New View', safeViews);
+
+      // Create the view
+      const newView = await viewService.createView(
+        modelId,
+        viewName,
+        defaultConfig,
+        '',
+        safeViews.length === 0, // Make it default if it's the first view
+        false // Not public by default
+      );
+
+      // Add to store and set as active
+      addView(newView);
+      setActiveView(newView.id);
+
+      // Set up for editing the name
+      setEditingView(newView);
+      setIsEditing(true);
+
+      toast.dismiss(loadingToast);
+      toast.success('New view created successfully');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create view';
+      setError(errorMessage);
+      console.error('Error creating view:', error);
+      toast.dismiss(loadingToast);
+      toast.error(errorMessage);
+      
+      // Reset editing state on error
+      setEditingView(undefined);
+      setIsEditing(false);
+    } finally {
+      setLoading(false); // Always ensure loading state is cleared
+    }
   };
 
   const handleEditView = (viewId: string) => {
@@ -104,6 +327,7 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
   };
 
   const handleDeleteView = async (viewId: string) => {
+    const loadingToast = toast.loading('Deleting view...');
     try {
       setLoading(true);
       await viewService.deleteView(modelId, viewId);
@@ -120,8 +344,13 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
           setActiveView(null);
         }
       }
+      toast.dismiss(loadingToast);
+      toast.success('View deleted successfully');
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      setError(errorMessage);
+      toast.dismiss(loadingToast);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -129,19 +358,28 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
 
   const handleSaveView = async (formData: Partial<ModelView>) => {
     if (!formData.name || !formData.config) {
-      setError('Name and configuration are required');
+      const errorMessage = 'Name and configuration are required';
+      setError(errorMessage);
+      toast.error(errorMessage);
       return;
     }
 
+    const loadingToast = toast.loading('Saving view...');
     try {
       setLoading(true);
       let savedView: ModelView;
       
-      if (editingView?.id) {
+      // Check if a view with this name already exists
+      const existingView = safeViews.find(v => v.name === formData.name);
+      
+      if (editingView?.id || existingView?.id) {
         // Update existing view
+        const viewId = editingView?.id || existingView?.id;
+        if (!viewId) throw new Error('View ID not found');
+        
         savedView = await viewService.updateView(
           modelId,
-          editingView.id,
+          viewId,
           {
             name: formData.name,
             description: formData.description || undefined,
@@ -150,8 +388,10 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
             is_public: formData.is_public === true,
           }
         );
-        updateView(editingView.id, savedView);
+        updateView(viewId, savedView);
         setActiveView(savedView.id);
+        toast.dismiss(loadingToast);
+        toast.success('View updated successfully');
       } else {
         // Create new view
         savedView = await viewService.createView(
@@ -166,12 +406,18 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         if (savedView.id) {
           setActiveView(savedView.id);
         }
+        toast.dismiss(loadingToast);
+        toast.success('View created successfully');
       }
-      setIsEditing(false);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save view';
+      setError(errorMessage);
+      toast.dismiss(loadingToast);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
+      setIsEditing(false);
+      setEditingView(undefined);
     }
   };
 
@@ -193,16 +439,11 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         realtime: configUpdate.realtime || baseConfig.realtime,
       };
 
-      // Update the view in the database
-      const updatedView = await viewService.updateView(
-        modelId,
-        currentView.id,
-        {
-          config: updatedConfig,
-        }
-      );
-
-      // Update the view in the store
+      // Only update the view in the store
+      const updatedView = {
+        ...currentView,
+        config: updatedConfig,
+      };
       updateView(currentView.id, updatedView);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to update view configuration');

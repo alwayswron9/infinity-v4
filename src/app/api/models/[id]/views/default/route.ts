@@ -55,19 +55,20 @@ async function handleGet(req: AuthenticatedRequest, context: RouteContext) {
         visible: true,
         sortable: true,
         filterable: true,
+        width: 150,
+        format: {
+          type: 'text'
+        }
       })),
-      sorting: [],
+      sorting: [{
+        field: '_id',
+        direction: 'asc'
+      }],
       filters: [],
       layout: {
         density: 'normal',
-        theme: 'system',
-        showGridLines: true,
-        enableVirtualization: true,
-        pageSize: 25,
-        enableColumnResize: true,
-        enableColumnReorder: true,
-        enableRowSelection: false,
-      },
+        theme: 'system'
+      }
     };
 
     const { rows: [newDefault] } = await pool.query(
