@@ -19,13 +19,12 @@ export class PostgresDataService {
   private toClientRecord(dbRecord: any): DataRecord {
     if (!dbRecord) return dbRecord;
 
-    const { id, data, embedding, created_at, updated_at } = dbRecord;
+    const { id, data, created_at, updated_at } = dbRecord;
 
     return {
       _id: id,
       _created_at: new Date(created_at),
       _updated_at: new Date(updated_at),
-      _vector: embedding,
       ...data
     };
   }

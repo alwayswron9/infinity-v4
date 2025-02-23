@@ -1,366 +1,291 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { PlusIcon, Loader2Icon, ArrowLeftIcon, SearchIcon, TrashIcon } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import React from 'react';
+import { useParams } from 'next/navigation';
+import { EnhancedDataTable } from '@/components/data/EnhancedDataTable';
+import { ViewSelector } from '@/components/data/ViewSelector';
+import { ViewEditor } from '@/components/data/ViewEditor';
+import type { ModelView, ViewColumnConfig } from '@/types/viewDefinition';
+import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { use } from 'react';
-import { ModelDefinition } from '@/types/modelDefinition';
-import { DataRecord } from '@/types/dataRecord';
-import { DataTable } from '@/components/data/DataTable';
-import { PaginationControls } from '@/components/data/PaginationControls';
-import { RecordForm } from '@/components/data/RecordForm';
-import { PageContainer } from '@/components/layout/PageContainer';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Section } from '@/components/layout/Section';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
+import { useModelData } from '@/hooks/useModelData';
+import { useViewManagement } from '@/hooks/useViewManagement';
+import useViewStore from '@/lib/stores/viewStore';
+import { cn } from '@/lib/utils';
 
-export default function ExploreModelPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const router = useRouter();
-  const [model, setModel] = useState<ModelDefinition | null>(null);
-  const [records, setRecords] = useState<DataRecord[]>([]);
-  const [totalRecords, setTotalRecords] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [showForm, setShowForm] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<DataRecord | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [filterValues, setFilterValues] = useState({});
+// Add EditableHeading component
+function EditableHeading({ 
+  value, 
+  onChange, 
+  isEditing, 
+  onEditStart, 
+  onEditEnd,
+  className 
+}: { 
+  value: string;
+  onChange: (value: string) => void;
+  isEditing: boolean;
+  onEditStart: () => void;
+  onEditEnd: () => void;
+  className?: string;
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchModel();
-  }, [id]);
-
-  useEffect(() => {
-    if (model) {
-      fetchRecords();
+  React.useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
     }
-  }, [model, page, pageSize, id]);
+  }, [isEditing]);
 
-  const fetchModel = async () => {
-    try {
-      const response = await fetch(`/api/models?id=${id}`, {
-        credentials: 'same-origin'
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to fetch model');
-      }
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to fetch model');
-      }
-      setModel(data.data);
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(err.message);
-      router.push('/models');
-    }
-  };
-
-  const fetchRecords = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `/api/data/${id}?page=${page}&limit=${pageSize}`,
-        { credentials: 'same-origin' }
-      );
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to fetch records');
-      }
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to fetch records');
-      }
-      setRecords(data.data);
-      setTotalRecords(data.meta.total);
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateRecord = async (fields: Record<string, any>) => {
-    try {
-      const response = await fetch(`/api/data/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ fields }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to create record');
-      }
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to create record');
-      }
-
-      toast.success('Record created successfully');
-      setShowForm(false);
-      fetchRecords();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const handleUpdateRecord = async (fields: Record<string, any>) => {
-    if (!editingRecord) return;
-
-    try {
-      const response = await fetch(
-        `/api/data/${id}?id=${editingRecord._id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ fields }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to update record');
-      }
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to update record');
-      }
-
-      toast.success('Record updated successfully');
-      setEditingRecord(null);
-      fetchRecords();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const handleDeleteRecord = async (record: DataRecord) => {
-    if (!confirm('Are you sure you want to delete this record?')) return;
-
-    try {
-      const response = await fetch(
-        `/api/data/${id}?id=${record._id}`,
-        { 
-          method: 'DELETE',
-          credentials: 'same-origin'
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to delete record');
-      }
-
-      toast.success('Record deleted successfully');
-      fetchRecords();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const handleClearData = async () => {
-    if (!confirm('Are you sure you want to delete ALL records? This action cannot be undone.')) return;
-
-    try {
-      const response = await fetch(
-        `/api/data/${id}/clear`,
-        { 
-          method: 'POST',
-          credentials: 'same-origin'
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to clear data');
-      }
-
-      toast.success('All records deleted successfully');
-      fetchRecords();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim() || !model?.embedding?.enabled) return;
-
-    try {
-      setIsSearching(true);
-      
-      // Build filter from current filter state
-      const filter = Object.entries(filterValues)
-        .filter(([_, value]) => value !== undefined && value !== '')
-        .reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: value
-        }), {});
-
-      const response = await fetch(`/api/data/${id}/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          query: searchQuery,
-          limit: pageSize,
-          minSimilarity: 0.7,
-          filter: Object.keys(filter).length > 0 ? filter : undefined
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to perform search');
-      }
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to perform search');
-      }
-
-      // Update records with search results
-      setRecords(data.data);
-      setTotalRecords(data.data.length);
-      setPage(1); // Reset to first page when searching
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
-    fetchRecords(); // Reset to normal record view
-  };
-
-  if (error) {
+  if (isEditing) {
     return (
-      <div className="p-8">
-        <div className="bg-red-50 text-red-500 p-4 rounded-lg">
-          {error}
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onEditEnd}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onEditEnd();
+          if (e.key === 'Escape') onEditEnd();
+        }}
+        className={cn(
+          "bg-transparent border-none outline-none focus:ring-0",
+          "text-2xl font-semibold",
+          className
+        )}
+      />
+    );
+  }
+
+  return (
+    <h2 
+      onClick={onEditStart}
+      className={cn(
+        "text-2xl font-semibold cursor-pointer hover:opacity-80",
+        className
+      )}
+    >
+      {value}
+    </h2>
+  );
+}
+
+export default function ExplorePage() {
+  const params = useParams();
+  const modelId = typeof params.id === 'string' ? params.id : '';
+  
+  const {
+    data,
+    isLoading: isLoadingData,
+    error: dataError,
+    availableColumns,
+    pagination,
+    loadModelData,
+  } = useModelData({ modelId });
+
+  const {
+    isEditing,
+    editingView,
+    currentView,
+    loading: isLoadingViews,
+    error: viewError,
+    handleViewSelect: baseHandleViewSelect,
+    handleCreateView,
+    handleEditView,
+    handleDeleteView,
+    handleSaveView,
+    handleViewConfigChange,
+    setIsEditing,
+  } = useViewManagement({ modelId });
+
+  const { views, activeView } = useViewStore();
+
+  // Add state for view name editing
+  const [isEditingName, setIsEditingName] = React.useState(false);
+  const [editedName, setEditedName] = React.useState('');
+
+  // Handle view name edit
+  const handleViewNameEdit = React.useCallback((newName: string) => {
+    if (!currentView || newName === currentView.name) return;
+    
+    handleSaveView({
+      ...currentView,
+      name: newName
+    });
+  }, [currentView, handleSaveView]);
+
+  // Track if this is the initial load
+  const initialLoadRef = React.useRef(true);
+
+  // Track the last loaded view ID and model ID
+  const lastLoadedRef = React.useRef<{ viewId: string | null; modelId: string | null }>({
+    viewId: null,
+    modelId: null
+  });
+
+  // Load initial data
+  React.useEffect(() => {
+    if (!modelId) return;
+    loadModelData(1, 10);
+  }, [modelId]); // Only depend on modelId to load initial data
+
+  // Handle view changes
+  React.useEffect(() => {
+    if (!currentView?.id) return;
+    
+    // Only load if this is a different view
+    if (lastLoadedRef.current.viewId !== currentView.id) {
+      lastLoadedRef.current.viewId = currentView.id;
+      loadModelData(1, 10);
+      setEditedName(currentView.name);
+    }
+  }, [currentView, loadModelData]);
+
+  // Handle view selection
+  const handleViewSelect = React.useCallback((viewId: string) => {
+    baseHandleViewSelect(viewId);
+  }, [baseHandleViewSelect]);
+
+  const handlePaginationChange = React.useCallback((pageIndex: number, pageSize: number) => {
+    if (!currentView) return;
+    loadModelData(pageIndex + 1, pageSize);
+  }, [currentView, loadModelData]);
+
+  const getColumns = React.useCallback((view: ModelView): ColumnDef<Record<string, any>>[] => {
+    if (!view?.config?.columns) return [];
+    
+    // Only return columns that are marked as visible
+    return view.config.columns
+      .filter((col: ViewColumnConfig) => col.visible)
+      .map((col: ViewColumnConfig) => ({
+        accessorKey: col.field,
+        header: col.field,
+        size: col.width,
+        enableSorting: col.sortable ?? true,
+        enableColumnFilter: col.filterable ?? true,
+      }));
+  }, []);
+
+  // Show loading state during initial load
+  if (isLoadingViews || isLoadingData || !views) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-muted-foreground flex flex-col items-center gap-4">
+          <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span className="text-lg">{isLoadingViews ? 'Loading views...' : 'Loading data...'}</span>
         </div>
       </div>
     );
   }
 
-  if (!model) {
+  // Ensure views is always defined
+  const safeViews = views || [];
+
+  // Show error state if either views or data failed to load
+  if (viewError || dataError) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
+      <div className="container py-8">
+        <div className="p-6 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+          <div className="flex items-center gap-3">
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h3 className="font-semibold">Error Loading Data</h3>
+              <p className="text-sm mt-1">{viewError || dataError}</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <PageContainer>
-      <PageHeader
-        title={model?.name || 'Loading...'}
-        description={model?.description}
-        backHref="/models"
-        actions={
-          <div className="flex gap-3">
-            <Button 
-              onClick={handleClearData}
-              variant="outline"
-              className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-            >
-              <TrashIcon className="w-5 h-5 mr-2" />
-              Clear Data
-            </Button>
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="bg-primary text-white hover:bg-primary/90"
-            >
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Add Record
-            </Button>
-          </div>
-        }
-      />
+    <div className="space-y-6">
+      <div className="border-b border-border pb-4">
+        <div className="container flex items-center gap-2 py-4">
+          <Link 
+            href="/models" 
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="text-lg font-semibold">Explore Data</h1>
+        </div>
+      </div>
 
-      {showForm || editingRecord ? (
-        <Section
-          title={editingRecord ? 'Edit Record' : 'New Record'}
-        >
-          <RecordForm
-            model={model}
-            initialData={editingRecord || undefined}
-            onSubmit={editingRecord ? handleUpdateRecord : handleCreateRecord}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingRecord(null);
-            }}
+      <div className="container space-y-6">
+        <div className="flex items-center justify-between">
+          <ViewSelector
+            views={safeViews}
+            activeViewId={activeView}
+            onViewSelect={handleViewSelect}
+            onCreateView={handleCreateView}
+            onEditView={handleEditView}
+            onDeleteView={handleDeleteView}
+            isLoading={isLoadingViews}
           />
-        </Section>
-      ) : (
-        <Section>
-          <div className="flex justify-between items-center mb-6">
-            {model?.embedding?.enabled && (
-              <div className="flex-1 max-w-md">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Search similar records..."
-                    className="w-full px-4 py-2 pr-10 border border-border/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <button
-                    onClick={handleSearch}
-                    disabled={isSearching || !searchQuery.trim()}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-primary disabled:opacity-50"
-                  >
-                    {isSearching ? (
-                      <Loader2Icon className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <SearchIcon className="w-5 h-5" />
-                    )}
-                  </button>
+          {currentView && (
+            <EditableHeading
+              value={editedName}
+              onChange={setEditedName}
+              isEditing={isEditingName}
+              onEditStart={() => setIsEditingName(true)}
+              onEditEnd={() => {
+                setIsEditingName(false);
+                handleViewNameEdit(editedName);
+              }}
+            />
+          )}
+        </div>
+
+        {isEditing ? (
+          <ViewEditor
+            view={editingView}
+            availableColumns={availableColumns}
+            onSave={handleSaveView}
+            onCancel={() => setIsEditing(false)}
+          />
+        ) : currentView ? (
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            {isLoadingData ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-muted-foreground flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Loading data...</span>
                 </div>
-                {searchQuery && (
-                  <button
-                    onClick={clearSearch}
-                    className="mt-2 text-sm text-text-secondary hover:text-primary"
-                  >
-                    Clear search
-                  </button>
-                )}
               </div>
+            ) : (
+              <EnhancedDataTable
+                data={data}
+                columns={getColumns(currentView)}
+                viewConfig={currentView.config}
+                pagination={pagination}
+                onPaginationChange={handlePaginationChange}
+                onConfigChange={handleViewConfigChange}
+              />
             )}
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-border/40">
-            <DataTable
-              model={model}
-              records={records}
-              onEdit={setEditingRecord}
-              onDelete={handleDeleteRecord}
-            />
-            <PaginationControls
-              currentPage={page}
-              totalPages={Math.ceil(totalRecords / pageSize)}
-              pageSize={pageSize}
-              totalRecords={totalRecords}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-64 bg-card border border-border rounded-lg">
+            <div className="text-muted-foreground mb-4">No view selected</div>
+            <button
+              onClick={handleCreateView}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+            >
+              Create your first view
+            </button>
           </div>
-        </Section>
-      )}
-    </PageContainer>
+        )}
+      </div>
+    </div>
   );
 } 
