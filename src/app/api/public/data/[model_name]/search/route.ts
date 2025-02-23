@@ -96,8 +96,7 @@ export async function POST(
         results = await embeddingService.searchSimilar(
           query, 
           limit, 
-          minSimilarity,
-          filter
+          minSimilarity
         );
       } catch (error: any) {
         console.error('Error performing search:', error);

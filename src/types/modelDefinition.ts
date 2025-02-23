@@ -98,18 +98,4 @@ export type CreateModelDefinitionInput = z.infer<typeof CreateModelDefinitionInp
 
 // Schema for updating an existing model definition
 export const UpdateModelDefinitionInput = CreateModelDefinitionInput.partial();
-export type UpdateModelDefinitionInput = z.infer<typeof UpdateModelDefinitionInput>;
-
-export interface ModelDefinition {
-  id: string; // UUID
-  name: string;
-  description?: string;
-  fields: Record<string, FieldDefinition>;
-  relationships?: Record<string, RelationshipDefinition>;
-  indexes?: Record<string, IndexDefinition>;
-  embedding?: { enabled: boolean; source_fields: string[] };
-  owner_id: string; // UUID
-  status: 'active' | 'archived';
-  created_at: Date;
-  updated_at: Date;
-} 
+export type UpdateModelDefinitionInput = z.infer<typeof UpdateModelDefinitionInput>; 

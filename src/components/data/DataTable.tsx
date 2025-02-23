@@ -1,4 +1,4 @@
-import { ModelDefinition } from '@/types/modelDefinition';
+import { ModelDefinition, FieldDefinition } from '@/types/modelDefinition';
 import { DataRecord } from '@/types/dataRecord';
 import { format } from 'date-fns';
 import { PencilIcon, TrashIcon } from 'lucide-react';
@@ -12,7 +12,8 @@ interface DataTableProps {
 
 export function DataTable({ model, records, onEdit, onDelete }: DataTableProps) {
   // Get visible fields (excluding vector fields since they're not displayable)
-  const visibleFields = Object.entries(model.fields).filter(([_, field]) => field.type !== 'vector');
+  const entries = Object.entries(model.fields) as [string, FieldDefinition][];
+  const visibleFields = entries.filter(([_, field]) => field.type !== 'vector');
 
   const formatValue = (value: any, type: string) => {
     if (value === null || value === undefined) return '-';

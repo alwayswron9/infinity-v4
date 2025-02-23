@@ -5,7 +5,7 @@ if (!process.env.POSTGRES_URL) {
   throw new Error('POSTGRES_URL is not set in environment variables');
 }
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
 });
 

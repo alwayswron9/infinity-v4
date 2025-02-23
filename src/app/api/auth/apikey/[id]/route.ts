@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest, createErrorResponse, RouteContext } from '@/lib/api/middleware';
+import { withAuth, AuthenticatedRequest, createErrorResponse } from '@/lib/api/middleware';
 import { PostgresApiKeyService } from '@/lib/db/postgres/apiKeyService';
 
 const apiKeyService = new PostgresApiKeyService();
 
 export async function DELETE(
-  req: NextRequest,
-  context: RouteContext<{ id: string }>
-) {
-  return withAuth(req, async (authReq) => {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(request, async (authReq: AuthenticatedRequest) => {
     try {
       const userId = authReq.auth.payload.user_id;
-      const keyId = context.params.id;
+      const keyId = resolvedParams.id;
 
       await apiKeyService.deleteApiKey(keyId, userId);
 
@@ -26,5 +27,5 @@ export async function DELETE(
       }
       return createErrorResponse('Failed to delete API key', 500);
     }
-  }, { params: context.params });
+  }, { params: resolvedParams });
 } 

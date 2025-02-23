@@ -101,7 +101,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <PageContainer maxWidth="3xl">
+    <PageContainer maxWidth="2xl">
       <PageHeader
         title="Settings"
         description="Manage your account and API keys"

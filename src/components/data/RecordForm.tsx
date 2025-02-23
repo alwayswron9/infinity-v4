@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ModelDefinition } from '@/types/modelDefinition';
+import { ModelDefinition, FieldDefinition } from '@/types/modelDefinition';
 import { DataRecord } from '@/types/dataRecord';
 
 interface RecordFormProps {
@@ -29,7 +29,7 @@ export function RecordForm({ model, initialData, onSubmit, onCancel }: RecordFor
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const renderField = (name: string, field: ModelDefinition['fields'][string]) => {
+  const renderField = (name: string, field: FieldDefinition) => {
     const value = formData[name] ?? field.default ?? '';
 
     switch (field.type) {
@@ -43,9 +43,9 @@ export function RecordForm({ model, initialData, onSubmit, onCancel }: RecordFor
               className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Select {field.description || name}</option>
-              {field.enum.map(option => (
-                <option key={option} value={option}>
-                  {option}
+              {field.enum.map((option: string | number | boolean) => (
+                <option key={String(option)} value={String(option)}>
+                  {String(option)}
                 </option>
               ))}
             </select>
@@ -103,22 +103,23 @@ export function RecordForm({ model, initialData, onSubmit, onCancel }: RecordFor
     }
   };
 
+  const entries = Object.entries(model.fields) as [string, FieldDefinition][];
+  const visibleFields = entries.filter(([_, field]) => field.type !== 'vector');
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {Object.entries(model.fields)
-        .filter(([_, field]) => field.type !== 'vector') // Exclude vector fields
-        .map(([name, field]) => (
-          <div key={name}>
-            <label className="block mb-1 text-sm font-medium">
-              {field.description || name}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            {renderField(name, field)}
-            {field.description && (
-              <p className="mt-1 text-xs text-text-tertiary">{field.description}</p>
-            )}
-          </div>
-        ))}
+      {visibleFields.map(([name, field]) => (
+        <div key={name}>
+          <label className="block mb-1 text-sm font-medium">
+            {field.description || name}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          {renderField(name, field)}
+          {field.description && (
+            <p className="mt-1 text-xs text-text-tertiary">{field.description}</p>
+          )}
+        </div>
+      ))}
 
       <div className="flex justify-end gap-3 pt-6">
         <button

@@ -1,18 +1,19 @@
-import { NextResponse } from 'next/server';
-import { withApiKey } from '@/lib/api/middleware';
+import { NextRequest, NextResponse } from 'next/server';
+import { withApiKey, AuthenticatedRequest } from '@/lib/api/middleware';
 import { ModelService } from '@/lib/models/modelService';
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  return withApiKey(request, async (req) => {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withApiKey(request, async (req: AuthenticatedRequest) => {
     try {
-      const { id } = params;
-      const { user_id } = req.apiKey;
+      const { id } = resolvedParams;
+      const userId = req.auth.payload.user_id;
 
       const modelService = new ModelService();
-      await modelService.restoreModel(id, user_id);
+      await modelService.restoreModel(id, userId);
 
       return NextResponse.json({ success: true });
     } catch (error: any) {
@@ -21,5 +22,5 @@ export async function POST(
         { status: error.status || 500 }
       );
     }
-  });
+  }, { params: resolvedParams });
 } 

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { verifyToken } from './jwt';
-import { connectToDatabase } from '../db/mongodb';
+import { executeQuery } from '../db/postgres';
 
 export type User = {
   id: string;
@@ -31,13 +31,13 @@ export async function getCurrentUser(): Promise<User | null> {
     }
 
     // Get user from database
-    const { db } = await connectToDatabase();
-    const user = await db.collection('users').findOne(
-      { id: userId },
-      { projection: { password_hash: 0, _id: 0 } }
+    const result = await executeQuery(
+      'SELECT id, email, name, status FROM users WHERE id = $1 AND status = $2',
+      [userId, 'active']
     );
 
-    if (!user || user.status !== 'active') {
+    const user = result.rows[0];
+    if (!user) {
       return null;
     }
 
@@ -45,7 +45,7 @@ export async function getCurrentUser(): Promise<User | null> {
       id: user.id,
       email: user.email,
       name: user.name,
-      status: user.status
+      status: user.status as 'active' | 'inactive'
     };
   } catch (error) {
     console.error('Error getting current user:', error);

@@ -1,5 +1,5 @@
 import { InfoIcon } from 'lucide-react';
-import { ModelDefinition } from '@/types/modelDefinition';
+import { ModelDefinition, FieldDefinition } from '@/types/modelDefinition';
 
 interface VectorSearchSectionProps {
   model: ModelDefinition;
@@ -19,7 +19,7 @@ export function VectorSearchSection({ model, onChange }: VectorSearchSectionProp
   const toggleSourceField = (fieldName: string) => {
     const currentSourceFields = model.embedding?.source_fields || [];
     const newSourceFields = currentSourceFields.includes(fieldName)
-      ? currentSourceFields.filter(f => f !== fieldName)
+      ? currentSourceFields.filter((f: string) => f !== fieldName)
       : [...currentSourceFields, fieldName];
 
     onChange({
@@ -60,19 +60,22 @@ export function VectorSearchSection({ model, onChange }: VectorSearchSectionProp
               </p>
             </div>
             <div className="space-y-2">
-              {Object.entries(model.fields).filter(([_, field]) => field.type === 'string').map(([name]) => (
-                <label key={name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface/80 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={model.embedding?.source_fields.includes(name)}
-                    onChange={() => toggleSourceField(name)}
-                    className="rounded border-border"
-                  />
-                  <span>{name}</span>
-                </label>
-              ))}
+              {(Object.entries(model.fields) as [string, FieldDefinition][])
+                .filter(([_, field]) => field.type === 'string')
+                .map(([name]) => (
+                  <label key={name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface/80 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={model.embedding?.source_fields.includes(name)}
+                      onChange={() => toggleSourceField(name)}
+                      className="rounded border-border"
+                    />
+                    <span>{name}</span>
+                  </label>
+                ))}
             </div>
-            {Object.entries(model.fields).filter(([_, field]) => field.type === 'string').length === 0 && (
+            {(Object.entries(model.fields) as [string, FieldDefinition][])
+              .filter(([_, field]) => field.type === 'string').length === 0 && (
               <div className="text-sm text-text-secondary italic p-4 bg-surface/50 rounded-lg">
                 Add string fields to enable vector search
               </div>
