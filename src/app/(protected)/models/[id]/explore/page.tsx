@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusIcon, Loader2Icon, ArrowLeftIcon, SearchIcon } from 'lucide-react';
+import { PlusIcon, Loader2Icon, ArrowLeftIcon, SearchIcon, TrashIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { use } from 'react';
@@ -170,6 +170,30 @@ export default function ExploreModelPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  const handleClearData = async () => {
+    if (!confirm('Are you sure you want to delete ALL records? This action cannot be undone.')) return;
+
+    try {
+      const response = await fetch(
+        `/api/data/${id}/clear`,
+        { 
+          method: 'POST',
+          credentials: 'same-origin'
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to clear data');
+      }
+
+      toast.success('All records deleted successfully');
+      fetchRecords();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim() || !model?.embedding?.enabled) return;
 
@@ -247,13 +271,23 @@ export default function ExploreModelPage({ params }: { params: Promise<{ id: str
         description={model?.description}
         backHref="/models"
         actions={
-          <Button 
-            onClick={() => setShowForm(true)}
-            className="bg-primary text-white hover:bg-primary/90"
-          >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Add Record
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleClearData}
+              variant="outline"
+              className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+            >
+              <TrashIcon className="w-5 h-5 mr-2" />
+              Clear Data
+            </Button>
+            <Button 
+              onClick={() => setShowForm(true)}
+              className="bg-primary text-white hover:bg-primary/90"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Add Record
+            </Button>
+          </div>
         }
       />
 

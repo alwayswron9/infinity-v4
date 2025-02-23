@@ -77,22 +77,19 @@ export default function HomePage() {
         <div className="space-y-8 px-2">
           <div>
             <h3 className="text-lg font-semibold mb-3 text-text-primary">Creating Records</h3>
-            <CodeBlock code={`POST /api/public/data/[model_name]
-{
+            <CodeBlock code={`curl --location 'https://infinity.aiwahlabs.xyz/api/public/data/feedback' \\
+--header 'X-API-Key: your_api_key_here' \\
+--data-raw '{
   "customer_name": "John Doe",
   "feedback": "Great service!",
-  "rating": 5,
-  "category": "Praise"
-}`} />
+  "rating": 5
+}'`} />
           </div>
 
           <div>
             <h3 className="text-lg font-semibold mb-3 text-text-primary">Reading Records</h3>
-            <CodeBlock code={`# Get all records (paginated)
-GET /api/public/data/[model_name]?page=1&limit=10
-
-# Get single record
-GET /api/public/data/[model_name]?id=record_id`} />
+            <CodeBlock code={`curl --location 'https://infinity.aiwahlabs.xyz/api/public/data/feedback?page=1' \\
+--header 'X-API-Key: your_api_key_here'`} />
           </div>
 
           <div>
@@ -106,6 +103,19 @@ PUT /api/public/data/[model_name]?id=record_id
 
 # Delete record
 DELETE /api/public/data/[model_name]?id=record_id`} />
+          </div>
+
+          <div className="mt-8 p-4 bg-surface-hover rounded-lg">
+            <h3 className="text-lg font-semibold mb-2 text-text-primary">Automation Integration</h3>
+            <p className="text-text-secondary mb-4">
+              Use our pre-configured n8n instance to automate workflows: {' '}
+              <Link href="https://automate.aiwahlabs.xyz" className="text-primary hover:underline">
+                automate.aiwahlabs.xyz
+              </Link>
+            </p>
+            <p className="text-sm text-text-secondary">
+              Email aiwahlabs@gmail.com to get your automation credentials
+            </p>
           </div>
         </div>
       </Section>

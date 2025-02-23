@@ -121,17 +121,57 @@ export class EmbeddingService {
 
     console.log('[Search] Searching for:', query.slice(0, 50) + (query.length > 50 ? '...' : ''));
 
-    // Generate query embedding
-    const queryEmbedding = await this.generateEmbedding(query);
+    try {
+      // Generate query embedding
+      const queryEmbedding = await this.generateEmbedding(query);
 
-    // Return empty array if no query embedding
-    if (!queryEmbedding || queryEmbedding.length === 0) {
-      console.log('[Search] No valid embedding generated');
-      return [];
+      // Return empty array if no query embedding
+      if (!queryEmbedding || queryEmbedding.length === 0) {
+        console.log('[Search] No valid embedding generated');
+        return [];
+      }
+
+      console.log(`[Search] Generated query embedding of length ${queryEmbedding.length}`);
+
+      // Perform similarity search using PostgreSQL
+      const results = await executeQuery(
+        `SELECT 
+          id,
+          model_id,
+          owner_id,
+          data,
+          created_at,
+          updated_at,
+          1 - (embedding <=> $1::vector) as similarity
+         FROM model_data
+         WHERE model_id = $2
+           AND embedding IS NOT NULL
+           AND 1 - (embedding <=> $1::vector) >= $3
+         ORDER BY similarity DESC
+         LIMIT $4`,
+        [
+          `[${queryEmbedding.join(',')}]`,
+          this.model.id,
+          minSimilarity,
+          limit
+        ]
+      );
+
+      console.log(`[Search] Found ${results.rows.length} results with similarity >= ${minSimilarity}`);
+
+      // Transform results to include similarity score but exclude vector
+      return results.rows.map(row => {
+        const record = this.toClientRecord(row);
+        const { _vector, ...recordWithoutVector } = record;
+        return {
+          ...recordWithoutVector,
+          similarity: row.similarity
+        };
+      });
+    } catch (error) {
+      console.error('[Search] Failed to perform search:', error);
+      throw error;
     }
-
-    console.log(`[Search] Generated query embedding of length ${queryEmbedding.length}`);
-    return [];
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
