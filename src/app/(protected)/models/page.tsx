@@ -42,6 +42,27 @@ export default function ModelsPage() {
     setIsAddDataOpen(true);
   };
 
+  // Handle clearing all data for a model
+  const handleClearData = async (modelId: string, modelName: string) => {
+    try {
+      const response = await fetch(`/api/data/${modelId}/clear`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to clear data');
+      }
+
+      toast.success(`All data for ${modelName} cleared successfully`);
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   // Handle form submission
   const handleSubmitData = async (data: Record<string, any>) => {
     if (!selectedModel) return;
@@ -136,6 +157,7 @@ export default function ModelsPage() {
                 </th>
                 <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Description</th>
                 <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Fields</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Records</th>
                 <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Vector Search</th>
                 <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Status</th>
                 <th className="w-[120px]"></th>
@@ -165,7 +187,7 @@ export default function ModelsPage() {
                 </tr>
               ) : (
                 filteredModels.map((model) => (
-                  <tr key={model.id} className="hover:bg-surface-hover">
+                  <tr key={model.id} className="hover:bg-accent hover:text-accent-foreground">
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-2">
                         <Database className="h-4 w-4 text-text-secondary" />
@@ -178,6 +200,11 @@ export default function ModelsPage() {
                     <td className="py-3 px-4">
                       <span className="inline-flex items-center rounded-full bg-surface px-2 py-1 text-xs">
                         {Object.keys(model.fields).length} fields
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center rounded-full bg-surface px-2 py-1 text-xs">
+                        {model.recordCount.toLocaleString()} records
                       </span>
                     </td>
                     <td className="py-3 px-4">
@@ -216,7 +243,7 @@ export default function ModelsPage() {
                             "inline-flex items-center justify-center rounded-md text-sm",
                             "transition-colors focus-visible:outline-none focus-visible:ring-1",
                             "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                            "hover:bg-surface-hover",
+                            "hover:bg-accent hover:text-accent-foreground",
                             "h-8 w-8"
                           )}
                         >
@@ -228,6 +255,7 @@ export default function ModelsPage() {
                           isArchived={model.status === 'archived'}
                           onArchiveToggle={() => handleArchiveToggle(model.id)}
                           onDelete={() => handleDeleteModel(model.id)}
+                          onClearData={() => handleClearData(model.id, model.name)}
                         />
                       </div>
                     </td>

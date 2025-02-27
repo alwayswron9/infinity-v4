@@ -374,6 +374,32 @@ export default function ExplorePage() {
     }
   };
 
+  // Handle clearing all data
+  const handleClearData = async () => {
+    try {
+      const response = await fetch(`/api/data/${modelId}/clear`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to clear data');
+      }
+
+      toast.success('All data cleared successfully');
+      
+      // Reload the data table
+      if (pagination) {
+        handlePaginationChange(0, pagination.pageSize);
+      }
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-65px)]">
       <div className="border-b border-border bg-background flex-shrink-0">
@@ -416,6 +442,18 @@ export default function ExplorePage() {
             >
               <Plus className="h-4 w-4" />
               Add Data
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to clear all data for ${modelName}? This action cannot be undone.`)) {
+                  handleClearData();
+                }
+              }}
+              className="gap-2 text-warning"
+            >
+              <DatabaseIcon className="h-4 w-4" />
+              Clear Data
             </Button>
             <ViewSelector
               views={safeViews}

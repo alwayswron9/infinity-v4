@@ -2,9 +2,14 @@ import { useState, useCallback, useMemo } from 'react';
 import type { ModelDefinition } from '@/types/modelDefinition';
 import { toast } from 'sonner';
 
+// Extend ModelDefinition to include recordCount
+interface ModelWithStats extends ModelDefinition {
+  recordCount: number;
+}
+
 interface UseModelsReturn {
-  models: ModelDefinition[];
-  filteredModels: ModelDefinition[];
+  models: ModelWithStats[];
+  filteredModels: ModelWithStats[];
   loading: boolean;
   error: string | null;
   searchQuery: string;
@@ -17,7 +22,7 @@ interface UseModelsReturn {
 }
 
 export function useModels(): UseModelsReturn {
-  const [models, setModels] = useState<ModelDefinition[]>([]);
+  const [models, setModels] = useState<ModelWithStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');

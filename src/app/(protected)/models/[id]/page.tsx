@@ -139,6 +139,7 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
         actions={
           <button
             type="submit"
+            form="model-form"
             disabled={submitting || (model.embedding?.enabled && (!model.embedding.source_fields || model.embedding.source_fields.length === 0))}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
@@ -148,7 +149,7 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
         }
       />
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form id="model-form" onSubmit={handleSubmit} className="space-y-8">
         <BasicInfoSection 
           model={model} 
           onChange={(updates: Partial<ModelDefinition>) => setModel((prev: ModelDefinition | null) => prev ? { ...prev, ...updates } : null)} 

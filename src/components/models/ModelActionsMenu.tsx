@@ -1,9 +1,10 @@
-import { MoreVertical, PencilIcon, ArchiveIcon, TrashIcon } from 'lucide-react';
+import { MoreVertical, PencilIcon, ArchiveIcon, TrashIcon, DatabaseIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ interface ModelActionsMenuProps {
   isArchived?: boolean;
   onArchiveToggle: () => void;
   onDelete: () => void;
+  onClearData?: () => void;
 }
 
 export function ModelActionsMenu({
@@ -23,6 +25,7 @@ export function ModelActionsMenu({
   isArchived = false,
   onArchiveToggle,
   onDelete,
+  onClearData,
 }: ModelActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -32,7 +35,7 @@ export function ModelActionsMenu({
             "inline-flex items-center justify-center rounded-md text-sm",
             "transition-colors focus-visible:outline-none focus-visible:ring-1",
             "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-            "hover:bg-surface-hover",
+            "hover:bg-accent hover:text-accent-foreground",
             "h-8 w-8"
           )}
         >
@@ -56,6 +59,23 @@ export function ModelActionsMenu({
           )} />
           <span>{isArchived ? 'Restore' : 'Archive'}</span>
         </DropdownMenuItem>
+        {onClearData && !isArchived && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to clear all data for ${modelName}? This action cannot be undone.`)) {
+                  onClearData();
+                }
+              }}
+              className="text-warning focus:text-warning"
+            >
+              <DatabaseIcon className="mr-2 h-4 w-4" />
+              <span>Clear Data</span>
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
             if (window.confirm(`Are you sure you want to delete ${modelName}? This action cannot be undone.`)) {
