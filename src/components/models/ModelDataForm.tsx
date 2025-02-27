@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { type ModelDefinition, type FieldDefinition } from '@/types/modelDefinition';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,16 +17,28 @@ import { toast } from 'sonner';
 
 interface ModelDataFormProps {
   model: ModelDefinition;
+  initialData?: Record<string, any>;
   onSubmit: (data: Record<string, any>) => Promise<void>;
   onCancel: () => void;
+  submitButtonText?: string;
 }
 
-export function ModelDataForm({ model, onSubmit, onCancel }: ModelDataFormProps) {
+export function ModelDataForm({ 
+  model, 
+  initialData, 
+  onSubmit, 
+  onCancel,
+  submitButtonText = 'Add Data'
+}: ModelDataFormProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
 
   // Helper function to get initial value based on field type
-  const getInitialValue = (field: FieldDefinition) => {
+  const getInitialValue = (field: FieldDefinition, existingValue?: any) => {
+    // If we have an existing value, use it
+    if (existingValue !== undefined) return existingValue;
+    
+    // Otherwise use default value based on type
     switch (field.type) {
       case 'string':
         return field.default || '';
@@ -41,17 +53,21 @@ export function ModelDataForm({ model, onSubmit, onCancel }: ModelDataFormProps)
     }
   };
 
-  // Initialize form data with default values
-  useState(() => {
-    const initialData: Record<string, any> = {};
+  // Initialize form data with initial or default values
+  useEffect(() => {
+    const initialFormData: Record<string, any> = {};
     Object.entries(model.fields).forEach(([fieldName, field]) => {
       // Skip system fields (starting with underscore)
       if (!fieldName.startsWith('_')) {
-        initialData[fieldName] = getInitialValue(field);
+        // Use initialData if provided, otherwise use default
+        initialFormData[fieldName] = getInitialValue(
+          field, 
+          initialData ? initialData[fieldName] : undefined
+        );
       }
     });
-    setFormData(initialData);
-  });
+    setFormData(initialFormData);
+  }, [model, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,10 +75,10 @@ export function ModelDataForm({ model, onSubmit, onCancel }: ModelDataFormProps)
 
     try {
       await onSubmit(formData);
-      toast.success('Data added successfully');
+      toast.success(initialData ? 'Record updated successfully' : 'Data added successfully');
       onCancel(); // Close the drawer
     } catch (error) {
-      toast.error('Failed to add data');
+      toast.error(initialData ? 'Failed to update record' : 'Failed to add data');
       console.error('Error submitting form:', error);
     } finally {
       setLoading(false);
@@ -188,7 +204,7 @@ export function ModelDataForm({ model, onSubmit, onCancel }: ModelDataFormProps)
           Cancel
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? 'Adding...' : 'Add Data'}
+          {loading ? 'Processing...' : submitButtonText}
         </Button>
       </div>
     </form>

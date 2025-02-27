@@ -67,17 +67,57 @@ export async function POST(request: NextRequest) {
       // Initialize data service
       const dataService = new PostgresDataService(model);
 
-      // Create record
+      // Get request body
       const body = await authReq.json();
       
-      // Validate nested fields structure
-      if (!body.fields || typeof body.fields !== 'object') {
-        return createErrorResponse('Request body must contain a fields object', 400);
+      // Check if the request is for bulk operations (array of objects)
+      if (Array.isArray(body)) {
+        if (body.length === 0) {
+          return createErrorResponse('Empty array provided. At least one record is required.', 400);
+        }
+        
+        // Process each record in the array
+        const results = [];
+        const errors = [];
+        
+        for (let i = 0; i < body.length; i++) {
+          try {
+            // Validate nested fields structure for each item
+            if (!body[i].fields || typeof body[i].fields !== 'object') {
+              throw new Error('Each item must contain a fields object');
+            }
+            
+            const record = await dataService.createRecord(body[i].fields);
+            results.push(record);
+          } catch (error: any) {
+            errors.push({
+              index: i,
+              error: error.message || 'Failed to create record',
+              data: body[i]
+            });
+          }
+        }
+        
+        return NextResponse.json({
+          success: errors.length === 0,
+          data: results,
+          errors: errors.length > 0 ? errors : undefined,
+          meta: {
+            total: body.length,
+            succeeded: results.length,
+            failed: errors.length
+          }
+        }, { status: errors.length === 0 ? 201 : 207 });
+      } else {
+        // Single record creation (existing functionality)
+        // Validate nested fields structure
+        if (!body.fields || typeof body.fields !== 'object') {
+          return createErrorResponse('Request body must contain a fields object', 400);
+        }
+
+        const record = await dataService.createRecord(body.fields);
+        return NextResponse.json({ success: true, data: record }, { status: 201 });
       }
-
-      const record = await dataService.createRecord(body.fields);
-
-      return NextResponse.json({ success: true, data: record }, { status: 201 });
     } catch (error: any) {
       console.error('Error creating record:', error);
       return createErrorResponse(error.message || 'Failed to create record', error.status || 500);

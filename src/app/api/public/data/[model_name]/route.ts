@@ -86,62 +86,62 @@ export async function POST(
       const dataService = new PostgresDataService(model);
 
       const body = await req.json();
-      console.log('Raw request body:', JSON.stringify(body));
       
-      // Extract and normalize the data
-      let itemsToProcess = [];
-      
-      // If body is an array with a single object containing data with numeric keys
-      if (Array.isArray(body) && body.length === 1 && body[0].data) {
-        const data = body[0].data;
-        // Extract items with numeric keys into array
-        itemsToProcess = Object.entries(data)
-          .filter(([key]) => !isNaN(Number(key)))
-          .sort(([a], [b]) => Number(a) - Number(b))
-          .map(([_, value]) => value);
-      } else if (Array.isArray(body) && Array.isArray(body[0])) {
-        // If it's a nested array format
-        itemsToProcess = body[0];
-      } else if (Array.isArray(body)) {
-        // If it's a direct array
-        itemsToProcess = body;
+      // Check if the request is for bulk operations (array of objects)
+      if (Array.isArray(body)) {
+        if (body.length === 0) {
+          return NextResponse.json(
+            { error: 'Empty array provided. At least one record is required.' },
+            { status: 400 }
+          );
+        }
+        
+        // Process each record in the array
+        const results = [];
+        const errors = [];
+        
+        for (let i = 0; i < body.length; i++) {
+          try {
+            const record = await dataService.createRecord(body[i]);
+            // Exclude vector data
+            const { _vector, ...recordWithoutVector } = record;
+            results.push(recordWithoutVector);
+          } catch (error: any) {
+            errors.push({
+              index: i,
+              error: error.message || 'Failed to create record',
+              data: body[i]
+            });
+          }
+        }
+        
+        return NextResponse.json({
+          success: errors.length === 0,
+          data: results,
+          errors: errors.length > 0 ? errors : undefined,
+          meta: {
+            total: body.length,
+            succeeded: results.length,
+            failed: errors.length
+          }
+        }, { status: errors.length === 0 ? 201 : 207 });
       } else {
-        // Single item
-        itemsToProcess = [body];
+        // Single record creation (existing functionality)
+        const record = await dataService.createRecord(body);
+        
+        // Exclude vector data
+        const { _vector, ...recordWithoutVector } = record;
+        return NextResponse.json(
+          { success: true, data: recordWithoutVector },
+          { status: 201 }
+        );
       }
-
-      // Process all items
-      const records = [];
-      const errors = [];
-
-      for (let i = 0; i < itemsToProcess.length; i++) {
-        try {
-          const record = await dataService.createRecord(itemsToProcess[i]);
-          const { _vector, ...recordWithoutVector } = record;
-          records.push(recordWithoutVector);
-        } catch (error: any) {
-          errors.push({
-            index: i,
-            data: itemsToProcess[i],
-            error: error.message
-          });
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: records,
-        meta: {
-          total: records.length,
-          failed: errors.length,
-          errors: errors.length > 0 ? errors : undefined
-        }
-      }, { status: 201 });
     } catch (error: any) {
-      console.error('Error creating record(s):', error);
+      console.error('Error creating record:', error);
       return NextResponse.json(
         { 
-          error: error.message || 'Failed to create record(s)',
+          success: false,
+          error: error.message || 'Failed to create record',
           details: {
             code: error.code,
             fields: error.fields,

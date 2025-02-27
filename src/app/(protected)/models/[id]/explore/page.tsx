@@ -7,7 +7,7 @@ import { ViewSelector } from '@/components/data/table/ViewSelector';
 import type { ModelView, ViewConfig, ViewColumnConfig } from '@/types/viewDefinition';
 import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { ChevronLeft, Save, DatabaseIcon, LayoutDashboardIcon, Plus } from 'lucide-react';
+import { ChevronLeft, Save, DatabaseIcon, LayoutDashboardIcon, Plus, Trash } from 'lucide-react';
 import { useModelData } from '@/hooks/useModelData';
 import { useViewManagement } from '@/hooks/useViewManagement';
 import useViewStore from '@/lib/stores/viewStore';
@@ -95,6 +95,10 @@ export default function ExplorePage() {
   
   // State for the add data drawer
   const [isAddDataOpen, setIsAddDataOpen] = React.useState(false);
+  
+  // Add state for edit drawer
+  const [isEditDataOpen, setIsEditDataOpen] = React.useState(false);
+  const [currentRecord, setCurrentRecord] = React.useState<Record<string, any> | null>(null);
   
   // Fetch model details
   React.useEffect(() => {
@@ -400,6 +404,89 @@ export default function ExplorePage() {
     }
   };
 
+  // Handle editing a record
+  const handleEditRow = (row: Record<string, any>) => {
+    // Extract the record data
+    const { _id, _created_at, _updated_at, _vector, ...recordData } = row;
+    
+    // Set the current record for editing
+    setCurrentRecord({
+      _id,
+      ...recordData
+    });
+    
+    // Open the edit drawer
+    setIsEditDataOpen(true);
+  };
+
+  // Handle submitting edited data
+  const handleSubmitEditedData = async (data: Record<string, any>) => {
+    if (!currentRecord || !currentRecord._id) {
+      toast.error('Record ID is missing');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/data/${modelId}?id=${currentRecord._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fields: data }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to update record');
+      }
+
+      toast.success('Record updated successfully');
+      setIsEditDataOpen(false);
+      
+      // Reload the data table
+      if (pagination) {
+        handlePaginationChange(pagination.pageIndex, pagination.pageSize);
+      }
+    } catch (error: any) {
+      console.error('Error updating record:', error);
+      toast.error(error.message || 'Failed to update record');
+    }
+  };
+
+  // Handle deleting a record
+  const handleDeleteRow = async (row: Record<string, any>) => {
+    if (!row._id) {
+      toast.error('Record ID is missing');
+      return;
+    }
+    
+    // Confirm deletion
+    if (!window.confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/data/${modelId}?id=${row._id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to delete record');
+      }
+
+      toast.success('Record deleted successfully');
+      
+      // Reload the data table
+      if (pagination) {
+        handlePaginationChange(pagination.pageIndex, pagination.pageSize);
+      }
+    } catch (error: any) {
+      console.error('Error deleting record:', error);
+      toast.error(error.message || 'Failed to delete record');
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-65px)]">
       <div className="border-b border-border bg-background flex-shrink-0">
@@ -479,6 +566,9 @@ export default function ExplorePage() {
               isLoading={isLoadingData && !isInitialLoad}
               hasUnsavedChanges={hasUnsavedChanges}
               onSave={handleSaveCurrentView}
+              showRowActions={true}
+              onEditRow={handleEditRow}
+              onDeleteRow={handleDeleteRow}
             />
           </div>
         ) : (
@@ -505,6 +595,29 @@ export default function ExplorePage() {
             model={modelDefinition}
             onSubmit={handleSubmitData}
             onCancel={() => setIsAddDataOpen(false)}
+          />
+        </SideDrawer>
+      )}
+      
+      {/* Edit Data Drawer */}
+      {modelDefinition && currentRecord && (
+        <SideDrawer
+          isOpen={isEditDataOpen}
+          onClose={() => {
+            setIsEditDataOpen(false);
+            setCurrentRecord(null);
+          }}
+          title={`Edit Record`}
+        >
+          <ModelDataForm
+            model={modelDefinition}
+            initialData={currentRecord}
+            onSubmit={handleSubmitEditedData}
+            onCancel={() => {
+              setIsEditDataOpen(false);
+              setCurrentRecord(null);
+            }}
+            submitButtonText="Save Changes"
           />
         </SideDrawer>
       )}

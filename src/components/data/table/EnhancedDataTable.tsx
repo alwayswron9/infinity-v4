@@ -50,6 +50,9 @@ interface EnhancedDataTableProps<T> {
   error?: string | null;
   hasUnsavedChanges?: boolean;
   onSave?: () => void;
+  showRowActions?: boolean;
+  onEditRow?: (row: T) => void;
+  onDeleteRow?: (row: T) => void;
 }
 
 interface TableFilter {
@@ -69,6 +72,9 @@ export function EnhancedDataTable<T>({
   error = null,
   hasUnsavedChanges = false,
   onSave,
+  showRowActions = false,
+  onEditRow,
+  onDeleteRow,
 }: EnhancedDataTableProps<T>) {
   // Get valid column IDs
   const validColumnIds = React.useMemo(() => 
@@ -329,40 +335,26 @@ export function EnhancedDataTable<T>({
                   )}
                 </TableHead>
               ))}
+              {/* Add header cell for actions column if actions are enabled */}
+              {showRowActions && (
+                <TableHead key="actions" className="w-[100px]">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
 
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: pagination?.pageSize || 10 }).map((_, index) => (
-                <TableRow key={`loading-${index}`}>
-                  {columns.map((_, colIndex) => (
-                    <TableCell key={`loading-cell-${colIndex}`}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : data.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
-                  No records found
-                </TableCell>
-              </TableRow>
-            ) : (
-              table.getRowModel().rows.map(row => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map(cell => (
-                    <TableCell
-                      key={cell.id}
-                      style={{ width: cell.column.getSize() }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
+            <DataTableBody
+              data={data}
+              rows={table.getRowModel().rows}
+              columns={columns}
+              isLoading={isLoading}
+              pageSize={pagination?.pageSize}
+              showRowActions={showRowActions}
+              onEditRow={onEditRow}
+              onDeleteRow={onDeleteRow}
+            />
           </TableBody>
         </Table>
       </div>

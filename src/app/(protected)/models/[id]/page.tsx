@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeftIcon, SaveIcon } from 'lucide-react';
+import { ArrowLeftIcon, SaveIcon, ClipboardCopyIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { use } from 'react';
@@ -25,6 +25,7 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [model, setModel] = useState<ModelDefinition | null>(null);
+  const [copyingDetails, setCopyingDetails] = useState(false);
 
   useEffect(() => {
     fetchModel();
@@ -119,6 +120,64 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
     }
   };
 
+  const handleCopyModelDetails = async () => {
+    if (!model) return;
+    
+    setCopyingDetails(true);
+    try {
+      const response = await fetch(`/api/models/${id}/details`, {
+        credentials: 'same-origin'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch model details');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch model details');
+      }
+
+      const details = data.data;
+      
+      // Format the details as a readable string
+      const formattedDetails = [
+        `Model: ${details.name}`,
+        `Description: ${details.description}`,
+        `ID: ${details.id}`,
+        `Record Count: ${details.recordCount}`,
+        `Created: ${details.createdAt}`,
+        `Updated: ${details.updatedAt}`,
+        '',
+        'Fields:',
+        ...details.fields.map((field: any) => 
+          `  - ${field.name} (${field.type})${field.required ? ' [Required]' : ''}${field.unique ? ' [Unique]' : ''}`
+        ),
+        '',
+        `Vector Search: ${details.vectorSearch.enabled ? 'Enabled' : 'Disabled'}`,
+        details.vectorSearch.enabled ? `  Source Fields: ${details.vectorSearch.sourceFields.join(', ')}` : '',
+        '',
+        'Relationships:',
+        details.relationships.length > 0 
+          ? details.relationships.map((rel: any) => `  - ${rel.name}: ${rel.type} to ${rel.target_model}`) 
+          : '  None',
+        '',
+        'Indexes:',
+        details.indexes.length > 0 
+          ? details.indexes.map((idx: any) => `  - ${idx.name}: ${idx.fields.join(', ')}`) 
+          : '  None'
+      ].filter(Boolean).join('\n');
+
+      await navigator.clipboard.writeText(formattedDetails);
+      toast.success('Model details copied to clipboard');
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setCopyingDetails(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -137,15 +196,26 @@ export default function EditModelPage({ params }: { params: Promise<{ id: string
         title="Edit Model"
         backHref="/models"
         actions={
-          <button
-            type="submit"
-            form="model-form"
-            disabled={submitting || (model.embedding?.enabled && (!model.embedding.source_fields || model.embedding.source_fields.length === 0))}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            <SaveIcon className="w-5 h-5" />
-            <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyModelDetails}
+              disabled={copyingDetails}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              <ClipboardCopyIcon className="w-4 h-4" />
+              <span>{copyingDetails ? 'Copying...' : 'Copy Details'}</span>
+            </button>
+            <button
+              type="submit"
+              form="model-form"
+              disabled={submitting || (model.embedding?.enabled && (!model.embedding.source_fields || model.embedding.source_fields.length === 0))}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              <SaveIcon className="w-5 h-5" />
+              <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
+            </button>
+          </div>
         }
       />
 
