@@ -11,7 +11,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -21,6 +21,7 @@ interface ModelDataFormProps {
   onSubmit: (data: Record<string, any>) => Promise<void>;
   onCancel: () => void;
   submitButtonText?: string;
+  readOnly?: boolean;
 }
 
 export function ModelDataForm({ 
@@ -28,7 +29,8 @@ export function ModelDataForm({
   initialData, 
   onSubmit, 
   onCancel,
-  submitButtonText = 'Add Data'
+  submitButtonText = 'Add Data',
+  readOnly = false
 }: ModelDataFormProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
@@ -71,6 +73,8 @@ export function ModelDataForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
+    
     setLoading(true);
 
     try {
@@ -85,40 +89,79 @@ export function ModelDataForm({
     }
   };
 
+  // Get all fields from the model definition, excluding system fields
+  const modelFields = Object.entries(model.fields)
+    .filter(([fieldName]) => !fieldName.startsWith('_'))
+    .sort((a, b) => {
+      // Sort by required first, then by field name
+      const aRequired = a[1].required || false;
+      const bRequired = b[1].required || false;
+      
+      if (aRequired && !bRequired) return -1;
+      if (!aRequired && bRequired) return 1;
+      
+      return a[0].localeCompare(b[0]);
+    });
+
   const renderField = (fieldName: string, field: FieldDefinition) => {
     // Skip system fields
     if (fieldName.startsWith('_')) return null;
 
     const handleChange = (value: any) => {
+      if (readOnly) return;
       setFormData(prev => ({ ...prev, [fieldName]: value }));
     };
+
+    const commonInputProps = {
+      disabled: readOnly,
+      className: cn(
+        readOnly && "opacity-90 bg-muted/50 border-0"
+      )
+    };
+
+    const isLink = typeof formData[fieldName] === 'string' && 
+                  (formData[fieldName].startsWith('http://') || 
+                   formData[fieldName].startsWith('https://'));
 
     switch (field.type) {
       case 'string':
         return (
-          <div key={fieldName} className="space-y-2">
-            <Label htmlFor={fieldName}>
+          <div key={fieldName} className="space-y-1.5">
+            <Label htmlFor={fieldName} className="text-sm font-medium text-muted-foreground">
               {fieldName}
               {field.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            <Input
-              id={fieldName}
-              type="text"
-              value={formData[fieldName] || ''}
-              onChange={e => handleChange(e.target.value)}
-              required={field.required}
-              placeholder={field.description}
-            />
+            <div className="relative">
+              <Input
+                id={fieldName}
+                type="text"
+                value={formData[fieldName] || ''}
+                onChange={e => handleChange(e.target.value)}
+                required={field.required}
+                placeholder={field.description}
+                {...commonInputProps}
+              />
+              {readOnly && isLink && formData[fieldName] && (
+                <a 
+                  href={formData[fieldName]} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              )}
+            </div>
             {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
+              <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
             )}
           </div>
         );
 
       case 'number':
         return (
-          <div key={fieldName} className="space-y-2">
-            <Label htmlFor={fieldName}>
+          <div key={fieldName} className="space-y-1.5">
+            <Label htmlFor={fieldName} className="text-sm font-medium text-muted-foreground">
               {fieldName}
               {field.required && <span className="text-destructive ml-1">*</span>}
             </Label>
@@ -129,32 +172,40 @@ export function ModelDataForm({
               onChange={e => handleChange(Number(e.target.value))}
               required={field.required}
               placeholder={field.description}
+              {...commonInputProps}
             />
             {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
+              <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
             )}
           </div>
         );
 
       case 'boolean':
         return (
-          <div key={fieldName} className="flex items-center justify-between space-x-2">
-            <Label htmlFor={fieldName}>
-              {fieldName}
-              {field.required && <span className="text-destructive ml-1">*</span>}
-            </Label>
+          <div key={fieldName} className="flex items-center justify-between py-2">
+            <div>
+              <Label htmlFor={fieldName} className="text-sm font-medium">
+                {fieldName}
+                {field.required && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              {field.description && (
+                <p className="text-xs text-muted-foreground mt-0.5">{field.description}</p>
+              )}
+            </div>
             <Switch
               id={fieldName}
               checked={formData[fieldName] || false}
               onCheckedChange={handleChange}
+              disabled={readOnly}
+              className={cn(readOnly && "cursor-not-allowed")}
             />
           </div>
         );
 
       case 'date':
         return (
-          <div key={fieldName} className="space-y-2">
-            <Label htmlFor={fieldName}>
+          <div key={fieldName} className="space-y-1.5">
+            <Label htmlFor={fieldName} className="text-sm font-medium text-muted-foreground">
               {fieldName}
               {field.required && <span className="text-destructive ml-1">*</span>}
             </Label>
@@ -164,22 +215,29 @@ export function ModelDataForm({
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !formData[fieldName] && "text-muted-foreground"
+                    !formData[fieldName] && "text-muted-foreground",
+                    readOnly && "opacity-90 bg-muted/50 border-0 cursor-default"
                   )}
+                  disabled={readOnly}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {formData[fieldName] ? format(formData[fieldName], 'PPP') : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={formData[fieldName]}
-                  onSelect={handleChange}
-                  initialFocus
-                />
-              </PopoverContent>
+              {!readOnly && (
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData[fieldName]}
+                    onSelect={handleChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              )}
             </Popover>
+            {field.description && (
+              <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
+            )}
           </div>
         );
 
@@ -188,25 +246,42 @@ export function ModelDataForm({
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {Object.entries(model.fields).map(([fieldName, field]) => (
-        renderField(fieldName, field)
-      ))}
+  // Group fields by type for display
+  const fieldsByType = modelFields.reduce((acc, [fieldName, field]) => {
+    if (!acc[field.type]) acc[field.type] = [];
+    acc[field.type].push([fieldName, field]);
+    return acc;
+  }, {} as Record<string, [string, FieldDefinition][]>);
 
-      <div className="flex items-center justify-end space-x-2 pt-4 border-t">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={loading}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Processing...' : submitButtonText}
-        </Button>
+  return (
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Display fields in a clean two-column layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {modelFields.map(([fieldName, field]) => (
+          <div key={fieldName} className={cn(
+            field.type === 'boolean' && "col-span-2",
+            field.type === 'date' && "col-span-2 md:col-span-1"
+          )}>
+            {renderField(fieldName, field)}
+          </div>
+        ))}
       </div>
+
+      {!readOnly && (
+        <div className="flex items-center justify-end space-x-2 pt-4 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Processing...' : submitButtonText}
+          </Button>
+        </div>
+      )}
     </form>
   );
 } 

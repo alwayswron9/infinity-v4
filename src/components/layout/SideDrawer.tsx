@@ -48,26 +48,25 @@ export function SideDrawer({
       {/* Drawer */}
       <div
         className={cn(
-          "fixed right-0 top-0 h-full w-1/2 bg-background z-50",
-          "border-l border-border shadow-lg",
+          "fixed right-0 top-0 h-full w-full md:w-1/2 z-50",
           "transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "translate-x-full",
           className
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+        <div className="record-drawer-header">
+          <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-full p-2 hover:bg-muted transition-colors"
+            className="rounded-full p-2 hover:bg-surface-2 transition-colors text-text-secondary"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 h-[calc(100vh-65px)] overflow-y-auto">
+        <div className="h-[calc(100vh-65px)] overflow-y-auto">
           {children}
         </div>
       </div>

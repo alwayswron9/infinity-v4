@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -20,22 +21,40 @@ export function PaginationControls({
 }: PaginationControlsProps) {
   const pageSizeOptions = [10, 20, 50, 100];
 
-  const startItem = (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
-
+  // Only calculate these values if we have data
+  const startItem = totalItems > 0 ? (currentPage * pageSize) - (pageSize - 1) : 0;
+  const endItem = totalItems > 0 ? Math.min(currentPage * pageSize, totalItems) : 0;
+  
+  // Log pagination props for debugging
+  useEffect(() => {
+    console.log('PaginationControls props:', { 
+      currentPage, 
+      totalPages, 
+      pageSize, 
+      totalItems,
+      startItem,
+      endItem
+    });
+  }, [currentPage, totalPages, pageSize, totalItems, startItem, endItem]);
+  
+  // Always render the controls, even with no data, just make them disabled
+  // This helps ensure they're visible in the UI for debugging
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600">
-          Showing {startItem}-{endItem} of {totalItems} items
-        </span>
+    <div className="pagination-controls">
+      <div className="pagination-info">
+        {totalItems > 0 ? (
+          `Showing ${startItem} to ${endItem} of ${totalItems} ${totalItems === 1 ? 'item' : 'items'}`
+        ) : (
+          'No items to display'
+        )}
+      </div>
+      
+      <div className="flex items-center gap-4">
         <select
+          className="pagination-size-select mr-2"
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className={cn(
-            "h-8 rounded-md border px-2 text-sm",
-            "focus:outline-none focus:ring-1 focus:ring-blue-500"
-          )}
+          disabled={totalItems === 0}
         >
           {pageSizeOptions.map((size) => (
             <option key={size} value={size}>
@@ -43,72 +62,48 @@ export function PaginationControls({
             </option>
           ))}
         </select>
-      </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-          className={cn(
-            "h-8 w-8 rounded-md border flex items-center justify-center",
-            "focus:outline-none focus:ring-1 focus:ring-blue-500",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
-        >
-          <span className="sr-only">First page</span>
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
+        <div className="pagination-actions">
+          <button
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1 || totalPages === 0}
+            className="pagination-page-button"
+          >
+            <span className="sr-only">First page</span>
+            <ChevronsLeft className="h-4 w-4" />
+          </button>
 
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={cn(
-            "h-8 w-8 rounded-md border flex items-center justify-center",
-            "focus:outline-none focus:ring-1 focus:ring-blue-500",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
-        >
-          <span className="sr-only">Previous page</span>
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1 || totalPages === 0}
+            className="pagination-page-button"
+          >
+            <span className="sr-only">Previous page</span>
+            <ChevronLeft className="h-4 w-4" />
+          </button>
 
-        <span className="text-sm text-gray-600">
-          Page {currentPage} of {totalPages}
-        </span>
+          <span className="text-sm text-text-primary px-2">
+            {totalPages > 0 ? `${currentPage} / ${totalPages}` : '0 / 0'}
+          </span>
 
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={cn(
-            "h-8 w-8 rounded-md border flex items-center justify-center",
-            "focus:outline-none focus:ring-1 focus:ring-blue-500",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
-        >
-          <span className="sr-only">Next page</span>
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="pagination-page-button"
+          >
+            <span className="sr-only">Next page</span>
+            <ChevronRight className="h-4 w-4" />
+          </button>
 
-        <button
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className={cn(
-            "h-8 w-8 rounded-md border flex items-center justify-center",
-            "focus:outline-none focus:ring-1 focus:ring-blue-500",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
-        >
-          <span className="sr-only">Last page</span>
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-          </svg>
-        </button>
+          <button
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="pagination-page-button"
+          >
+            <span className="sr-only">Last page</span>
+            <ChevronsRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

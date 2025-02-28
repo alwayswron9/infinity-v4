@@ -1,146 +1,245 @@
 import React from 'react';
-import { flexRender, Header, HeaderGroup } from '@tanstack/react-table';
-import { ArrowUpDown, Filter, Save } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { TableHead, TableRow } from './TableComponents';
-import { TableFilterSelector } from './TableFilterSelector';
-import { ColumnSelector } from './ColumnSelector';
+import { flexRender, Table as TableType, Column, Header } from '@tanstack/react-table';
+import { TableRow, TableHead } from './TableComponents';
 import { Button } from '@/components/ui/button';
-import type { ViewConfig } from '@/types/viewDefinition';
+import { ArrowDownIcon, ArrowUpIcon, ArrowUpDown, Check, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ViewConfig, ViewFilterConfig } from '@/types/viewDefinition';
+import { ColumnSelector } from './ColumnSelector';
+import { FilterButton } from '@/components/data/explore/FilterButton';
+import { FilterDrawer } from '@/components/data/explore/FilterDrawer';
+import { createPortal } from 'react-dom';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 
-interface TableHeaderProps<T> {
-  headerGroups: HeaderGroup<T>[];
+interface DataTableHeaderProps<T> {
+  table: TableType<T>;
   viewConfig: ViewConfig;
   onConfigChange?: (config: Partial<ViewConfig>) => void;
   hasUnsavedChanges?: boolean;
   onSave?: () => void;
+  availableColumns: string[];
 }
 
-export function DataTableHeader<T>({
-  headerGroups,
-  viewConfig,
-  onConfigChange,
-  hasUnsavedChanges = false,
+export function DataTableHeader<T>({ 
+  table, 
+  viewConfig, 
+  onConfigChange, 
+  hasUnsavedChanges = false, 
   onSave,
-}: TableHeaderProps<T>) {
-  const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
+  availableColumns
+}: DataTableHeaderProps<T>) {
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = React.useState(false);
 
-  // Helper function to check if a column has an active filter
-  const hasActiveFilter = React.useCallback((columnId: string) => {
-    return viewConfig.filters.some(f => 
-      f.field === columnId && 
-      f.value != null && 
-      f.value !== ''
+  // Group columns into system and regular fields
+  const { systemFields, regularFields } = React.useMemo(() => {
+    return viewConfig.columns.reduce<{
+      systemFields: typeof viewConfig.columns;
+      regularFields: typeof viewConfig.columns;
+    }>(
+      (acc, column) => {
+        if (column.field.startsWith('_')) {
+          acc.systemFields.push(column);
+        } else {
+          acc.regularFields.push(column);
+        }
+        return acc;
+      },
+      { systemFields: [], regularFields: [] }
+    );
+  }, [viewConfig.columns]);
+  
+  // Check if there are any active filters
+  const hasActiveFilters = React.useMemo(() => {
+    return viewConfig.filters.some(filter => 
+      filter.value !== undefined && 
+      filter.value !== '' && 
+      filter.value !== null
     );
   }, [viewConfig.filters]);
 
+  const toggleFilterDrawer = () => {
+    setIsFilterDrawerOpen(!isFilterDrawerOpen);
+  };
+
+  const applyFilters = (filters: ViewFilterConfig[]) => {
+    if (onConfigChange) {
+      onConfigChange({
+        ...viewConfig,
+        filters
+      });
+    }
+    setIsFilterDrawerOpen(false);
+  };
+
+  // Handle column visibility toggle
+  const handleColumnToggle = (field: string, checked: boolean) => {
+    if (onConfigChange) {
+      const newColumns = [...viewConfig.columns];
+      const index = newColumns.findIndex(col => col.field === field);
+      if (index !== -1) {
+        newColumns[index] = {
+          ...newColumns[index],
+          visible: checked
+        };
+        onConfigChange({
+          ...viewConfig,
+          columns: newColumns
+        });
+      }
+    }
+  };
+
+  // Filter available columns to only show ones relevant for filtering
+  const filterFields = React.useMemo(() => {
+    // Sort alphabetically and filter out system fields unless they're explicitly included in the model
+    return [...availableColumns].sort((a, b) => {
+      // First, non-system fields
+      const aIsSystem = a.startsWith('_');
+      const bIsSystem = b.startsWith('_');
+      
+      if (aIsSystem && !bIsSystem) return 1;
+      if (!aIsSystem && bIsSystem) return -1;
+      
+      // Then alphabetically
+      return a.localeCompare(b);
+    });
+  }, [availableColumns]);
+
+  // Function to render filter drawer using portal, ensuring it's outside the table DOM
+  const renderFilterDrawer = () => {
+    if (typeof window === 'undefined') return null;
+    
+    return createPortal(
+      <FilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        currentFilters={viewConfig.filters}
+        availableFields={filterFields}
+        onApply={applyFilters}
+      />,
+      document.body
+    );
+  };
+
   return (
     <>
-      {/* Controls Row */}
-      <TableRow>
-        <TableHead colSpan={headerGroups[0]?.headers.length || 1} className="bg-background border-b">
-          <div className="flex items-center justify-between py-2">
-            <div className="flex items-center gap-2">
-              <ColumnSelector
-                viewConfig={viewConfig}
-                onConfigChange={onConfigChange}
-              />
-            </div>
-            <Button
-              onClick={onSave}
-              variant={hasUnsavedChanges ? "default" : "secondary"}
-              size="sm"
-              disabled={!hasUnsavedChanges}
-              className="gap-2"
-            >
-              <Save className="h-4 w-4" />
-              <span>Save Changes</span>
-            </Button>
-          </div>
-        </TableHead>
-      </TableRow>
-
-      {/* Column Headers Row */}
-      <TableRow>
-        {headerGroups[0]?.headers.map((header) => (
-          <TableHead key={header.id}>
-            {header.isPlaceholder ? null : (
-              <div className="relative py-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "flex items-center gap-1.5 flex-1 min-w-0",
-                      header.column.getCanSort() && "cursor-pointer select-none",
-                    )}
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    <span className="truncate font-medium">
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                    </span>
-                    {header.column.getCanSort() && (
-                      <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
+      <div className="table-controls">
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                Columns
+                <ChevronDown className="ml-1 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[240px]">
+              {regularFields.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-medium text-text-secondary/70">
+                    Model Fields
                   </div>
-                  {header.column.getCanFilter() && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveFilter(activeFilter === header.id ? null : header.id);
+                  {regularFields.map((column) => (
+                    <DropdownMenuItem
+                      key={column.field}
+                      className="flex items-center gap-2 px-2 py-1.5 cursor-pointer"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleColumnToggle(column.field, !column.visible);
                       }}
-                      className={cn(
-                        "flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md",
-                        "hover:bg-background transition-colors",
-                        (activeFilter === header.id || hasActiveFilter(header.column.id)) && 
-                          "bg-primary text-primary-foreground hover:bg-primary/90",
-                        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                      )}
                     >
-                      <Filter className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                {activeFilter === header.id && header.column.getCanFilter() && (
-                  <div className="absolute left-0 mt-1 z-50">
-                    <TableFilterSelector
-                      field={header.column.id}
-                      value={(header.column.getFilterValue() as string) ?? ""}
-                      operator={(viewConfig.filters.find(f => f.field === header.column.id))?.operator || 'contains'}
-                      onChange={(value, operator) => {
-                        header.column.setFilterValue(value);
-                        if (onConfigChange) {
-                          const newFilters = [...viewConfig.filters];
-                          const existingFilterIndex = newFilters.findIndex(f => f.field === header.column.id);
-                          if (existingFilterIndex >= 0) {
-                            newFilters[existingFilterIndex] = {
-                              ...newFilters[existingFilterIndex],
-                              value,
-                              operator
-                            };
-                          } else {
-                            newFilters.push({
-                              field: header.column.id,
-                              value,
-                              operator,
-                              conjunction: 'and'
-                            });
-                          }
-                          onConfigChange({
-                            ...viewConfig,
-                            filters: newFilters
-                          });
-                        }
-                      }}
-                    />
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 flex items-center justify-center">
+                          {column.visible && <Check className="h-4 w-4" />}
+                        </div>
+                        <span>{column.field}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+
+              {systemFields.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 text-xs font-medium text-text-secondary/70">
+                    System Fields
                   </div>
-                )}
-              </div>
+                  {systemFields.map((column) => (
+                    <DropdownMenuItem
+                      key={column.field}
+                      className="flex items-center gap-2 px-2 py-1.5 cursor-pointer"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleColumnToggle(column.field, !column.visible);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 flex items-center justify-center">
+                          {column.visible && <Check className="h-4 w-4" />}
+                        </div>
+                        <span>{column.field.startsWith('_') ? column.field.slice(1) : column.field}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button
+            variant={hasActiveFilters ? "default" : "outline"}
+            size="sm"
+            onClick={toggleFilterDrawer}
+            className={cn(
+              "whitespace-nowrap",
+              hasActiveFilters && "bg-brand-primary text-white"
             )}
-          </TableHead>
-        ))}
-      </TableRow>
+          >
+            <FilterButton active={hasActiveFilters} />
+            Filters {hasActiveFilters && `(${viewConfig.filters.length})`}
+          </Button>
+          
+          {hasUnsavedChanges && onSave && (
+            <Button
+              size="sm"
+              onClick={onSave}
+            >
+              Save Changes
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Render filter drawer using portal */}
+      {isFilterDrawerOpen && renderFilterDrawer()}
     </>
   );
+}
+
+// Helper to render the appropriate sort indicator
+function renderSortIndicator<T>(header: Header<T, unknown>) {
+  if (!header.column.getCanSort()) {
+    return null;
+  }
+  
+  const sorted = header.column.getIsSorted();
+  
+  if (sorted === 'asc') {
+    return <ArrowUpIcon className="h-4 w-4" />;
+  } else if (sorted === 'desc') {
+    return <ArrowDownIcon className="h-4 w-4" />;
+  } else {
+    return <ArrowUpDown className="h-4 w-4 opacity-50" />;
+  }
 } 

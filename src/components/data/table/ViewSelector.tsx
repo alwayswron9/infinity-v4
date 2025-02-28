@@ -59,7 +59,7 @@ export function ViewSelector({
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="view-selector relative" ref={ref}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoading}
@@ -67,61 +67,65 @@ export function ViewSelector({
           "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md border",
           "transition-colors duration-200",
           isOpen
-            ? "bg-primary text-primary-foreground border-primary"
-            : "bg-surface text-text-primary border-border-primary hover:bg-surface-hover",
-          "focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-focus"
+            ? "bg-brand-primary text-white border-brand-primary"
+            : "bg-surface-1 text-text-primary border-border hover:bg-surface-2",
+          "focus:outline-none focus:ring-1 focus:ring-brand-primary"
         )}
       >
-        <span className="truncate">{activeView?.name || 'Select View'}</span>
+        <span className="truncate max-w-[150px]">{activeView?.name || 'Select View'}</span>
         <ChevronDown className="h-4 w-4" />
       </button>
 
       {isOpen && !isLoading && (
-        <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[240px] rounded-md border border-border-primary bg-surface shadow-lg">
-          <div className="p-2 border-b border-border-primary">
-            <h3 className="font-medium text-text-primary">Views</h3>
+        <div className="view-dropdown">
+          <div className="p-2 border-b border-border">
+            <h3 className="font-medium text-text-primary text-sm">Views</h3>
           </div>
           <div className="max-h-[300px] overflow-y-auto p-1">
             {views.map((view) => (
               <div
                 key={view.id}
                 className={cn(
-                  "flex items-center justify-between px-3 py-2 text-sm rounded-md",
-                  "hover:bg-surface-hover",
-                  "transition-colors duration-200",
-                  view.id === activeViewId && "bg-surface-hover"
+                  "view-option",
+                  view.id === activeViewId && "active-view"
                 )}
               >
                 <button
-                  className="flex-1 text-left text-text-primary"
+                  className="flex-1 text-left truncate"
                   onClick={() => {
                     onViewSelect(view.id);
                     setIsOpen(false);
                   }}
                 >
                   {view.name}
+                  {view.is_default && (
+                    <span className="ml-2 text-xs text-text-tertiary">(Default)</span>
+                  )}
                 </button>
-                {views.length > 1 && !view.is_default && (
-                  <button
-                    onClick={(e) => handleDeleteView(view.id, e)}
-                    className="ml-2 p-1 rounded-sm hover:bg-destructive/10 text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
+                <button
+                  onClick={(e) => handleDeleteView(view.id, e)}
+                  className={cn(
+                    "p-1 rounded-full hover:bg-surface-3 text-text-tertiary hover:text-status-error",
+                    (views.length <= 1 || (view.is_default && views.length === 1)) && "opacity-50 cursor-not-allowed"
+                  )}
+                  disabled={views.length <= 1 || (view.is_default && views.length === 1)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span className="sr-only">Delete view</span>
+                </button>
               </div>
             ))}
           </div>
-          <div className="mt-1 border-t border-border-primary pt-1">
+          <div className="p-2 border-t border-border">
             <button
               onClick={() => {
                 onCreateView();
                 setIsOpen(false);
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-hover text-text-primary"
+              className="flex items-center gap-1 w-full p-2 text-sm text-text-primary hover:bg-surface-2 rounded-md"
             >
               <Plus className="h-4 w-4" />
-              <span>New View</span>
+              New View
             </button>
           </div>
         </div>

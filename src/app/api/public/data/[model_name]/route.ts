@@ -166,23 +166,78 @@ export async function PUT(
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
 
-      if (!id) {
-        return NextResponse.json(
-          { error: 'Record ID is required' },
-          { status: 400 }
-        );
-      }
-
       const model = await modelService.getModelDefinitionByName(model_name, user_id);
-
       const dataService = new PostgresDataService(model);
 
       const body = await req.json();
-      const record = await dataService.updateRecord(id, body);
+      
+      // Check if this is a bulk update request (array of objects)
+      if (Array.isArray(body)) {
+        if (body.length === 0) {
+          return NextResponse.json(
+            { error: 'Empty array provided. At least one record is required.' },
+            { status: 400 }
+          );
+        }
+        
+        // Process each record in the array
+        const results = [];
+        const errors = [];
+        
+        for (let i = 0; i < body.length; i++) {
+          try {
+            const item = body[i];
+            
+            // Each item must have an id
+            if (!item.id) {
+              throw new Error('Each item must contain an id field');
+            }
+            
+            // Remove any vector data from the input
+            const { _vector, ...updateData } = item;
+            
+            const record = await dataService.updateRecord(item.id, updateData);
+            
+            // Exclude vector data from response
+            const { _vector: responseVector, ...recordWithoutVector } = record;
+            results.push(recordWithoutVector);
+          } catch (error: any) {
+            errors.push({
+              index: i,
+              error: error.message || 'Failed to update record',
+              data: body[i]
+            });
+          }
+        }
+        
+        return NextResponse.json({
+          success: errors.length === 0,
+          data: results,
+          errors: errors.length > 0 ? errors : undefined,
+          meta: {
+            total: body.length,
+            succeeded: results.length,
+            failed: errors.length
+          }
+        }, { status: errors.length === 0 ? 200 : 207 });
+      } else {
+        // Single record update (existing functionality)
+        if (!id) {
+          return NextResponse.json(
+            { error: 'Record ID is required' },
+            { status: 400 }
+          );
+        }
 
-      // Exclude vector data
-      const { _vector, ...recordWithoutVector } = record;
-      return NextResponse.json({ success: true, data: recordWithoutVector });
+        // Remove any vector data from the input
+        const { _vector, ...updateData } = body;
+        
+        const record = await dataService.updateRecord(id, updateData);
+
+        // Exclude vector data from response
+        const { _vector: responseVector, ...recordWithoutVector } = record;
+        return NextResponse.json({ success: true, data: recordWithoutVector });
+      }
     } catch (error: any) {
       console.error('Error updating record:', error);
       return NextResponse.json(

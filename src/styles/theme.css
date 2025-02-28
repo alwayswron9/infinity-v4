@@ -13,8 +13,8 @@
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -22,12 +22,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--secondary);
-  border-radius: 4px;
+  background: var(--muted);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--secondary-hover);
+  background: var(--secondary);
 }
 
 /* Focus outline styles */
@@ -40,4 +40,71 @@
 ::selection {
   background: var(--primary);
   color: var(--primary-foreground);
+}
+
+/* Modern UI specific styles */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+/* Status indicators */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-indicator::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.status-indicator.active::before {
+  background-color: var(--success);
+}
+
+.status-indicator.inactive::before {
+  background-color: var(--secondary);
+}
+
+.status-indicator.new::before {
+  background-color: var(--primary);
+}
+
+/* Modern buttons */
+.btn-modern {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.btn-modern.primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn-modern.primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-modern.secondary {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+
+.btn-modern.secondary:hover {
+  background-color: var(--surface-hover);
 } 

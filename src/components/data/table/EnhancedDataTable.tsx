@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,11 +14,11 @@ import {
 } from '@tanstack/react-table';
 import type { ViewConfig } from '@/types/viewDefinition';
 import { PaginationControls } from './PaginationControls';
-import { TableFilterSelector } from './TableFilterSelector';
 import { ArrowUpDown, Filter, Columns, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Table,
+  TableContainer,
   TableHeader,
   TableBody,
   TableRow,
@@ -53,6 +53,7 @@ interface EnhancedDataTableProps<T> {
   showRowActions?: boolean;
   onEditRow?: (row: T) => void;
   onDeleteRow?: (row: T) => void;
+  availableColumns?: string[];
 }
 
 interface TableFilter {
@@ -60,6 +61,11 @@ interface TableFilter {
   value: any;
   operator: 'equals' | 'notEquals' | 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'in' | 'notIn' | 'isNull' | 'isNotNull';
 }
+
+const tableStyles = {
+  width: '100%',
+  tableLayout: 'fixed' as const,
+};
 
 export function EnhancedDataTable<T>({
   data,
@@ -75,7 +81,37 @@ export function EnhancedDataTable<T>({
   showRowActions = false,
   onEditRow,
   onDeleteRow,
+  availableColumns = [],
 }: EnhancedDataTableProps<T>) {
+  // Log pagination data for debugging
+  useEffect(() => {
+    console.log('EnhancedDataTable pagination:', pagination);
+  }, [pagination]);
+
+  // Process columns to apply appropriate widths and classes
+  const processedColumns = React.useMemo(() => {
+    return columns.map(column => {
+      const columnKey = 'accessorKey' in column ? String(column.accessorKey) : String(column.id);
+      
+      // Apply special classes for specific columns
+      let className = '';
+      if (columnKey === '_id') {
+        className = 'id-column';
+      } else if (columnKey.startsWith('_')) {
+        className = 'meta-column';
+      }
+      
+      // Combine with existing meta
+      return {
+        ...column,
+        meta: {
+          ...column.meta,
+          className
+        }
+      };
+    });
+  }, [columns]);
+
   // Get valid column IDs
   const validColumnIds = React.useMemo(() => 
     new Set(columns.map(col => {
@@ -86,6 +122,33 @@ export function EnhancedDataTable<T>({
     })), 
     [columns]
   );
+
+  // Get all filterable fields from the model data and view config
+  const filterableColumns = React.useMemo(() => {
+    // Start with all available columns from the model
+    let fieldsFromModel = [...availableColumns];
+    
+    // Add any additional fields defined in the view config
+    if (viewConfig?.columns?.length) {
+      const fieldsFromConfig = viewConfig.columns
+        .filter(col => col.filterable)
+        .map(col => col.field);
+      
+      // Combine and deduplicate
+      fieldsFromModel = [...new Set([...fieldsFromModel, ...fieldsFromConfig])];
+    }
+    
+    // If we have actual data, extract fields from the first data item
+    if (data.length > 0) {
+      const firstItem = data[0];
+      const fieldsFromData = Object.keys(firstItem as Record<string, any>);
+      
+      // Add fields found in data but not in model definition or view config
+      fieldsFromModel = [...new Set([...fieldsFromModel, ...fieldsFromData])];
+    }
+    
+    return fieldsFromModel;
+  }, [availableColumns, viewConfig.columns, data]);
 
   // Convert view filters to table filters
   const viewFiltersToTableFilters = React.useCallback((filters: typeof viewConfig.filters): TableFilter[] => {
@@ -129,6 +192,13 @@ export function EnhancedDataTable<T>({
       f.value !== ''
     );
   }, [viewConfig.filters]);
+
+  // Row click handler
+  const handleRowClick = React.useCallback((row: T) => {
+    if (onEditRow) {
+      onEditRow(row);
+    }
+  }, [onEditRow]);
 
   const table = useReactTable({
     data,
@@ -226,152 +296,153 @@ export function EnhancedDataTable<T>({
     };
   }, []);
 
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
-    <Card className="flex flex-col h-full">
-      {/* Controls Header */}
-      <div className="px-4 py-3 border-b">
-        <div className="flex items-center justify-between">
-          <ColumnSelector
+    <div className="enhanced-data-table">
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : (
+        <Card className="h-full flex flex-col overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Table controls */}
+          <DataTableHeader
+            table={table}
             viewConfig={viewConfig}
             onConfigChange={onConfigChange}
+            hasUnsavedChanges={hasUnsavedChanges}
+            onSave={onSave}
+            availableColumns={filterableColumns}
           />
-          <Button
-            onClick={onSave}
-            variant={hasUnsavedChanges ? "default" : "secondary"}
-            size="sm"
-            disabled={!hasUnsavedChanges}
-            className="gap-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>Save Changes</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="flex-1 min-h-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {table.getFlatHeaders().map((header) => (
-                <TableHead key={header.id} style={{ width: header.getSize() }}>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex items-center gap-1.5 flex-1 min-w-0",
-                        header.column.getCanSort() && "cursor-pointer select-none",
-                      )}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <span className="truncate">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                      </span>
-                      {header.column.getCanSort() && (
-                        <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      )}
-                    </div>
-                    {header.column.getCanFilter() && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveFilter(activeFilter === header.id ? null : header.id);
-                        }}
-                        className={cn(
-                          "flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md",
-                          "hover:bg-muted transition-colors",
-                          (activeFilter === header.id || hasActiveFilter(header.column.id)) && 
-                            "bg-primary text-primary-foreground hover:bg-primary/90",
-                          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                        )}
-                      >
-                        <Filter className="h-3.5 w-3.5" />
-                      </button>
+          
+          {/* Table content with new structure */}
+          <Table>
+            <TableContainer>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      // Apply column-specific classes
+                      const columnMeta = header.column.columnDef.meta as { className?: string } | undefined;
+                      const className = columnMeta?.className || '';
+                      
+                      return (
+                        <TableHead key={header.id} className={className}>
+                          {header.isPlaceholder ? null : (
+                            <div>
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </div>
+                          )}
+                        </TableHead>
+                      );
+                    })}
+                    {/* Add action column header if actions are enabled */}
+                    {showRowActions && (
+                      <TableHead className="action-column text-right">
+                        Actions
+                      </TableHead>
                     )}
-                  </div>
-                  {activeFilter === header.id && header.column.getCanFilter() && (
-                    <div className="absolute left-0 mt-2 z-50">
-                      <TableFilterSelector
-                        field={header.column.id}
-                        value={(header.column.getFilterValue() as string) ?? ""}
-                        operator={(viewConfig.filters.find(f => f.field === header.column.id))?.operator || 'contains'}
-                        onChange={(value, operator) => {
-                          header.column.setFilterValue(value);
-                          if (onConfigChange) {
-                            const newFilters = [...viewConfig.filters];
-                            const existingFilterIndex = newFilters.findIndex(f => f.field === header.column.id);
-                            if (existingFilterIndex >= 0) {
-                              newFilters[existingFilterIndex] = {
-                                ...newFilters[existingFilterIndex],
-                                value,
-                                operator
-                              };
-                            } else {
-                              newFilters.push({
-                                field: header.column.id,
-                                value,
-                                operator,
-                                conjunction: 'and'
-                              });
-                            }
-                            onConfigChange({
-                              ...viewConfig,
-                              filters: newFilters
-                            });
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-                </TableHead>
-              ))}
-              {/* Add header cell for actions column if actions are enabled */}
-              {showRowActions && (
-                <TableHead key="actions" className="w-[100px]">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <DataTableBody
-              data={data}
-              rows={table.getRowModel().rows}
-              columns={columns}
-              isLoading={isLoading}
-              pageSize={pagination?.pageSize}
-              showRowActions={showRowActions}
-              onEditRow={onEditRow}
-              onDeleteRow={onDeleteRow}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
+                      {Array.from({ length: columns.length }).map((_, cellIndex) => {
+                        // Apply column-specific classes to skeleton cells
+                        const columnMeta = columns[cellIndex] && 'meta' in columns[cellIndex] 
+                          ? columns[cellIndex].meta as { className?: string } | undefined
+                          : undefined;
+                        const className = columnMeta?.className || '';
+                        
+                        return (
+                          <TableCell key={`skeleton-cell-${cellIndex}`} className={className}>
+                            <Skeleton className="h-6 w-full" />
+                          </TableCell>
+                        );
+                      })}
+                      {showRowActions && (
+                        <TableCell className="action-column">
+                          <Skeleton className="h-6 w-full" />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                ) : table.getRowModel().rows.length > 0 ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow 
+                      key={row.id} 
+                      onClick={() => handleRowClick(row.original)}
+                      className="cursor-pointer"
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        // Apply column-specific classes
+                        const columnMeta = cell.column.columnDef.meta as { className?: string } | undefined;
+                        const className = columnMeta?.className || '';
+                        
+                        return (
+                          <TableCell key={cell.id} className={className}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        );
+                      })}
+                      {showRowActions && (
+                        <TableCell className="action-column text-right" onClick={(e) => e.stopPropagation()}>
+                          {onDeleteRow && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="delete-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteRow(row.original);
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell 
+                      colSpan={columns.length + (showRowActions ? 1 : 0)} 
+                      className="text-center py-8"
+                    >
+                      No results found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </TableContainer>
+          </Table>
+          
+          {/* Pagination */}
+          <div className="mt-auto">
+            <PaginationControls
+              currentPage={pagination ? pagination.pageIndex + 1 : 1}
+              totalPages={pagination ? pagination.pageCount : 0}
+              pageSize={pagination ? pagination.pageSize : 10}
+              totalItems={pagination ? pagination.total : 0}
+              onPageChange={(page) => {
+                if (onPaginationChange && pagination) {
+                  onPaginationChange(page - 1, pagination.pageSize);
+                }
+              }}
+              onPageSizeChange={(size) => {
+                if (onPaginationChange && pagination) {
+                  onPaginationChange(0, size);
+                }
+              }}
             />
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination Footer */}
-      {pagination && (
-        <div className="px-4 py-3 border-t">
-          <PaginationControls
-            currentPage={Math.max(1, (pagination.pageIndex || 0) + 1)}
-            totalPages={Math.max(1, pagination.pageCount)}
-            pageSize={pagination.pageSize}
-            totalItems={pagination.total}
-            onPageChange={(page) => onPaginationChange?.(page - 1, pagination.pageSize)}
-            onPageSizeChange={(size) => onPaginationChange?.(0, size)}
-          />
-        </div>
+          </div>
+        </Card>
       )}
-    </Card>
+    </div>
   );
 } 
