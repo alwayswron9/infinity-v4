@@ -26,10 +26,10 @@ export default function Sidebar() {
       sessionStorage.clear();
       
       // Force reload to clear any cached state
-      window.location.replace('/login');
+      window.location.replace('/');
     } catch (error) {
       console.error('Logout failed:', error);
-      window.location.replace('/login');
+      window.location.replace('/');
     }
   };
 
