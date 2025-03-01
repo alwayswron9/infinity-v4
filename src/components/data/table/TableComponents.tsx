@@ -1,96 +1,115 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-// Basic table components
+// Core table wrapper component - responsible for the overall table layout
 export function Table({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("relative w-full h-full flex flex-col", className)}>
-      <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse table-fixed">
-          {props.children}
-        </table>
-      </div>
+    <div className={cn("table-root w-full h-full flex flex-col", className)}>
+      {props.children}
     </div>
   );
 }
 
+// Table content wrapper - responsible for scrolling behavior
+export function TableContainer({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("table-container flex-1 overflow-auto", className)}>
+      <table className="w-full table-fixed border-collapse">
+        {props.children}
+      </table>
+    </div>
+  );
+}
+
+// Table header components
 export function TableHeader({
   className,
   ...props
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead
-      className={cn(
-        "sticky top-0 z-20 bg-background",
-        className
-      )}
-      {...props}
-    />
+    <thead className={cn("table-header sticky top-0 z-10", className)}>
+      {props.children}
+    </thead>
   );
 }
 
+// Table body component
 export function TableBody({
   className,
   ...props
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <tbody
-      className={cn(
-        "divide-y divide-border bg-background",
-        className
-      )}
-      {...props}
-    />
+    <tbody className={cn("table-body", className)}>
+      {props.children}
+    </tbody>
   );
 }
 
+// Table row component
 export function TableRow({
   className,
   ...props
 }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr
-      className={cn(
-        "transition-colors hover:bg-muted",
-        "data-[state=selected]:bg-muted",
-        className
-      )}
-      {...props}
-    />
+    <tr className={cn("table-row hover:bg-surface-2 transition-colors", className)}>
+      {props.children}
+    </tr>
   );
 }
 
+// Table header cell component
 export function TableHead({
   className,
   ...props
-}: React.ThHTMLAttributes<HTMLTableCellElement>) {
+}: React.HTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn(
-        "h-10 px-4 text-left bg-background border-b",
-        "align-middle font-medium text-muted-foreground text-sm",
-        "[&:has([role=checkbox])]:pr-0",
-        "first:rounded-tl-md last:rounded-tr-md",
-        className
-      )}
+      className={cn("table-header-cell bg-surface-1 text-text-primary font-medium py-3 px-4 text-left", className)}
       {...props}
-    />
+    >
+      {props.children}
+    </th>
   );
+}
+
+// Table data cell component
+interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  colSpan?: number;
 }
 
 export function TableCell({
   className,
+  colSpan,
   ...props
-}: React.TdHTMLAttributes<HTMLTableCellElement>) {
+}: TableCellProps) {
   return (
-    <td
+    <td 
+      className={cn("table-cell py-3 px-4 text-sm text-text-secondary", className)} 
+      colSpan={colSpan}
+      {...props}
+    >
+      <div className="cell-content truncate">
+        {props.children}
+      </div>
+    </td>
+  );
+}
+
+// Skeleton component for loading states
+export function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
       className={cn(
-        "px-4 py-2.5 align-middle text-sm",
-        "[&:has([role=checkbox])]:pr-0",
-        "break-words",
+        "animate-pulse rounded-md bg-surface-2",
         className
       )}
       {...props}
@@ -106,7 +125,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-background",
+        "bg-surface-1 rounded-md shadow-sm w-full h-full flex flex-col",
         className
       )}
       {...props}
@@ -114,39 +133,20 @@ export function Card({
   );
 }
 
-// Basic skeleton component
-export function Skeleton({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn(
-        "animate-pulse rounded-md bg-muted",
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-// Basic alert components
+// Alert component
 export function Alert({
   className,
-  variant = "default",
+  variant = 'default',
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive'
 }) {
   return (
     <div
+      role="alert"
       className={cn(
-        "rounded-lg border p-4",
-        {
-          "bg-destructive/10 text-destructive border-destructive/20":
-            variant === "destructive",
-          "bg-background border-border": variant === "default",
-        },
+        "p-4 rounded-md",
+        variant === 'destructive' && "bg-status-error bg-opacity-10 text-status-error",
         className
       )}
       {...props}
@@ -154,13 +154,14 @@ export function Alert({
   );
 }
 
+// Alert description
 export function AlertDescription({
   className,
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <div
-      className={cn("text-sm [&_p]:leading-relaxed", className)}
+      className={cn("text-sm", className)}
       {...props}
     />
   );
@@ -172,10 +173,9 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     <input
       ref={ref}
       className={cn(
-        "flex h-9 w-full rounded-md border bg-background",
-        "px-3 py-1 text-sm shadow-sm",
-        "focus:outline-none focus:ring-1 focus:ring-ring",
-        "placeholder:text-muted-foreground",
+        "flex h-9 w-full rounded-md bg-surface-1 px-3 py-1 text-sm",
+        "focus:outline-none focus:ring-1 focus:ring-brand-primary",
+        "placeholder:text-text-tertiary",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}

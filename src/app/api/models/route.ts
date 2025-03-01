@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest, createErrorResponse } from '@/lib/api/middleware';
 import { ModelService } from '@/lib/models/modelService';
 import { CreateModelDefinitionInput, UpdateModelDefinitionInput } from '@/types/modelDefinition';
+import { PostgresDataService } from '@/lib/data/postgresDataService';
 
 const modelService = new ModelService();
 
@@ -23,11 +24,28 @@ async function handleGet(req: AuthenticatedRequest) {
         return createErrorResponse('Unauthorized', 403);
       }
 
-      return NextResponse.json({ success: true, data: model });
+      // Get record count using PostgresDataService
+      const dataService = new PostgresDataService(model);
+      const { total: recordCount } = await dataService.listRecords({ page: 1, limit: 1 });
+      
+      return NextResponse.json({ 
+        success: true, 
+        data: { ...model, recordCount } 
+      });
     } else {
       // List all model definitions for user
       const models = await modelService.listModelDefinitions(userId);
-      return NextResponse.json({ success: true, data: models });
+      
+      // Get record counts for all models
+      const modelsWithCounts = await Promise.all(
+        models.map(async (model) => {
+          const dataService = new PostgresDataService(model);
+          const { total: recordCount } = await dataService.listRecords({ page: 1, limit: 1 });
+          return { ...model, recordCount };
+        })
+      );
+
+      return NextResponse.json({ success: true, data: modelsWithCounts });
     }
   } catch (error: any) {
     console.error('Error fetching model definition(s):', error);

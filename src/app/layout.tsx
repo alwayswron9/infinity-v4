@@ -1,18 +1,18 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "@/styles/globals.css";
+import "./globals.css";
+import "./models.css";
+import "./explore.css";
 import "@/styles/theme.css";
 import "@/styles/calendar.css";
-import { Providers } from './providers';
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  display: 'swap',
-});
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { Providers } from "./providers";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Infinity",
-  description: "Infinity - Data Service",
+  description: "Your data is infinite.",
 };
 
 export default function RootLayout({

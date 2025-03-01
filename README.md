@@ -20,6 +20,23 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Documentation
+
+Comprehensive documentation is available in the [docs](/docs) directory, covering:
+- [Project Overview](/docs/project-overview.md)
+- [Getting Started](/docs/getting-started.md)
+- [Architecture](/docs/architecture.md)
+- [Components](/docs/components.md)
+- [API Reference](/docs/api-reference.md)
+- [Database](/docs/database.md)
+- [Authentication](/docs/authentication.md)
+- [Deployment](/docs/deployment.md)
+- [License](/docs/license.md)
+
+## License
+
+Infinity v4 is licensed under a custom OSS-like license that permits personal use, business use, and agency use while restricting white-labeling and reselling of the software. For complete details, see the [LICENSE.md](/LICENSE.md) file and the [License documentation](/docs/license.md).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

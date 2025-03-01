@@ -68,9 +68,25 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
         limit: String(limit),
       });
 
-      // Add filters if present
+      // Process and add filters if present
       if (currentView?.config?.filters?.length) {
-        params.append('filters', JSON.stringify(currentView.config.filters));
+        // Filter out any inactive filters (ones without values)
+        const activeFilters = currentView.config.filters.filter(
+          filter => {
+            // Consider a filter active if it has a value or is using isNull/isNotNull operators
+            return (
+              filter.value !== undefined && 
+              filter.value !== '' && 
+              filter.value !== null
+            ) || 
+            filter.operator === 'isNull' || 
+            filter.operator === 'isNotNull';
+          }
+        );
+        
+        if (activeFilters.length > 0) {
+          params.append('filters', JSON.stringify(activeFilters));
+        }
       }
 
       // Add sorting if present
@@ -91,17 +107,47 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
       }
       const modelData = await response.json();
       
+      // Log the response for debugging
+      console.log('API Response:', modelData);
+      
+      // Ensure data is an array even if empty
       setData(modelData.data || []);
-      setPagination({
+      
+      // Calculate pagination values
+      const totalItems = modelData.meta.total || 0;
+      const totalPages = Math.ceil(totalItems / limit) || 1;
+      
+      // Set pagination with calculated values
+      const newPagination = {
         pageIndex: page - 1,
         pageSize: limit,
-        pageCount: Math.ceil(modelData.meta.total / limit),
-        total: modelData.meta.total
-      });
+        pageCount: totalPages,
+        total: totalItems
+      };
+      
+      console.log('Setting pagination:', newPagination);
+      setPagination(newPagination);
       
       // Extract available columns from the first data item
       if (modelData.data?.length > 0) {
         const allColumns = Object.keys(modelData.data[0]);
+        const [system, regular] = allColumns.reduce<[string[], string[]]>(
+          ([sys, reg], key) => {
+            if (isSystemField(key)) {
+              sys.push(key);
+            } else {
+              reg.push(key);
+            }
+            return [sys, reg];
+          },
+          [[], []]
+        );
+        
+        setSystemColumns(system);
+        setAvailableColumns(regular);
+      } else if (modelData.schema?.fields) {
+        // If no data, try to get columns from the schema
+        const allColumns = Object.keys(modelData.schema.fields);
         const [system, regular] = allColumns.reduce<[string[], string[]]>(
           ([sys, reg], key) => {
             if (isSystemField(key)) {

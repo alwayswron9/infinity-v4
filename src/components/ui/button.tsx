@@ -4,23 +4,24 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background',
+  'btn-base',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'underline-offset-4 hover:underline text-primary',
-        tertiary: 'text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+        default: 'bg-brand-primary text-white hover:bg-brand-tertiary',
+        primary: 'bg-brand-primary text-white hover:bg-brand-tertiary',
+        destructive: 'bg-status-error text-white shadow hover:opacity-90',
+        outline: 'border border-surface-2 bg-transparent hover:bg-surface-1 hover:text-text-primary',
+        secondary: 'bg-surface-1 text-text-primary border border-surface-2 hover:bg-surface-2',
+        tertiary: 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-1 border-0 shadow-none',
+        ghost: 'text-text-secondary hover:bg-surface-1 hover:text-text-primary border-0 shadow-none',
+        link: 'text-text-primary underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-9 px-4 py-2',
-        sm: 'h-8 px-3 rounded-md',
-        lg: 'h-10 px-8 rounded-md',
-        icon: 'h-9 w-9 p-0',
+        sm: 'h-8 rounded-md px-3 text-xs',
+        lg: 'h-10 rounded-md px-8',
+        icon: 'h-9 w-9',
       },
     },
     defaultVariants: {

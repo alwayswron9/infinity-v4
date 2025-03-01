@@ -84,111 +84,119 @@ export function AuthForm({ mode }: AuthFormProps) {
   // Helper to get input error state
   const getInputErrorClass = (fieldName: string) => 
     error?.field === fieldName 
-      ? 'border-status-error focus:border-status-error focus:ring-status-error/30' 
-      : 'border-border focus:border-border-focus focus:ring-primary-focus/30';
+      ? 'border-status-error focus:border-status-error' 
+      : 'border-transparent focus:border-brand-primary/20';
+
+  const inputClasses = "w-full px-4 py-2 mb-3 text-sm bg-surface-1 border-b border-border-primary placeholder-text-tertiary text-text-primary focus:outline-none focus:ring-0 transition-colors duration-200";
 
   return (
-    <div className="sm:mx-auto sm:w-full sm:max-w-md">
-      <div className="bg-surface py-8 px-4 shadow-soft-md sm:rounded-lg sm:px-10">
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-text-primary">
-              Username
-            </label>
-            <div className="mt-1">
+    <div>
+      <form className="space-y-1" onSubmit={handleSubmit}>
+        {/* Username */}
+        <div className="relative">
+          <input
+            id="username"
+            name="username"
+            type="text"
+            required
+            className={`${inputClasses} ${getInputErrorClass('username')}`}
+            placeholder="Username"
+          />
+          <div className="absolute right-3 top-3 text-text-tertiary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+        </div>
+
+        {/* Email and Name - Only for Register */}
+        {mode === 'register' && (
+          <>
+            <div className="relative">
               <input
-                id="username"
-                name="username"
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className={`${inputClasses} ${getInputErrorClass('email')}`}
+                placeholder="Email address"
+              />
+              <div className="absolute right-3 top-3 text-text-tertiary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </div>
+            </div>
+
+            <div className="relative">
+              <input
+                id="name"
+                name="name"
                 type="text"
                 required
-                className={`appearance-none block w-full px-3 py-2 border bg-bg-input rounded-md shadow-soft-sm placeholder-text-placeholder text-text-primary focus:outline-none focus:ring-2 sm:text-sm ${getInputErrorClass('username')}`}
-                placeholder="Enter your username"
+                className={`${inputClasses} ${getInputErrorClass('name')}`}
+                placeholder="Full name"
               />
-            </div>
-          </div>
-
-          {mode === 'register' && (
-            <>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-text-primary">
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className={`appearance-none block w-full px-3 py-2 border bg-bg-input rounded-md shadow-soft-sm placeholder-text-placeholder text-text-primary focus:outline-none focus:ring-2 sm:text-sm ${getInputErrorClass('email')}`}
-                    placeholder="Enter your email"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-text-primary">
-                  Full Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required
-                    className={`appearance-none block w-full px-3 py-2 border bg-bg-input rounded-md shadow-soft-sm placeholder-text-placeholder text-text-primary focus:outline-none focus:ring-2 sm:text-sm ${getInputErrorClass('name')}`}
-                    placeholder="Enter your full name"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-text-primary">
-              Password
-            </label>
-            <div className="mt-1">
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                required
-                className={`appearance-none block w-full px-3 py-2 border bg-bg-input rounded-md shadow-soft-sm placeholder-text-placeholder text-text-primary focus:outline-none focus:ring-2 sm:text-sm ${getInputErrorClass('password')}`}
-                placeholder={mode === 'login' ? 'Enter your password' : 'Create a password'}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="rounded-md bg-bg-error p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-status-error" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-status-error">
-                    {formatErrorMessage(error)}
-                  </h3>
-                </div>
+              <div className="absolute right-3 top-3 text-text-tertiary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
               </div>
             </div>
-          )}
+          </>
+        )}
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-soft-sm text-sm font-medium text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-focus disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              {loading ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Sign up'}
-            </button>
+        {/* Password */}
+        <div className="relative">
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            required
+            className={`${inputClasses} ${getInputErrorClass('password')}`}
+            placeholder="Password"
+          />
+          <div className="absolute right-3 top-3 text-text-tertiary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
           </div>
-        </form>
-      </div>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="text-xs font-light text-status-error pt-1 pb-2">
+            {formatErrorMessage(error)}
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="pt-3 flex justify-center">
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-base bg-brand-primary hover:bg-brand-primary/90 px-8 py-2 text-xs text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-full shadow-sm hover:shadow-md"
+          >
+            {loading ? (
+              <div className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Processing...</span>
+              </div>
+            ) : (
+              mode === 'login' ? 'Log In' : 'Register'
+            )}
+          </button>
+        </div>
+      </form>
     </div>
   );
-} 
+}

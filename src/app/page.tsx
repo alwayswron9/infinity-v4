@@ -1,25 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense } from 'react';
+import Auth from './auth';
 
 export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Check if we have a token in localStorage
-    const token = localStorage.getItem('token');
-    if (token) {
-      router.push('/dashboard');
-    } else {
-      router.push('/login');
-    }
-  }, [router]);
-
-  // Show a loading state while redirecting
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-pulse">Redirecting...</div>
-    </div>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <Auth />
+    </Suspense>
   );
 }

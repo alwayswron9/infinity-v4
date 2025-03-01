@@ -88,7 +88,7 @@ export function ColumnSelector({
                 onChange={(e) => handleColumnToggle(index, e.target.checked)}
                 className={cn(
                   "h-4 w-4 rounded",
-                  "border-border-primary",
+                  "border-border",
                   "text-primary focus:ring-1 focus:ring-offset-0 focus:ring-primary",
                   "transition-colors duration-150"
                 )}
@@ -113,7 +113,7 @@ export function ColumnSelector({
           "transition-colors duration-150",
           isOpen
             ? "bg-primary text-primary-foreground border-primary"
-            : "bg-surface text-text-primary border-border-primary hover:bg-surface-hover/50",
+            : "bg-surface text-text-primary border-border hover:bg-surface-hover/50",
           "focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary"
         )}
       >
@@ -125,15 +125,15 @@ export function ColumnSelector({
         <div 
           className={cn(
             "absolute left-0 top-[calc(100%+4px)] z-50 w-[240px]",
-            "rounded-md border border-border-primary",
+            "rounded-md border border-border",
             "bg-surface shadow-lg",
             "flex flex-col max-h-[min(420px,calc(100vh-200px))]"
           )}
         >
-          <div className="p-2 border-b border-border-primary flex-shrink-0">
+          <div className="p-2 border-b border-border flex-shrink-0">
             <h3 className="font-medium text-text-primary text-sm">Toggle Columns</h3>
           </div>
-          <div className="overflow-y-auto flex-1 p-2 divide-y divide-border-primary/30">
+          <div className="overflow-y-auto flex-1 p-2 divide-y divide-border/30">
             {renderColumnGroup(regularFields, 'Model Fields')}
             {systemFields.length > 0 && renderColumnGroup(systemFields, 'System Fields')}
           </div>

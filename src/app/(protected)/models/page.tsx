@@ -1,18 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useModels } from '@/hooks/useModels';
-import { Search, Database, Plus, ArrowUpDown, Compass, FileInput } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ModelActionsMenu } from '@/components/models/ModelActionsMenu';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { SideDrawer } from '@/components/layout/SideDrawer';
 import { ModelDataForm } from '@/components/models/ModelDataForm';
+import { ModelsHeader } from '@/components/models/ModelsHeader';
+import { ModelsGrid } from '@/components/models/ModelsGrid';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
 
 export default function ModelsPage() {
   const {
@@ -42,6 +39,28 @@ export default function ModelsPage() {
     setIsAddDataOpen(true);
   };
 
+  // Handle clearing all data for a model
+  const handleClearData = async (modelId: string, modelName: string) => {
+    try {
+      const response = await fetch(`/api/data/${modelId}/clear`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to clear data');
+      }
+
+      toast.success(`All data for ${modelName} cleared successfully`);
+      loadModels(); // Refresh the models list to update record counts
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   // Handle form submission
   const handleSubmitData = async (data: Record<string, any>) => {
     if (!selectedModel) return;
@@ -61,6 +80,7 @@ export default function ModelsPage() {
       }
 
       toast.success('Data added successfully');
+      loadModels(); // Refresh the models list to update record counts
       setIsAddDataOpen(false);
     } catch (error: any) {
       toast.error(error.message);
@@ -74,188 +94,80 @@ export default function ModelsPage() {
     : null;
 
   return (
-    <div className="container py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Models</h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Create and manage your data models
-          </p>
-        </div>
-        <Link
-          href="/models/new"
-          className={cn(
-            "inline-flex items-center justify-center rounded-md text-sm font-medium",
-            "transition-colors focus-visible:outline-none focus-visible:ring-1",
-            "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-            "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-            "h-9 px-4 py-2"
-          )}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Model
-        </Link>
+    <div className="page-container">
+      <ModelsHeader 
+        searchQuery={searchQuery}
+        showArchived={showArchived}
+        onSearchChange={setSearchQuery}
+        onShowArchivedChange={setShowArchived}
+      />
+      
+      <div>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand-primary border-t-transparent mb-4"></div>
+              <p className="text-text-secondary">Loading models...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="bg-status-error-subtle p-4 rounded-lg max-w-md text-center">
+              <p className="text-status-error">{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={loadModels} 
+                className="mt-4 border-status-error text-status-error hover:bg-status-error-subtle"
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : filteredModels.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 space-y-4">
+            <div className="bg-surface-2 rounded-full p-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-brand-secondary">
+                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.40913C11.0108 7.05016 11.7289 6.91894 12.4272 7.03871C13.1255 7.15849 13.7588 7.52152 14.2151 8.06353C14.6713 8.60553 14.9211 9.29152 14.92 10C14.92 12 11.92 13 11.92 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 17H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-text-primary">No models found</h3>
+            <p className="text-text-secondary max-w-md text-center">
+              There are no models matching your current filters. Try changing your search or create a new model.
+            </p>
+            <Link href="/models/new">
+              <Button className="action-button-primary mt-2 py-2 px-4">
+                <Plus className="h-4 w-4 mr-2" />
+                Create new model
+              </Button>
+            </Link>
+          </div>
+        ) : (
+        <ModelsGrid 
+          models={filteredModels}
+          loading={loading}
+          error={error}
+          onAddData={handleAddData}
+          onArchiveToggle={handleArchiveToggle}
+          onClearData={handleClearData}
+          onDelete={handleDeleteModel}
+        />
+        )}
       </div>
-
-      <div className="flex items-center justify-between space-x-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-          <input
-            type="text"
-            placeholder="Search models..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className={cn(
-              "w-full rounded-md border border-border-primary bg-surface pl-9 pr-4 py-2",
-              "text-sm placeholder:text-text-secondary",
-              "focus:outline-none focus:ring-1 focus:ring-primary",
-              "transition-shadow"
-            )}
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="show-archived"
-            checked={showArchived}
-            onCheckedChange={setShowArchived}
-          />
-          <Label htmlFor="show-archived">Show archived</Label>
-        </div>
-      </div>
-
-      <div className="rounded-md border border-border-primary">
-        <div className="overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-surface border-b border-border-primary">
-              <tr>
-                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">
-                  <div className="flex items-center space-x-1">
-                    <span>Name</span>
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Description</th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Fields</th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Vector Search</th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-text-secondary">Status</th>
-                <th className="w-[120px]"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-primary">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-text-secondary">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      <span>Loading models...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-error">
-                    {error}
-                  </td>
-                </tr>
-              ) : filteredModels.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-text-secondary">
-                    No models found
-                  </td>
-                </tr>
-              ) : (
-                filteredModels.map((model) => (
-                  <tr key={model.id} className="hover:bg-surface-hover">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center space-x-2">
-                        <Database className="h-4 w-4 text-text-secondary" />
-                        <span className="font-medium">{model.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-text-secondary">
-                      {model.description || '-'}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center rounded-full bg-surface px-2 py-1 text-xs">
-                        {Object.keys(model.fields).length} fields
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {model.embedding?.enabled ? (
-                        <span className="inline-flex items-center rounded-full bg-success/10 text-success px-2 py-1 text-xs">
-                          Enabled
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-surface px-2 py-1 text-xs">
-                          Disabled
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge
-                        variant={model.status === 'archived' ? 'secondary' : 'default'}
-                        className="text-xs"
-                      >
-                        {model.status || 'active'}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleAddData(model.id)}
-                          disabled={model.status === 'archived'}
-                          className="h-8 w-8"
-                        >
-                          <FileInput className="h-4 w-4" />
-                        </Button>
-                        <Link
-                          href={`/models/${model.id}/explore`}
-                          className={cn(
-                            "inline-flex items-center justify-center rounded-md text-sm",
-                            "transition-colors focus-visible:outline-none focus-visible:ring-1",
-                            "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                            "hover:bg-surface-hover",
-                            "h-8 w-8"
-                          )}
-                        >
-                          <Compass className="h-4 w-4" />
-                        </Link>
-                        <ModelActionsMenu
-                          modelId={model.id}
-                          modelName={model.name}
-                          isArchived={model.status === 'archived'}
-                          onArchiveToggle={() => handleArchiveToggle(model.id)}
-                          onDelete={() => handleDeleteModel(model.id)}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      
       {/* Add Data Drawer */}
       {selectedModelDef && (
         <SideDrawer
           isOpen={isAddDataOpen}
-          onClose={() => {
-            setIsAddDataOpen(false);
-            setSelectedModel(null);
-          }}
+          onClose={() => setIsAddDataOpen(false)}
           title={`Add Data to ${selectedModelDef.name}`}
         >
           <ModelDataForm
             model={selectedModelDef}
             onSubmit={handleSubmitData}
-            onCancel={() => {
-              setIsAddDataOpen(false);
-              setSelectedModel(null);
-            }}
+            onCancel={() => setIsAddDataOpen(false)}
           />
         </SideDrawer>
       )}

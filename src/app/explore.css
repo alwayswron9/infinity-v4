@@ -1,0 +1,486 @@
+/**
+ * Explore Page Styles
+ * Contains all styles related to model exploration, data tables, and related components
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* ==== Data Container & Page Structure ==== */
+  .data-container {
+    @apply h-full flex flex-col bg-surface-0 overflow-hidden;
+    min-height: 0; /* Critical for Firefox flex container */
+    display: flex !important; /* Ensure flex is always applied */
+    flex-direction: column !important; /* Force column direction */
+  }
+
+  .enhanced-data-table {
+    @apply h-full flex flex-col overflow-hidden;
+    min-height: 0; /* Critical for Firefox flex container */
+    display: flex !important; /* Ensure flex is always applied */
+    flex-direction: column !important; /* Force column direction */
+  }
+
+  /* ==== Table Layout and Structure ==== */
+  .table-root {
+    @apply w-full flex-1 flex flex-col overflow-hidden;
+    min-height: 0; /* Critical for Firefox flex container */
+  }
+
+  .table-container {
+    @apply flex-1 overflow-auto;
+    min-height: 0; /* Critical for Firefox flex container */
+    scrollbar-width: thin;
+  }
+
+  /* All tables should have fixed layout and full width */
+  table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  /* ==== Table Header Styles ==== */
+  .table-header {
+    @apply bg-surface-1 sticky top-0 z-10;
+  }
+
+  .table-header-cell {
+    @apply bg-surface-1 text-text-primary font-medium py-3 px-4 text-left;
+    position: sticky;
+    top: 0;
+  }
+
+  .table-sort-button {
+    @apply inline-flex items-center gap-1.5 transition-colors;
+  }
+
+  .column-header {
+    @apply py-3 px-4 text-sm font-medium text-text-primary select-none;
+    width: 100%;
+  }
+
+  .column-header-content {
+    @apply flex items-center space-x-2;
+  }
+
+  /* ==== Table Body Styles ==== */
+  .table-body {
+    @apply bg-surface-1;
+  }
+
+  /* Table row with hover effects */
+  .table-row {
+    position: relative;
+    cursor: pointer;
+    border-left: 3px solid transparent; /* Reserve space for the indicator */
+    transition: border-color 0.2s ease;
+  }
+
+  /* Use box-shadow for hover effect instead of background */
+  .table-row:hover {
+    border-left-color: theme('colors.brand.primary');
+    box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0.05); /* subtle overlay */
+  }
+
+  /* Override any Tailwind hover classes */
+  .hover\:bg-surface-2:hover {
+    background-color: transparent !important;
+  }
+
+  .table-cell {
+    @apply py-3 px-4 text-sm text-text-secondary;
+    transform: translateZ(0); /* Create stacking context */
+  }
+
+  /* ==== Cell Content Styling ==== */
+  .cell-content {
+    @apply truncate;
+    max-width: 100%;
+    display: block;
+    transform: translateZ(0); /* Prevent reflow */
+  }
+
+  /* Specific column widths */
+  .action-column {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    text-align: right;
+    z-index: 1; /* Ensure buttons are above other elements */
+    transform: translateZ(0); /* Create stacking context */
+  }
+
+  .meta-column {
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+    transform: translateZ(0); /* Create stacking context */
+  }
+
+  .id-column {
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+    transform: translateZ(0); /* Create stacking context */
+  }
+
+  /* All shared cell styles */
+  th, td {
+    position: relative;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    will-change: contents; /* Optimize rendering */
+  }
+
+  /* Style delete button in actions column */
+  .action-column .delete-button {
+    @apply text-status-error hover:text-status-error hover:bg-surface-2;
+    z-index: 2; /* Ensure delete button is clickable */
+  }
+
+  /* Ensure action buttons don't inherit row hover styles */
+  .action-column button {
+    isolation: isolate;
+  }
+
+  /* ==== Pagination Controls ==== */
+  .pagination-controls {
+    @apply flex items-center justify-between px-4 py-3 bg-surface-0 border-t border-border;
+    min-height: 56px;
+  }
+
+  .pagination-info {
+    @apply text-sm text-text-secondary;
+  }
+
+  .pagination-info:empty::after {
+    content: 'No results to display';
+    @apply text-sm text-text-secondary opacity-70;
+  }
+
+  .pagination-actions {
+    @apply flex items-center space-x-1;
+  }
+
+  .pagination-size-select {
+    @apply h-8 rounded-md border border-border bg-surface-1 px-3 py-0 text-sm text-text-primary;
+  }
+
+  .pagination-page-button {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-1
+           text-text-primary hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* ==== Table Controls ==== */
+  .table-controls {
+    @apply bg-surface-1 px-4 py-3 flex items-center justify-between border-b border-border sticky top-0 z-20;
+  }
+
+  .table-actions {
+    @apply flex items-center gap-2 ml-auto;
+  }
+
+  /* ==== No Views State ==== */
+  .no-views-container {
+    @apply flex flex-col items-center justify-center h-full p-8 gap-4;
+  }
+
+  .no-views-message {
+    @apply text-lg text-text-secondary;
+  }
+
+  .create-view-button {
+    @apply px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-secondary transition-colors;
+  }
+
+  /* ==== Rest of existing CSS ==== */
+  /* Removing duplicate table header styles since they're already defined above */
+  
+  /* Removing duplicate table body styles since they're already defined above */
+  
+  /* Removing duplicate cell content styles since they're already defined above */
+  
+  /* Pagination Controls - keeping this section but removing duplicates */
+  
+  /* Additional pagination styles - these can stay */
+  
+  /* View Selector Styles */
+  .view-selector {
+    @apply relative;
+  }
+
+  .view-dropdown {
+    @apply absolute right-0 top-full mt-1 bg-surface-1 rounded-md shadow-md z-50 w-48;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .view-option {
+    @apply flex items-center justify-between px-3 py-2 text-sm hover:bg-surface-2 cursor-pointer;
+  }
+
+  .active-view {
+    @apply bg-state-selected text-text-primary;
+  }
+
+  /* Filter UI */
+  .filter-container {
+    @apply bg-surface-1 rounded-md p-4 mb-4;
+  }
+
+  .filter-controls {
+    @apply flex items-center space-x-2;
+  }
+
+  .filter-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-md bg-surface-2 text-text-secondary text-xs;
+  }
+
+  /* Filter dropdown */
+  .filter-dropdown {
+    @apply bg-surface-1 rounded-md shadow-lg p-3 min-w-[220px] flex flex-col gap-2 z-50;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .filter-dropdown select {
+    @apply h-8 rounded-md px-2 text-sm bg-surface-2 text-text-primary border-border
+           focus:outline-none focus:ring-1 focus:ring-brand-primary;
+  }
+
+  .filter-dropdown option {
+    @apply bg-surface-2 text-text-primary;
+  }
+
+  /* Filter Drawer */
+  .filter-drawer {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end;
+  }
+
+  .filter-drawer-content {
+    @apply bg-surface-0 w-full max-w-md h-full overflow-auto flex flex-col;
+  }
+
+  .filter-drawer-header {
+    @apply border-b border-border p-4 flex items-center justify-between bg-surface-1 sticky top-0 z-10;
+  }
+
+  .filter-drawer-body {
+    @apply p-4 flex-grow overflow-auto;
+  }
+
+  .filter-drawer-footer {
+    @apply border-t border-border p-4 bg-surface-1 sticky bottom-0;
+  }
+
+  .filter-card {
+    @apply bg-surface-1 p-3 rounded-md border border-border;
+  }
+
+  .filter-conjunction {
+    @apply mb-3 flex items-center;
+  }
+
+  .filter-conjunction-label {
+    @apply text-sm font-medium mr-2 text-text-secondary;
+  }
+
+  .filter-conjunction-buttons {
+    @apply flex rounded-md overflow-hidden border border-border;
+  }
+
+  .filter-conjunction-button {
+    @apply px-3 py-1 text-sm;
+  }
+
+  .filter-conjunction-button-active {
+    @apply bg-brand-primary text-white;
+  }
+
+  .filter-conjunction-button-inactive {
+    @apply bg-surface-2 text-text-primary hover:bg-surface-3;
+  }
+
+  .filter-field-container {
+    @apply space-y-3;
+  }
+
+  .filter-field-label {
+    @apply block text-sm font-medium text-text-secondary mb-1;
+  }
+
+  .filter-field-select {
+    @apply w-full h-9 rounded-md px-3 text-sm bg-surface-2 text-text-primary border-border
+           focus:outline-none focus:ring-1 focus:ring-brand-primary;
+  }
+
+  .filter-field-input {
+    @apply w-full h-9 rounded-md px-3 text-sm bg-surface-2 text-text-primary border-border
+           focus:outline-none focus:ring-1 focus:ring-brand-primary;
+  }
+
+  .filter-remove-button {
+    @apply inline-flex items-center text-text-secondary hover:text-status-error
+          text-xs rounded px-2 py-1 hover:bg-surface-2;
+  }
+
+  .filter-add-button {
+    @apply w-full flex items-center justify-center gap-1.5 py-2 border border-dashed
+          border-border rounded-md text-text-secondary hover:text-text-primary
+          hover:bg-surface-1 transition-colors;
+  }
+
+  /* Column filter button */
+  .column-filter-button {
+    @apply rounded-md p-1.5 text-text-secondary hover:bg-surface-2 transition-colors;
+  }
+
+  .column-filter-button.filter-active {
+    @apply bg-surface-2 text-brand-primary;
+  }
+
+  /* Edit/View Record Drawer */
+  .record-drawer {
+    @apply w-full max-w-md bg-surface-0;
+  }
+
+  .record-drawer-header {
+    @apply flex items-center justify-between p-4;
+  }
+
+  .record-form-container {
+    @apply px-4 py-4;
+  }
+
+  /* Table column controls */
+  .table-controls {
+    @apply bg-surface-1 px-4 py-3 flex items-center justify-between;
+  }
+
+  /* Data table specific styles */
+  .data-meta-column {
+    @apply bg-surface-1 px-4 py-3 text-sm font-medium text-text-primary;
+  }
+  
+  .data-content-column {
+    @apply bg-surface-1 px-4 py-3 text-sm font-medium text-text-primary;
+  }
+  
+  /* Explore page specific styles */
+  .model-header-container {
+    @apply bg-surface-0 py-4 px-6;
+  }
+  
+  .model-header-content {
+    @apply flex items-center justify-between;
+  }
+  
+  .model-header-left {
+    @apply flex items-center gap-3;
+  }
+  
+  .model-header-right {
+    @apply flex items-center gap-2;
+  }
+  
+  .back-button {
+    @apply p-2 text-text-secondary rounded-full hover:bg-surface-1 transition-colors;
+  }
+  
+  .model-header-title {
+    @apply flex items-center gap-2 text-text-primary font-medium;
+  }
+  
+  .model-name-title {
+    @apply text-lg font-semibold text-text-primary;
+  }
+  
+  .view-name-container {
+    @apply flex items-center gap-1.5 ml-3 pl-3 border-l border-border;
+  }
+  
+  .view-icon {
+    @apply h-4 w-4 text-text-secondary;
+  }
+  
+  .action-button {
+    @apply flex items-center gap-1.5 bg-surface-1 hover:bg-surface-2 text-text-primary;
+  }
+  
+  /* Columns selector button */
+  .columns-button {
+    @apply inline-flex items-center justify-center rounded-md border border-border
+           bg-surface-1 px-3 py-1.5 text-sm font-medium shadow-sm
+           hover:bg-surface-2 focus:outline-none focus:ring-1 focus:ring-brand-primary;
+  }
+  
+  /* Table data content */
+  .table-data-container {
+    @apply flex flex-col h-full bg-surface-1 rounded-md overflow-hidden;
+  }
+  
+  /* Meta and content table headers */
+  .meta-header {
+    @apply bg-surface-1 text-text-secondary font-medium text-sm px-4 py-3;
+  }
+  
+  .content-header {
+    @apply bg-surface-1 text-text-secondary font-medium text-sm px-4 py-3;
+  }
+  
+  /* Filter icon indicator */
+  .filter-active {
+    @apply text-brand-primary;
+  }
+
+  .text-warning {
+    @apply text-status-warning;
+  }
+
+  /* Fix for NaN in pagination */
+  .pagination-info:empty::after {
+    content: 'No results to display';
+    @apply text-sm text-text-secondary;
+  }
+  
+  /* Additional pagination styles */
+  .pagination-size-select {
+    @apply h-8 rounded-md px-2 text-sm bg-surface-1 text-text-primary border-border
+           focus:outline-none focus:ring-1 focus:ring-brand-primary;
+  }
+  
+  .pagination-page-button {
+    @apply h-8 w-8 rounded-md flex items-center justify-center
+           border border-border bg-surface-1 text-text-primary
+           focus:outline-none focus:ring-1 focus:ring-brand-primary
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .table-filter-selector {
+    @apply relative inline-block;
+  }
+  
+  .table-filter-button {
+    @apply inline-flex items-center gap-1.5 px-2 py-1 text-sm rounded 
+           border border-border bg-surface-1 hover:bg-surface-2 
+           text-text-primary transition-colors;
+  }
+  
+  .column-selector {
+    @apply relative inline-block;
+  }
+  
+  .column-selector-button {
+    @apply inline-flex items-center gap-1.5 px-2 py-1 text-sm rounded 
+           border border-border bg-surface-1 hover:bg-surface-2 
+           text-text-primary transition-colors;
+  }
+  
+  /* Active filter indicator in filter button */
+  .filter-indicator {
+    @apply absolute -top-1 -right-1 w-2.5 h-2.5 bg-brand-primary rounded-full border border-surface-1;
+  }
+} 
