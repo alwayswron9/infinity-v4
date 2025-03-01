@@ -107,5 +107,12 @@ async function handleGetDetails(req: AuthenticatedRequest, { id }: { id: string 
   }
 }
 
-export const GET = (req: NextRequest, { params }: { params: { id: string } }) => 
-  withAuth(req, async (authReq) => handleGetDetails(authReq, params), { params }); 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const resolvedParams = await params;
+  return withAuth(request, async (req) => {
+    return handleGetDetails(req, resolvedParams);
+  }, { params: resolvedParams });
+} 

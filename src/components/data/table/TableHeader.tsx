@@ -121,7 +121,7 @@ export function DataTableHeader<T>({
         onClose={() => setIsFilterDrawerOpen(false)}
         currentFilters={viewConfig.filters}
         availableFields={filterFields}
-        onApply={applyFilters}
+        onApplyFilters={applyFilters}
       />,
       document.body
     );
@@ -206,7 +206,11 @@ export function DataTableHeader<T>({
               hasActiveFilters && "bg-brand-primary text-white"
             )}
           >
-            <FilterButton active={hasActiveFilters} />
+            <FilterButton 
+              filters={viewConfig.filters}
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className="mr-2"
+            />
             Filters {hasActiveFilters && `(${viewConfig.filters.length})`}
           </Button>
           
