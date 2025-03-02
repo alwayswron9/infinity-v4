@@ -16,7 +16,14 @@ import {
   Flex,
   HStack,
   Button,
-  IconButton
+  IconButton,
+  useDisclosure,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay
 } from '@chakra-ui/react';
 import { DataTable } from '@saas-ui/react';
 import type { ColumnDef, CellContext } from '@tanstack/react-table';
@@ -84,6 +91,11 @@ export function EnhancedDataTable({
   // First load flag
   const [firstLoad, setFirstLoad] = useState(true);
   
+  // Delete confirmation dialog
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const cancelRef = React.useRef<HTMLButtonElement>(null);
+  const [recordToDelete, setRecordToDelete] = useState<Record<string, any> | null>(null);
+  
   // Effect to measure container width and calculate column sizes
   useEffect(() => {
     if (containerRef) {
@@ -114,6 +126,20 @@ export function EnhancedDataTable({
       setFirstLoad(false);
     }
   }, [isLoading, firstLoad]);
+
+  // Handle delete confirmation
+  const handleDeleteClick = (record: Record<string, any>) => {
+    setRecordToDelete(record);
+    onOpen();
+  };
+
+  const handleConfirmDelete = () => {
+    if (recordToDelete && onDeleteRow) {
+      onDeleteRow(recordToDelete);
+    }
+    onClose();
+    setRecordToDelete(null);
+  };
 
   // Calculate dynamic column widths to fit container width
   const getColumnWidths = useMemo(() => {
@@ -277,7 +303,7 @@ export function EnhancedDataTable({
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteRow(info.row.original);
+                  handleDeleteClick(info.row.original);
                 }}
               />
             )}
@@ -408,6 +434,34 @@ export function EnhancedDataTable({
           </Tbody>
         </Table>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Record
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure you want to delete this record? This action cannot be undone.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="red" onClick={handleConfirmDelete} ml={3}>
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 } 
