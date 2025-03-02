@@ -1,6 +1,14 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { SideDrawer } from '@/components/layout/SideDrawer';
+import {
+  Button,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  Flex
+} from '@chakra-ui/react';
 import { ModelDataForm } from '@/components/models/ModelDataForm';
 
 interface RecordDrawerProps {
@@ -25,39 +33,45 @@ export function RecordDrawer({
   onSubmit
 }: RecordDrawerProps) {
   return (
-    <SideDrawer
+    <Drawer
       isOpen={isOpen}
+      placement="right"
       onClose={onClose}
-      title={title}
-      className="record-drawer"
+      size="lg"
     >
-      <div className="record-form-container">
-        <div className="flex justify-end mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setEditMode(!isEditMode)}
-            className="gap-1.5"
-          >
-            {isEditMode ? "Cancel Edit" : "Edit Record"}
-          </Button>
-        </div>
-        
-        <ModelDataForm
-          model={model}
-          initialData={record || undefined}
-          onSubmit={onSubmit}
-          onCancel={() => {
-            if (isEditMode) {
-              setEditMode(false);
-            } else {
-              onClose();
-            }
-          }}
-          submitButtonText="Save Changes"
-          readOnly={!isEditMode}
-        />
-      </div>
-    </SideDrawer>
+      <DrawerOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+      <DrawerContent bg="gray.800" borderLeftWidth="1px" borderColor="gray.700">
+        <DrawerHeader borderBottomWidth="1px" borderColor="gray.700" py={4}>
+          {title}
+          <DrawerCloseButton size="lg" color="gray.400" _hover={{ bg: "gray.700", color: "gray.200" }} />
+        </DrawerHeader>
+        <DrawerBody p={6}>
+          <Flex justify="flex-end" mb={4}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditMode(!isEditMode)}
+            >
+              {isEditMode ? "Cancel Edit" : "Edit Record"}
+            </Button>
+          </Flex>
+          
+          <ModelDataForm
+            model={model}
+            initialData={record || undefined}
+            onSubmit={onSubmit}
+            onCancel={() => {
+              if (isEditMode) {
+                setEditMode(false);
+              } else {
+                onClose();
+              }
+            }}
+            submitButtonText="Save Changes"
+            readOnly={!isEditMode}
+          />
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
   );
 } 

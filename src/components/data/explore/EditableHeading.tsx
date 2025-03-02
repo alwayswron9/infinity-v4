@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { Input, Text, useColorModeValue } from '@chakra-ui/react';
 
 interface EditableHeadingProps { 
   value: string;
@@ -19,6 +19,8 @@ export function EditableHeading({
   className 
 }: EditableHeadingProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const textColor = useColorModeValue('gray.800', 'white');
+  const hoverColor = useColorModeValue('gray.700', 'gray.300');
 
   React.useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -40,30 +42,35 @@ export function EditableHeading({
 
   if (isEditing) {
     return (
-      <input
+      <Input
         ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onEditEnd}
         onKeyDown={handleKeyDown}
-        className={cn(
-          "bg-transparent border-none outline-none focus:ring-0",
-          "text-base font-medium",
-          className
-        )}
+        bg="transparent"
+        border="none"
+        _focus={{
+          boxShadow: 'none',
+        }}
+        fontWeight="medium"
+        fontSize="sm"
+        p={0}
+        size="sm"
       />
     );
   }
 
   return (
-    <h2 
+    <Text 
       onClick={onEditStart}
-      className={cn(
-        "text-base font-medium cursor-pointer hover:opacity-80",
-        className
-      )}
+      fontSize="sm"
+      fontWeight="medium"
+      cursor="pointer"
+      color={textColor}
+      _hover={{ color: hoverColor }}
     >
       {value}
-    </h2>
+    </Text>
   );
 } 

@@ -66,11 +66,20 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
     const loadViewsData = async () => {
       if (hasInitialLoad) return;
       
-      const loadingToast = toast.loading('Loading views...');
+      let loadingToastId: string | number | null = null;
+      let toastTimeoutId: NodeJS.Timeout | null = null;
       
       try {
         setLoading(true);
         setError(null);
+        
+        // Show loading toast with a safety timeout to ensure it gets dismissed
+        loadingToastId = toast.loading('Loading views...');
+        
+        // Set a safety timeout to dismiss toast after 10 seconds regardless of outcome
+        toastTimeoutId = setTimeout(() => {
+          if (loadingToastId) toast.dismiss(loadingToastId);
+        }, 10000);
         
         // First try to get all views
         const modelViews = await viewService.listViews(modelId);
@@ -87,7 +96,6 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
             setActiveView(modelViews[0].id);
           }
           
-          toast.dismiss(loadingToast);
           toast.success('Views loaded successfully');
         } else {
           // No views exist, create a default view
@@ -161,14 +169,12 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
 
             setViews([defaultView]);
             setActiveView(defaultView.id);
-            toast.dismiss(loadingToast);
             toast.success('Default view created');
           } catch (error) {
             console.error('Error creating default view:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to create default view';
             setError(errorMessage);
             setViews([]);
-            toast.dismiss(loadingToast);
             toast.error(errorMessage);
           }
         }
@@ -177,9 +183,12 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         const errorMessage = error instanceof Error ? error.message : 'Failed to load views';
         setError(errorMessage);
         setViews([]);
-        toast.dismiss(loadingToast);
         toast.error(errorMessage);
       } finally {
+        // Always clean up the toast and timeout in finally block
+        if (loadingToastId) toast.dismiss(loadingToastId);
+        if (toastTimeoutId) clearTimeout(toastTimeoutId);
+        
         setLoading(false);
         setHasInitialLoad(true);
       }
@@ -301,13 +310,11 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
       setEditingView(newView);
       setIsEditing(true);
 
-      toast.dismiss(loadingToast);
       toast.success('New view created successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create view';
       setError(errorMessage);
       console.error('Error creating view:', error);
-      toast.dismiss(loadingToast);
       toast.error(errorMessage);
       
       // Reset editing state on error
@@ -344,12 +351,10 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
           setActiveView(null);
         }
       }
-      toast.dismiss(loadingToast);
       toast.success('View deleted successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
       setError(errorMessage);
-      toast.dismiss(loadingToast);
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -390,7 +395,6 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         );
         updateView(viewId, savedView);
         setActiveView(savedView.id);
-        toast.dismiss(loadingToast);
         toast.success('View updated successfully');
       } else {
         // Create new view
@@ -406,13 +410,11 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         if (savedView.id) {
           setActiveView(savedView.id);
         }
-        toast.dismiss(loadingToast);
         toast.success('View created successfully');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save view';
       setError(errorMessage);
-      toast.dismiss(loadingToast);
       toast.error(errorMessage);
     } finally {
       setLoading(false);

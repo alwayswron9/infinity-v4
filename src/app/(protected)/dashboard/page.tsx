@@ -6,7 +6,10 @@ import {
   Key, 
   Table2, 
   Search,
-  LayoutGrid
+  LayoutGrid,
+  Workflow,
+  Database,
+  Shield
 } from 'lucide-react';
 import { 
   Box, 
@@ -23,7 +26,8 @@ import {
   Card,
   Stack,
   Button,
-  useColorModeValue 
+  Divider,
+  SimpleGrid
 } from '@chakra-ui/react';
 
 const QuickStartCard = ({ title, description, icon: IconComponent, href }: { title: string; description: string; icon: any; href: string }) => (
@@ -37,6 +41,7 @@ const QuickStartCard = ({ title, description, icon: IconComponent, href }: { tit
       _hover={{ 
         boxShadow: 'lg', 
         transform: 'translateY(-2px)',
+        borderColor: 'purple.500',
         transition: 'all 0.2s ease' 
       }}
       h="full"
@@ -44,7 +49,7 @@ const QuickStartCard = ({ title, description, icon: IconComponent, href }: { tit
       <Flex alignItems="start" gap="4">
         <Box flexShrink={0}>
           <Flex 
-            bg="gray.700" 
+            bg="purple.900" 
             color="purple.400" 
             boxSize={10} 
             borderRadius="md" 
@@ -79,7 +84,38 @@ const CodeBlock = ({ code }: { code: string }) => (
   </Box>
 );
 
-export default function HomePage() {
+const FeatureCard = ({ title, description, icon: IconComponent }: { 
+  title: string; 
+  description: string; 
+  icon: any; 
+}) => (
+  <Card
+    p="5" 
+    borderWidth="1px" 
+    borderColor="gray.700" 
+    rounded="lg" 
+    bg="gray.800"
+    _hover={{ borderColor: 'purple.500', transition: 'all 0.2s ease' }}
+  >
+    <Flex direction="column" gap={3}>
+      <Flex 
+        bg="purple.900" 
+        color="purple.400" 
+        boxSize={10} 
+        borderRadius="md" 
+        alignItems="center" 
+        justifyContent="center"
+        mb={1}
+      >
+        <Icon as={IconComponent} boxSize="5" />
+      </Flex>
+      <Heading as="h3" size="md" fontWeight="semibold" color="white">{title}</Heading>
+      <Text fontSize="sm" color="gray.400">{description}</Text>
+    </Flex>
+  </Card>
+);
+
+export default function Dashboard() {
   return (
     <Box minH="calc(100vh - 64px)" bg="gray.900" py={6} px={{ base: 4, md: 6 }}>
       <Container maxW="container.2xl" px={0}>
@@ -91,11 +127,11 @@ export default function HomePage() {
                 Welcome to Infinity
               </Heading>
               <Text mt={1} color="gray.400" fontSize="sm">
-                Your central data service with powerful REST API capabilities
+                Your central hub for data management and workflow automation
               </Text>
             </Box>
             
-            <Link href="/models" passHref>
+            <Link href="/models/new" passHref>
               <Button
                 as="a"
                 colorScheme="purple"
@@ -110,169 +146,209 @@ export default function HomePage() {
           </Flex>
         </Stack>
 
-        {/* Quick Start Cards */}
-        <Stack spacing={6}>
-          <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap="6" mt={4}>
-            <QuickStartCard
-              title="Create Your First Model"
-              description="Define your data structure with fields, validations, and vector search capabilities."
-              icon={Table2}
-              href="/models"
-            />
-            <QuickStartCard
-              title="Generate API Key"
-              description="Get your API key to start making authenticated requests to the API."
-              icon={Key}
-              href="/settings"
-            />
-            <QuickStartCard
-              title="Basic Data Operations"
-              description="Create, read, update, and delete records using our REST API endpoints."
-              icon={Search}
-              href="#basic-operations"
-            />
-            <QuickStartCard
-              title="Advanced Querying"
-              description="Use filters, pagination, and vector search to find exactly what you need."
-              icon={LayoutGrid}
-              href="#advanced-querying"
-            />
-          </Grid>
-        </Stack>
+        {/* What is Infinity */}
+        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" mb={6} p={6}>
+          <Stack spacing={4}>
+            <Heading as="h2" size="md" fontWeight="semibold" color="white">
+              What is Infinity?
+            </Heading>
+            <Text color="gray.300">
+              Infinity is your centralized data management system that allows you to create custom data models,
+              interact with your data through an intuitive UI, and connect with workflow automation tools.
+            </Text>
+            <List spacing="3">
+              <ListItem display="flex" alignItems="center" gap="3">
+                <Flex 
+                  bg="purple.900" 
+                  color="purple.400" 
+                  boxSize={8} 
+                  borderRadius="md" 
+                  alignItems="center" 
+                  justifyContent="center"
+                >
+                  <Icon as={Database} boxSize={4} />
+                </Flex>
+                <Text color="gray.100">Create custom data models to structure your information</Text>
+              </ListItem>
+              <ListItem display="flex" alignItems="center" gap="3">
+                <Flex 
+                  bg="purple.900" 
+                  color="purple.400" 
+                  boxSize={8} 
+                  borderRadius="md" 
+                  alignItems="center" 
+                  justifyContent="center"
+                >
+                  <Icon as={Search} boxSize={4} />
+                </Flex>
+                <Text color="gray.100">Search and filter data with advanced query capabilities</Text>
+              </ListItem>
+              <ListItem display="flex" alignItems="center" gap="3">
+                <Flex 
+                  bg="purple.900" 
+                  color="purple.400" 
+                  boxSize={8} 
+                  borderRadius="md" 
+                  alignItems="center" 
+                  justifyContent="center"
+                >
+                  <Icon as={Workflow} boxSize={4} />
+                </Flex>
+                <Text color="gray.100">Connect to n8n and other tools via our comprehensive API</Text>
+              </ListItem>
+            </List>
+            <Divider borderColor="gray.700" />
+            <Text color="gray.400" fontSize="sm">
+              Infinity serves as the central data hub for all your automation workflows,
+              ensuring consistent data storage, retrieval, and management while handling permissions and data validation.
+            </Text>
+          </Stack>
+        </Card>
+
+        {/* Quick Start */}
+        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" mb={6} p={6}>
+          <Stack spacing={4}>
+            <Heading as="h2" size="md" fontWeight="semibold" color="white">
+              Quick Start
+            </Heading>
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+              <QuickStartCard
+                title="Create Model"
+                description="Define your data structure with custom fields and validations"
+                icon={Table2}
+                href="/models/new"
+              />
+              <QuickStartCard
+                title="Generate API Key"
+                description="Get API keys for secure access to your data"
+                icon={Key}
+                href="/settings"
+              />
+              <QuickStartCard
+                title="Explore Data"
+                description="Browse and search through your existing records"
+                icon={Search}
+                href="/models"
+              />
+            </SimpleGrid>
+          </Stack>
+        </Card>
 
         {/* API Examples */}
-        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" mt={8} p={6}>
+        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" mb={6} p={6}>
           <Stack spacing={6}>
             <Heading as="h2" size="md" fontWeight="semibold" color="white">
-              API Examples
+              API Integration
             </Heading>
             
-            <Stack spacing={6}>
-              <Box>
-                <Heading as="h3" size="sm" fontWeight="semibold" mb="3" color="gray.100">Creating Records</Heading>
-                <CodeBlock code={`curl --location 'https://infinity.aiwahlabs.xyz/api/public/data/feedback' \\
+            <Text color="gray.300">
+              Every model you create gets its own set of RESTful API endpoints. Use these endpoints to integrate with n8n, 
+              Zapier, or your own custom applications.
+            </Text>
+            
+            <Box>
+              <Heading as="h3" size="sm" fontWeight="semibold" mb="3" color="gray.100">Creating Records</Heading>
+              <CodeBlock code={`curl --location 'https://infinity.aiwahlabs.xyz/api/public/data/feedback' \\
 --header 'X-API-Key: your_api_key_here' \\
 --data-raw '{
   "customer_name": "John Doe",
   "feedback": "Great service!",
   "rating": 5
 }'`} />
-              </Box>
+            </Box>
 
-              <Box>
-                <Heading as="h3" size="sm" fontWeight="semibold" mb="3" color="gray.100">Reading Records</Heading>
-                <CodeBlock code={`curl --location 'https://infinity.aiwahlabs.xyz/api/public/data/feedback?page=1' \\
+            <Box>
+              <Heading as="h3" size="sm" fontWeight="semibold" mb="3" color="gray.100">Reading Records</Heading>
+              <CodeBlock code={`curl --location 'https://infinity.aiwahlabs.xyz/api/public/data/feedback?page=1' \\
 --header 'X-API-Key: your_api_key_here'`} />
-              </Box>
+            </Box>
 
-              <Box>
-                <Heading as="h3" size="sm" fontWeight="semibold" mb="3" color="gray.100">Updating & Deleting</Heading>
-                <CodeBlock code={`# Update record
-PUT /api/public/data/[model_name]?id=record_id
-{
-  "rating": 4,
-  "feedback": "Updated feedback"
-}
+            <Box>
+              <Heading as="h3" size="sm" fontWeight="semibold" mb="3" color="gray.100">Filtering & Sorting</Heading>
+              <CodeBlock code={`# Filter by field value
+GET /api/public/data/customers?filter=status:active&sort=created_at:desc
 
-# Delete record
-DELETE /api/public/data/[model_name]?id=record_id`} />
-              </Box>
-            </Stack>
+# Search with vector similarity
+GET /api/public/data/products/search?query="comfortable office chair"
+
+# Paginate results
+GET /api/public/data/orders?page=2&limit=50`} />
+            </Box>
           </Stack>
         </Card>
 
-        {/* Automation Section */}
-        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" mt={6} p={6}>
-          <Flex alignItems="start" gap={4}>
-            <Flex 
-              bg="gray.700" 
-              color="purple.400" 
-              boxSize={10} 
-              borderRadius="md" 
-              alignItems="center" 
-              justifyContent="center"
-              flexShrink={0}
-            >
-              <Icon as={ArrowRight} boxSize="5" />
+        {/* Automation Integration */}
+        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" mb={6} p={6}>
+          <Stack spacing={4}>
+            <Heading as="h2" size="md" fontWeight="semibold" color="white">
+              Workflow Automation
+            </Heading>
+            <Text color="gray.300">
+              Connect Infinity to n8n to create powerful automation workflows that leverage your data models.
+            </Text>
+            <List spacing="4" styleType="decimal" pl={5}>
+              <ListItem color="gray.100">
+                <Text color="gray.100">Create data models in Infinity</Text>
+                <Text color="gray.400" fontSize="sm">Define your data structure first</Text>
+              </ListItem>
+              <ListItem color="gray.100">
+                <Text color="gray.100">Generate an API key in settings</Text>
+                <Text color="gray.400" fontSize="sm">You'll need this to connect to n8n</Text>
+              </ListItem>
+              <ListItem color="gray.100">
+                <Text color="gray.100">
+                  <ChakraLink href="mailto:aiwahlabs@gmail.com" color="purple.400">Email us</ChakraLink> for n8n access credentials
+                </Text>
+                <Text color="gray.400" fontSize="sm">We'll set you up with a dedicated instance</Text>
+              </ListItem>
+              <ListItem color="gray.100">
+                <Text color="gray.100">Create HTTP Request nodes in n8n</Text>
+                <Text color="gray.400" fontSize="sm">Use your API key in the Authorization header</Text>
+              </ListItem>
+            </List>
+            <Flex mt={2} justifyContent="center">
+              <ChakraLink href="https://automate.aiwahlabs.xyz" isExternal>
+                <Button colorScheme="purple" size="md">
+                  Get Started with n8n
+                </Button>
+              </ChakraLink>
             </Flex>
-            <Box>
-              <Heading as="h3" size="md" fontWeight="semibold" mb="2" color="gray.100">Automation Integration</Heading>
-              <Text color="gray.300" mb="4">
-                Use our pre-configured n8n instance to automate workflows: {' '}
-                <ChakraLink href="https://automate.aiwahlabs.xyz" color="purple.400" _hover={{ textDecoration: 'underline' }}>
-                  automate.aiwahlabs.xyz
-                </ChakraLink>
-              </Text>
-              <Text fontSize="sm" color="gray.400">
-                Email aiwahlabs@gmail.com to get your automation credentials
-              </Text>
-            </Box>
-          </Flex>
+          </Stack>
         </Card>
 
         {/* Key Features */}
-        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" mt={6} p={6}>
+        <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg" p={6}>
           <Stack spacing={4}>
             <Heading as="h2" size="md" fontWeight="semibold" color="white">
               Key Features
             </Heading>
             
-            <List spacing="4">
-              <ListItem display="flex" alignItems="center" gap="3">
-                <Flex 
-                  bg="gray.700" 
-                  color="purple.400" 
-                  boxSize={8} 
-                  borderRadius="md" 
-                  alignItems="center" 
-                  justifyContent="center"
-                >
-                  <Icon as={ArrowRight} boxSize={4} />
-                </Flex>
-                <Text color="gray.100">Full CRUD operations with REST API endpoints</Text>
-              </ListItem>
-              <ListItem display="flex" alignItems="center" gap="3">
-                <Flex 
-                  bg="gray.700" 
-                  color="purple.400" 
-                  boxSize={8} 
-                  borderRadius="md" 
-                  alignItems="center" 
-                  justifyContent="center"
-                >
-                  <Icon as={ArrowRight} boxSize={4} />
-                </Flex>
-                <Text color="gray.100">Advanced filtering and pagination support</Text>
-              </ListItem>
-              <ListItem display="flex" alignItems="center" gap="3">
-                <Flex 
-                  bg="gray.700" 
-                  color="purple.400" 
-                  boxSize={8} 
-                  borderRadius="md" 
-                  alignItems="center" 
-                  justifyContent="center"
-                >
-                  <Icon as={ArrowRight} boxSize={4} />
-                </Flex>
-                <Text color="gray.100">Vector search for semantic similarity queries</Text>
-              </ListItem>
-              <ListItem display="flex" alignItems="center" gap="3">
-                <Flex 
-                  bg="gray.700" 
-                  color="purple.400" 
-                  boxSize={8} 
-                  borderRadius="md" 
-                  alignItems="center" 
-                  justifyContent="center"
-                >
-                  <Icon as={ArrowRight} boxSize={4} />
-                </Flex>
-                <Text color="gray.100">Secure API key authentication</Text>
-              </ListItem>
-            </List>
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+              <FeatureCard
+                title="Centralized Data"
+                description="Store all your business data in a single, structured platform with proper relationships and validations."
+                icon={Database}
+              />
+              <FeatureCard
+                title="Vector Search"
+                description="Enable AI-powered semantic search across your data models for intelligent data retrieval."
+                icon={Search}
+              />
+              <FeatureCard
+                title="Secure by Design"
+                description="Role-based access control, API key management, and secure authentication protect your data."
+                icon={Shield}
+              />
+            </SimpleGrid>
+            
+            <Box mt={4} textAlign="center">
+              <Text color="gray.400" fontSize="sm">
+                Need help getting started? <ChakraLink href="mailto:aiwahlabs@gmail.com" color="purple.400">Contact our support team</ChakraLink>
+              </Text>
+            </Box>
           </Stack>
         </Card>
+
       </Container>
     </Box>
   );
