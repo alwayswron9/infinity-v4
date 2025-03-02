@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { Box, Flex } from '@chakra-ui/react'
 import Sidebar from '@/components/navigation/sidebar'
 
 export default async function ProtectedLayout({
@@ -15,9 +16,9 @@ export default async function ProtectedLayout({
     }
 
     return (
-      <div className="min-h-screen bg-background flex">
+      <Flex minH="100vh" bg="gray.900">
         <Sidebar />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
+        <Box as="main" flex="1" p="6">{children}</Box>
+      </Flex>
     );
   }

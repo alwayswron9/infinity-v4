@@ -4,6 +4,17 @@ import { useState, useEffect } from "react";
 import { AuthForm } from "@/components/ui/auth-form";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { 
+  Box, 
+  Center, 
+  Container, 
+  Heading, 
+  Text, 
+  VStack, 
+  Card,
+  CardBody,
+  CardHeader
+} from "@chakra-ui/react";
 
 export default function Auth() {
   const searchParams = useSearchParams();
@@ -38,83 +49,61 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <Box minH="100vh" display="flex" flexDirection="column" bg="gray.900">
       {/* Beta warning banner */}
-      <div className="w-full bg-status-warning-subtle py-1 text-center">
-        <p className="text-xs font-light text-status-warning">
-          <span className="font-medium">BETA VERSION</span> — Not for production use. Data may be reset at any time.
-        </p>
-      </div>
+      <Box w="full" bg="orange.900" py={1} textAlign="center">
+        <Text fontSize="xs" fontWeight="light" color="orange.500">
+          <Text as="span" fontWeight="medium">BETA VERSION</Text> — Not for production use. Data may be reset at any time.
+        </Text>
+      </Box>
 
       {/* Main content */}
-      <div className="flex-1 flex items-center justify-center px-4">
-        {mode === "login" ? (
-          <div className="w-full max-w-sm">
-            {/* Logo */}
-            <div className="text-center mb-6">
-              <h1 className="text-3xl font-light text-brand-primary tracking-tight">
-                Infinity
-              </h1>
-              <p className="text-sm text-text-secondary mt-2 italic">
+      <Center flex={1} px={4}>
+        <Container maxW={mode === "login" ? "md" : "lg"} py={8}>
+          {/* Logo and Title */}
+          <VStack mb={6} spacing={2} textAlign="center">
+            <Heading as="h1" fontSize="4xl" fontWeight="medium" color="purple.500" letterSpacing="tight">
+              Infinity
+            </Heading>
+            {mode === "login" ? (
+              <Text fontSize="md" color="gray.400" maxW="md">
                 {randomQuote}
-              </p>
-            </div>
+              </Text>
+            ) : (
+              <Text fontSize="md" color="gray.400" maxW="md">
+                The predictable core bringing structure to your automation journey.
+              </Text>
+            )}
+          </VStack>
 
-            {/* Authentication form */}
-            <AuthForm mode={mode} />
+          {/* Authentication Card */}
+          <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="md">
+            <CardHeader pb={0}>
+              <Heading size="md" textAlign="center" color="white">
+                {mode === "login" ? "Sign In" : "Create Account"}
+              </Heading>
+            </CardHeader>
+            <CardBody pt={4}>
+              <AuthForm mode={mode} />
+            </CardBody>
+          </Card>
 
-            {/* Mode toggle link */}
-            <div className="text-center text-sm font-light text-text-secondary mt-6">
-              <p>
-                Need an account?{" "}
-                <Link
-                  href="/auth?mode=register"
-                  className="text-brand-primary hover:text-brand-primary/80 font-medium transition-colors duration-200"
-                >
-                  Register
-                </Link>
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-md">
-            {/* Logo */}
-            <div className="text-center mb-3">
-              <h1 className="text-3xl font-light text-brand-primary tracking-tight">
-                Infinity
-              </h1>
-            </div>
-            
-            {/* Typewriter-style intro - reduced height */}
-            <div className="mb-3 p-3 bg-surface-1 rounded border border-border-primary text-sm leading-tight text-text-secondary" 
-                 style={{ 
-                   fontFamily: "'Courier New', Courier, monospace",
-                   letterSpacing: '0.05em',
-                   lineHeight: '1.3',
-                   textAlign: 'left'
-                 }}>
-              <p>The predictable core bringing structure to your automation journey.</p>
-              
-            </div>
-
-            {/* Authentication form */}
-            <AuthForm mode={mode} />
-
-            {/* Mode toggle link */}
-            <div className="text-center text-sm font-light text-text-secondary mt-3">
-              <p>
-                Already have an account?{" "}
-                <Link
-                  href="/auth?mode=login"
-                  className="text-brand-primary hover:text-brand-primary/80 font-medium transition-colors duration-200"
-                >
-                  Sign in
-                </Link>
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+          {/* Mode toggle link */}
+          <Text textAlign="center" fontSize="sm" color="gray.400" mt={4}>
+            {mode === "login" ? "Need an account?" : "Already have an account?"}{" "}
+            <Link
+              href={mode === "login" ? "/auth?mode=register" : "/auth?mode=login"}
+              style={{
+                color: 'var(--chakra-colors-purple-500)',
+                fontWeight: '500',
+                transition: 'color 0.2s ease'
+              }}
+            >
+              {mode === "login" ? "Register" : "Sign in"}
+            </Link>
+          </Text>
+        </Container>
+      </Center>
+    </Box>
   );
 }

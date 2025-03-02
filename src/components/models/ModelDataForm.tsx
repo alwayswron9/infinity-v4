@@ -1,18 +1,30 @@
 import { useState, useEffect } from 'react';
 import { type ModelDefinition, type FieldDefinition } from '@/types/modelDefinition';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  FormHelperText,
+  FormErrorMessage,
+  Input,
+  Textarea,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Switch,
+  VStack,
+  HStack,
+  Text,
+  Flex,
+  Select,
+  Checkbox,
+  useColorModeValue
+} from '@chakra-ui/react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ModelDataFormProps {
@@ -103,185 +115,132 @@ export function ModelDataForm({
       return a[0].localeCompare(b[0]);
     });
 
-  const renderField = (fieldName: string, field: FieldDefinition) => {
-    // Skip system fields
-    if (fieldName.startsWith('_')) return null;
-
-    const handleChange = (value: any) => {
-      if (readOnly) return;
-      setFormData(prev => ({ ...prev, [fieldName]: value }));
-    };
-
-    const commonInputProps = {
-      disabled: readOnly,
-      className: cn(
-        readOnly && "opacity-90 bg-muted/50 border-0"
-      )
-    };
-
-    const isLink = typeof formData[fieldName] === 'string' && 
-                  (formData[fieldName].startsWith('http://') || 
-                   formData[fieldName].startsWith('https://'));
-
-    switch (field.type) {
-      case 'string':
-        return (
-          <div key={fieldName} className="space-y-1.5">
-            <Label htmlFor={fieldName} className="text-sm font-medium text-muted-foreground">
-              {fieldName}
-              {field.required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <div className="relative">
-              <Input
-                id={fieldName}
-                type="text"
-                value={formData[fieldName] || ''}
-                onChange={e => handleChange(e.target.value)}
-                required={field.required}
-                placeholder={field.description}
-                {...commonInputProps}
-              />
-              {readOnly && isLink && formData[fieldName] && (
-                <a 
-                  href={formData[fieldName]} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              )}
-            </div>
-            {field.description && (
-              <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
-            )}
-          </div>
-        );
-
-      case 'number':
-        return (
-          <div key={fieldName} className="space-y-1.5">
-            <Label htmlFor={fieldName} className="text-sm font-medium text-muted-foreground">
-              {fieldName}
-              {field.required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <Input
-              id={fieldName}
-              type="number"
-              value={formData[fieldName] || ''}
-              onChange={e => handleChange(Number(e.target.value))}
-              required={field.required}
-              placeholder={field.description}
-              {...commonInputProps}
-            />
-            {field.description && (
-              <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
-            )}
-          </div>
-        );
-
-      case 'boolean':
-        return (
-          <div key={fieldName} className="flex items-center justify-between py-2">
-            <div>
-              <Label htmlFor={fieldName} className="text-sm font-medium">
-                {fieldName}
-                {field.required && <span className="text-destructive ml-1">*</span>}
-              </Label>
-              {field.description && (
-                <p className="text-xs text-muted-foreground mt-0.5">{field.description}</p>
-              )}
-            </div>
-            <Switch
-              id={fieldName}
-              checked={formData[fieldName] || false}
-              onCheckedChange={handleChange}
-              disabled={readOnly}
-              className={cn(readOnly && "cursor-not-allowed")}
-            />
-          </div>
-        );
-
-      case 'date':
-        return (
-          <div key={fieldName} className="space-y-1.5">
-            <Label htmlFor={fieldName} className="text-sm font-medium text-muted-foreground">
-              {fieldName}
-              {field.required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData[fieldName] && "text-muted-foreground",
-                    readOnly && "opacity-90 bg-muted/50 border-0 cursor-default"
-                  )}
-                  disabled={readOnly}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData[fieldName] ? format(formData[fieldName], 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              {!readOnly && (
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={formData[fieldName]}
-                    onSelect={handleChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              )}
-            </Popover>
-            {field.description && (
-              <p className="text-xs text-muted-foreground mt-1">{field.description}</p>
-            )}
-          </div>
-        );
-
-      default:
-        return null;
-    }
+  const handleFieldChange = (fieldName: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
   };
 
-  // Group fields by type for display
-  const fieldsByType = modelFields.reduce((acc, [fieldName, field]) => {
-    if (!acc[field.type]) acc[field.type] = [];
-    acc[field.type].push([fieldName, field]);
-    return acc;
-  }, {} as Record<string, [string, FieldDefinition][]>);
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Display fields in a clean two-column layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {modelFields.map(([fieldName, field]) => (
-          <div key={fieldName} className={cn(
-            field.type === 'boolean' && "col-span-2",
-            field.type === 'date' && "col-span-2 md:col-span-1"
-          )}>
-            {renderField(fieldName, field)}
-          </div>
-        ))}
-      </div>
+    <Box as="form" onSubmit={handleSubmit}>
+      <VStack spacing="5" align="stretch" mb="6">
+        {modelFields.map(([fieldName, field]) => {
+          const value = formData[fieldName];
+          const isRequired = field.required || false;
+          
+          return (
+            <FormControl 
+              key={fieldName} 
+              isRequired={isRequired}
+              isDisabled={readOnly}
+            >
+              <FormLabel 
+                htmlFor={fieldName}
+                color="gray.200"
+                fontSize="sm"
+                fontWeight="medium"
+              >
+                {(field as any).label || fieldName}
+              </FormLabel>
 
-      {!readOnly && (
-        <div className="flex items-center justify-end space-x-2 pt-4 border-t">
+              {field.type === 'string' && (
+                (field as any).multiline ? (
+                  <Textarea
+                    id={fieldName}
+                    value={value || ''}
+                    onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+                    placeholder={(field as any).placeholder || field.description || ''}
+                    size="md"
+                    bg="gray.800"
+                    color="gray.100"
+                    borderColor="gray.700"
+                    _hover={{ borderColor: "gray.600" }}
+                    _focus={{ borderColor: "purple.500" }}
+                    rows={4}
+                  />
+                ) : (
+                  <Input
+                    id={fieldName}
+                    type="text"
+                    value={value || ''}
+                    onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+                    placeholder={(field as any).placeholder || field.description || ''}
+                    bg="gray.800"
+                    color="gray.100"
+                    borderColor="gray.700"
+                    _hover={{ borderColor: "gray.600" }}
+                    _focus={{ borderColor: "purple.500" }}
+                  />
+                )
+              )}
+
+              {field.type === 'number' && (
+                <NumberInput
+                  id={fieldName}
+                  value={value}
+                  onChange={(valueString) => handleFieldChange(fieldName, parseFloat(valueString))}
+                  min={(field as any).min}
+                  max={(field as any).max}
+                  step={(field as any).step || 1}
+                  bg="gray.800"
+                  borderColor="gray.700"
+                >
+                  <NumberInputField 
+                    color="gray.100"
+                    _hover={{ borderColor: "gray.600" }}
+                    _focus={{ borderColor: "purple.500" }}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper color="gray.400" />
+                    <NumberDecrementStepper color="gray.400" />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+
+              {field.type === 'boolean' && (
+                <Switch
+                  id={fieldName}
+                  isChecked={value}
+                  onChange={(e) => handleFieldChange(fieldName, e.target.checked)}
+                  colorScheme="purple"
+                  size="md"
+                />
+              )}
+
+              {field.description && (
+                <FormHelperText color="gray.400" fontSize="xs">
+                  {field.description}
+                </FormHelperText>
+              )}
+            </FormControl>
+          );
+        })}
+      </VStack>
+
+      <Flex justifyContent="flex-end" gap="3" mt="8">
+        <Button
+          onClick={onCancel}
+          variant="ghost"
+          size="md"
+          colorScheme="gray"
+          mr={3}
+          isDisabled={loading}
+        >
+          Cancel
+        </Button>
+
+        {!readOnly && (
           <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading}
+            type="submit"
+            isLoading={loading}
+            colorScheme="purple"
+            size="md"
           >
-            Cancel
+            {submitButtonText}
           </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Processing...' : submitButtonText}
-          </Button>
-        </div>
-      )}
-    </form>
+        )}
+      </Flex>
+    </Box>
   );
 } 

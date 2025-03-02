@@ -4,12 +4,35 @@ import { useEffect, useState } from 'react';
 import { useModels } from '@/hooks/useModels';
 import { SideDrawer } from '@/components/layout/SideDrawer';
 import { ModelDataForm } from '@/components/models/ModelDataForm';
-import { ModelsHeader } from '@/components/models/ModelsHeader';
-import { ModelsGrid } from '@/components/models/ModelsGrid';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
+import { 
+  Box, 
+  Button, 
+  Container, 
+  Flex, 
+  Heading, 
+  Icon, 
+  Input, 
+  InputGroup, 
+  InputLeftElement,
+  FormControl,
+  FormLabel,
+  Switch,
+  Text,
+  HStack,
+  useDisclosure,
+  Card,
+  Stack,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Spinner,
+} from '@chakra-ui/react';
+import { ModelsGrid } from '@/components/models/ModelsGrid';
+import { toast } from 'sonner';
 
 export default function ModelsPage() {
   const {
@@ -30,8 +53,10 @@ export default function ModelsPage() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
   useEffect(() => {
+    // Always show archived models
+    setShowArchived(true);
     loadModels();
-  }, [loadModels]);
+  }, [loadModels, setShowArchived]);
 
   // Handle adding data to a model
   const handleAddData = async (modelId: string) => {
@@ -93,84 +118,168 @@ export default function ModelsPage() {
     ? filteredModels.find(m => m.id === selectedModel)
     : null;
 
+  // Separate active and archived models
+  const activeModels = filteredModels.filter(model => model.status !== 'archived');
+  const archivedModels = filteredModels.filter(model => model.status === 'archived');
+
   return (
-    <div className="page-container">
-      <ModelsHeader 
-        searchQuery={searchQuery}
-        showArchived={showArchived}
-        onSearchChange={setSearchQuery}
-        onShowArchivedChange={setShowArchived}
-      />
-      
-      <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand-primary border-t-transparent mb-4"></div>
-              <p className="text-text-secondary">Loading models...</p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="bg-status-error-subtle p-4 rounded-lg max-w-md text-center">
-              <p className="text-status-error">{error}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={loadModels} 
-                className="mt-4 border-status-error text-status-error hover:bg-status-error-subtle"
+    <Box minH="calc(100vh - 64px)" bg="gray.900" py={6} px={{ base: 4, md: 6 }}>
+      <Container maxW="container.2xl" px={0}>
+        {/* Page Header */}
+        <Stack spacing={4} mb={6}>
+          <Flex justifyContent="space-between" alignItems="center">
+            <Box>
+              <Heading size="lg" fontWeight="semibold" color="white" letterSpacing="-0.02em">
+                Models
+              </Heading>
+              <Text mt={1} color="gray.400" fontSize="sm">
+                Create and manage your data models
+              </Text>
+            </Box>
+            
+            <Link href="/models/new" passHref>
+              <Button
+                as="a"
+                leftIcon={<Icon as={Plus} boxSize={4} />}
+                colorScheme="purple"
+                size="md"
+                fontWeight="medium"
+                borderRadius="md"
               >
-                Retry
-              </Button>
-            </div>
-          </div>
-        ) : filteredModels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 space-y-4">
-            <div className="bg-surface-2 rounded-full p-4">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-brand-secondary">
-                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.40913C11.0108 7.05016 11.7289 6.91894 12.4272 7.03871C13.1255 7.15849 13.7588 7.52152 14.2151 8.06353C14.6713 8.60553 14.9211 9.29152 14.92 10C14.92 12 11.92 13 11.92 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 17H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-text-primary">No models found</h3>
-            <p className="text-text-secondary max-w-md text-center">
-              There are no models matching your current filters. Try changing your search or create a new model.
-            </p>
-            <Link href="/models/new">
-              <Button className="action-button-primary mt-2 py-2 px-4">
-                <Plus className="h-4 w-4 mr-2" />
-                Create new model
+                Add model
               </Button>
             </Link>
-          </div>
+          </Flex>
+          
+          {/* Search and Filters */}
+          <Card bg="gray.800" borderColor="gray.700" variant="outline" shadow="sm" borderRadius="lg">
+            <Flex 
+              p={4}
+              alignItems="center"
+            >
+              <InputGroup maxW={{ md: "md" }} flex={1}>
+                <InputLeftElement pointerEvents="none">
+                  <Icon as={Search} color="gray.500" boxSize={4} />
+                </InputLeftElement>
+                <Input
+                  placeholder="Search models..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  bg="gray.900"
+                  color="white"
+                  borderColor="gray.700"
+                  borderRadius="md"
+                  fontSize="sm"
+                  _hover={{ borderColor: "gray.600" }}
+                  _focus={{ 
+                    borderColor: "purple.500", 
+                    boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)" 
+                  }}
+                  _placeholder={{ color: "gray.500" }}
+                />
+              </InputGroup>
+            </Flex>
+          </Card>
+        </Stack>
+        
+        {/* Content Area */}
+        {loading ? (
+          <Flex justify="center" align="center" py={16}>
+            <Spinner color="purple.500" size="xl" thickness="3px" speed="0.8s" emptyColor="gray.700" />
+          </Flex>
+        ) : error ? (
+          <Card bg="red.900" borderColor="red.700" color="white" p={4} borderRadius="lg" maxW="lg" mx="auto">
+            <Heading size="sm" mb={2}>Error loading models</Heading>
+            <Text fontSize="sm" color="red.200">{error}</Text>
+          </Card>
         ) : (
-        <ModelsGrid 
-          models={filteredModels}
-          loading={loading}
-          error={error}
-          onAddData={handleAddData}
-          onArchiveToggle={handleArchiveToggle}
-          onClearData={handleClearData}
-          onDelete={handleDeleteModel}
-        />
+          <Tabs variant="enclosed" colorScheme="purple" isLazy mt={6}>
+            <TabList borderBottomColor="gray.700">
+              <Tab 
+                _selected={{ color: 'white', bg: 'gray.800', borderColor: 'gray.700', borderBottomColor: 'gray.800' }}
+                color="gray.400"
+                borderColor="transparent"
+                borderTopRadius="md"
+                fontWeight="medium"
+                fontSize="sm"
+              >
+                All Models ({filteredModels.length})
+              </Tab>
+              <Tab 
+                _selected={{ color: 'white', bg: 'gray.800', borderColor: 'gray.700', borderBottomColor: 'gray.800' }}
+                color="gray.400"
+                borderColor="transparent"
+                borderTopRadius="md"
+                fontWeight="medium"
+                fontSize="sm"
+              >
+                Active ({activeModels.length})
+              </Tab>
+              <Tab 
+                _selected={{ color: 'white', bg: 'gray.800', borderColor: 'gray.700', borderBottomColor: 'gray.800' }}
+                color="gray.400"
+                borderColor="transparent"
+                borderTopRadius="md"
+                fontWeight="medium"
+                fontSize="sm"
+              >
+                Archived ({archivedModels.length})
+              </Tab>
+            </TabList>
+            
+            <TabPanels>
+              <TabPanel p={0} pt={6}>
+                <ModelsGrid 
+                  models={filteredModels}
+                  loading={false}
+                  error={null}
+                  onAddData={handleAddData}
+                  onArchiveToggle={handleArchiveToggle}
+                  onClearData={handleClearData}
+                  onDelete={handleDeleteModel}
+                />
+              </TabPanel>
+              <TabPanel p={0} pt={6}>
+                <ModelsGrid 
+                  models={activeModels}
+                  loading={false}
+                  error={null}
+                  onAddData={handleAddData}
+                  onArchiveToggle={handleArchiveToggle}
+                  onClearData={handleClearData}
+                  onDelete={handleDeleteModel}
+                />
+              </TabPanel>
+              <TabPanel p={0} pt={6}>
+                <ModelsGrid 
+                  models={archivedModels}
+                  loading={false}
+                  error={null}
+                  onAddData={handleAddData}
+                  onArchiveToggle={handleArchiveToggle}
+                  onClearData={handleClearData}
+                  onDelete={handleDeleteModel}
+                />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
         )}
-      </div>
-      
-      {/* Add Data Drawer */}
-      {selectedModelDef && (
-        <SideDrawer
-          isOpen={isAddDataOpen}
-          onClose={() => setIsAddDataOpen(false)}
-          title={`Add Data to ${selectedModelDef.name}`}
-        >
-          <ModelDataForm
-            model={selectedModelDef}
-            onSubmit={handleSubmitData}
-            onCancel={() => setIsAddDataOpen(false)}
-          />
-        </SideDrawer>
-      )}
-    </div>
+        
+        {/* Add Data Drawer */}
+        {selectedModelDef && (
+          <SideDrawer
+            isOpen={isAddDataOpen}
+            onClose={() => setIsAddDataOpen(false)}
+            title={`Add Data to ${selectedModelDef.name}`}
+          >
+            <ModelDataForm
+              model={selectedModelDef}
+              onSubmit={handleSubmitData}
+              onCancel={() => setIsAddDataOpen(false)}
+            />
+          </SideDrawer>
+        )}
+      </Container>
+    </Box>
   );
 } 

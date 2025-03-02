@@ -1,7 +1,4 @@
 import "./globals.css";
-import "./models.css";
-import "./explore.css";
-import "@/styles/theme.css";
 import "@/styles/calendar.css";
 
 import type { Metadata } from "next";
@@ -21,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} antialiased bg-background text-foreground`}>
+    <html lang="en" className="dark">
+      <body className={inter.className}>
         <Providers>
           {children}
         </Providers>

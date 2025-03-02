@@ -1,8 +1,30 @@
-import { Database, MoreHorizontal, FileText, Compass, Trash2, PlusCircle, ArrowUpRight } from 'lucide-react';
+import { Database, MoreHorizontal, FileText, Compass, Trash2, PlusCircle, ArrowUpRight, Archive, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  HStack,
+  Icon,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuDivider,
+  MenuGroup,
+  Badge,
+  Text,
+  SimpleGrid,
+  Heading,
+  IconButton,
+  Stat,
+  StatLabel,
+  StatNumber,
+  useDisclosure,
+  Divider,
+  Tag
+} from '@chakra-ui/react';
 
 export interface ModelDefinition {
   id: string;
@@ -31,134 +53,215 @@ export function ModelCard({
   const isArchived = model.status === 'archived';
   
   return (
-    <div className="model-card-modern">
-      {/* Card Header with Model Name & Status */}
-      <div className="model-card-header mb-3">
-        <div className="flex items-start space-x-2">
-          <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md mt-0.5 bg-state-hover">
-            <Database className="h-4 w-4 text-brand-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center">
-              <h3 className="model-name truncate max-w-[150px] flex-shrink">{model.name}</h3>
-              <span className={cn(
-                "ml-2 inline-flex items-center px-2 py-0.5 text-xs rounded-full flex-shrink-0",
-                isArchived 
-                  ? "bg-surface-1 text-text-secondary" 
-                  : "bg-status-success-subtle text-status-success"
-              )}>
-                <span className={cn(
-                  "w-1.5 h-1.5 rounded-full mr-1.5",
-                  isArchived ? "bg-text-secondary" : "bg-status-success"
-                )}></span>
-                {isArchived ? 'Archived' : 'Active'}
-              </span>
-            </div>
-            <div className="w-full overflow-hidden">
-              <div className="max-w-full">
-                <p className="model-description" title={model.description || 'No description'}>
-                  {model.description || 'No description'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-text-secondary">
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[180px]">
-            <DropdownMenuItem
-              onClick={() => onAddData(model.id)}
-              disabled={isArchived}
-              className={cn(
-                "text-sm cursor-pointer hover:bg-surface-2",
-                isArchived ? "opacity-50 cursor-not-allowed" : ""
+    <Card 
+      bg="gray.800" 
+      borderWidth="1px" 
+      borderColor="gray.700" 
+      borderRadius="md"
+      overflow="hidden"
+      transition="all 0.2s ease"
+      position="relative"
+      h="full"
+      _hover={{ 
+        borderColor: 'gray.600',
+        transform: 'translateY(-2px)',
+        boxShadow: 'md',
+      }}
+    >
+      <Flex 
+        direction="column" 
+        h="full"
+      >
+        <Box p={3}>
+          {/* Header */}
+          <Flex justifyContent="space-between" alignItems="flex-start" mb={2}>
+            <HStack spacing={2} alignItems="center">
+              <Flex 
+                bg="gray.700" 
+                color="purple.400" 
+                boxSize={8} 
+                borderRadius="md" 
+                alignItems="center" 
+                justifyContent="center"
+              >
+                <Icon as={Database} boxSize={4} />
+              </Flex>
+              
+              <Box>
+                <Heading 
+                  as="h3" 
+                  size="sm" 
+                  fontWeight="semibold" 
+                  color="white" 
+                  isTruncated 
+                  maxW="160px"
+                >
+                  {model.name}
+                </Heading>
+              </Box>
+            </HStack>
+            
+            <HStack spacing={2}>
+              {isArchived && (
+                <Badge 
+                  fontSize="xs" 
+                  colorScheme="gray" 
+                  variant="subtle" 
+                  px={2} 
+                  py={0.5} 
+                  borderRadius="full"
+                >
+                  Archived
+                </Badge>
               )}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Add Data
-            </DropdownMenuItem>
-            
-            <Link href={`/models/${model.id}/explore`} className="w-full">
-              <DropdownMenuItem disabled={isArchived} className="text-sm cursor-pointer hover:bg-surface-2">
-                <Compass className="h-4 w-4 mr-2" />
-                Explore Data
-              </DropdownMenuItem>
-            </Link>
-            
-            <DropdownMenuSeparator />
-            
-            <DropdownMenuItem
-              onClick={() => onArchiveToggle(model.id, model.status || 'active')}
-              className="text-sm cursor-pointer hover:bg-surface-2"
-            >
-              {isArchived ? 'Restore' : 'Archive'}
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem
-              onClick={() => onClearData(model.id, model.name)}
-              disabled={isArchived}
-              className="text-sm cursor-pointer text-status-warning hover:bg-surface-2"
-            >
-              Clear All Data
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem
-              onClick={() => onDelete(model.id)}
-              className="text-sm cursor-pointer text-status-error hover:bg-surface-2"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Model
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      
-      {/* Card Stats */}
-      <div className="rounded-md p-3 mb-3 bg-surface-2">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="stats-item">
-            <div className="stats-label">Fields</div>
-            <div className="stats-value text-sm">{Object.keys(model.fields).length}</div>
-          </div>
+              <Menu>
+                <MenuButton
+                  as={IconButton}
+                  aria-label="Options"
+                  icon={<Icon as={MoreHorizontal} />}
+                  variant="ghost"
+                  size="sm"
+                  color="gray.400"
+                  _hover={{ bg: 'gray.700', color: 'white' }}
+                />
+                <MenuList 
+                  zIndex={10} 
+                  bg="gray.800" 
+                  borderColor="gray.700" 
+                  py={1} 
+                  boxShadow="lg"
+                  fontSize="sm"
+                >
+                  <MenuGroup title="Actions" color="gray.400" fontWeight="medium" fontSize="xs" ml={3} mb={1}>
+                    <MenuItem
+                      icon={<Icon as={FileText} boxSize={4} />}
+                      onClick={() => onAddData(model.id)}
+                      isDisabled={isArchived}
+                      _hover={{ bg: 'gray.700' }}
+                      color="gray.200"
+                    >
+                      Add Data
+                    </MenuItem>
+                    <Link href={`/models/${model.id}/explore`} style={{ width: '100%' }}>
+                      <MenuItem
+                        icon={<Icon as={Compass} boxSize={4} />}
+                        isDisabled={isArchived}
+                        _hover={{ bg: 'gray.700' }}
+                        color="gray.200"
+                      >
+                        Explore Data
+                      </MenuItem>
+                    </Link>
+                  </MenuGroup>
+                  
+                  <MenuDivider borderColor="gray.700" my={1} />
+                  
+                  <MenuGroup title="Management" color="gray.400" fontWeight="medium" fontSize="xs" ml={3} mb={1}>
+                    <MenuItem
+                      icon={<Icon as={isArchived ? RotateCcw : Archive} boxSize={4} />}
+                      onClick={() => onArchiveToggle(model.id, model.status || 'active')}
+                      _hover={{ bg: 'gray.700' }}
+                      color="gray.200"
+                    >
+                      {isArchived ? 'Restore Model' : 'Archive Model'}
+                    </MenuItem>
+                    
+                    {!isArchived && (
+                      <MenuItem
+                        onClick={() => onClearData(model.id, model.name)}
+                        _hover={{ bg: 'gray.700' }}
+                        color="yellow.300"
+                      >
+                        Clear All Data
+                      </MenuItem>
+                    )}
+                    
+                    <MenuItem
+                      icon={<Icon as={Trash2} boxSize={4} />}
+                      onClick={() => onDelete(model.id)}
+                      _hover={{ bg: 'gray.700' }}
+                      color="red.300"
+                    >
+                      Delete Model
+                    </MenuItem>
+                  </MenuGroup>
+                </MenuList>
+              </Menu>
+            </HStack>
+          </Flex>
           
-          <div className="stats-item">
-            <div className="stats-label">Records</div>
-            <div className="stats-value text-sm">{model.recordCount}</div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Card Actions - Changed from flex-col to flex-row */}
-      <div className="flex flex-row gap-2 mt-auto pt-4 border-t border-border-primary">
-        <Button
-          variant="tertiary"
-          size="sm"
-          onClick={() => onAddData(model.id)}
-          disabled={isArchived}
-          className="text-xs h-8 px-3 flex-1 justify-center"
-        >
-          <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-          Add Data
-        </Button>
-        
-        <Link href={`/models/${model.id}/explore`} className="flex-1">
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={isArchived}
-            className="text-xs h-8 px-3 w-full justify-center"
+          {/* Description */}
+          <Text 
+            color="gray.400" 
+            fontSize="xs" 
+            noOfLines={1} 
+            mb={3}
+            minH="1.2rem"
           >
-            <ArrowUpRight className="h-3.5 w-3.5 mr-1.5" />
-            Explore
-          </Button>
-        </Link>
-      </div>
-    </div>
+            {model.description || 'No description'}
+          </Text>
+          
+          {/* Stats */}
+          <SimpleGrid columns={2} spacing={3}>
+            <Stat
+              bg="gray.700"
+              p={2}
+              borderRadius="md"
+              size="sm"
+            >
+              <StatLabel fontSize="xs" color="gray.400" fontWeight="medium">Fields</StatLabel>
+              <StatNumber fontSize="lg" fontWeight="semibold" color="gray.100">
+                {Object.keys(model.fields).length}
+              </StatNumber>
+            </Stat>
+            
+            <Stat
+              bg="gray.700"
+              p={2}
+              borderRadius="md"
+              size="sm"
+            >
+              <StatLabel fontSize="xs" color="gray.400" fontWeight="medium">Records</StatLabel>
+              <StatNumber fontSize="lg" fontWeight="semibold" color="gray.100">
+                {model.recordCount}
+              </StatNumber>
+            </Stat>
+          </SimpleGrid>
+        </Box>
+        
+        {/* Footer with actions */}
+        <Box mt="auto">
+          <Divider borderColor="gray.700" />
+          <Flex gap={2} p={2}>
+            <Button
+              onClick={() => onAddData(model.id)}
+              isDisabled={isArchived}
+              flex={1}
+              leftIcon={<Icon as={PlusCircle} boxSize={3} />}
+              size="sm"
+              variant="ghost"
+              color="gray.300"
+              fontWeight="medium"
+              _hover={{ bg: 'gray.700' }}
+            >
+              Add
+            </Button>
+            
+            <Link href={`/models/${model.id}/explore`} style={{ flex: 1 }}>
+              <Button
+                width="100%"
+                leftIcon={<Icon as={Compass} boxSize={3} />}
+                colorScheme="purple"
+                size="sm"
+                isDisabled={isArchived}
+                fontWeight="medium"
+              >
+                Explore
+              </Button>
+            </Link>
+          </Flex>
+        </Box>
+      </Flex>
+    </Card>
   );
 } 
