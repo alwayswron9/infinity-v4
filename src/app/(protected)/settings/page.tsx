@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { KeyIcon, PlusIcon, ClipboardIcon, TrashIcon, CheckIcon, ShieldCheckIcon, ClockIcon, AlertCircleIcon } from 'lucide-react';
+import { KeyIcon, PlusIcon, ClipboardIcon, TrashIcon, CheckIcon, ShieldCheckIcon, ClockIcon, AlertCircleIcon, InfoIcon } from 'lucide-react';
 import { 
   Box,
   Container,
@@ -31,6 +31,9 @@ import {
 } from '@chakra-ui/react';
 import { toast } from 'react-hot-toast';
 
+import { getAllVersions, getLatestVersion, VersionInfo } from '@/utils/versions';
+import VersionDisplay from '@/components/versions/VersionDisplay';
+
 interface ApiKey {
   id: string;
   name: string;
@@ -47,10 +50,19 @@ export default function SettingsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [versions, setVersions] = useState<VersionInfo[]>([]);
+  const [latestVersion, setLatestVersion] = useState<VersionInfo | null>(null);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
 
   useEffect(() => {
     fetchApiKeys();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'about') {
+      fetchVersions();
+    }
+  }, [activeTab]);
 
   const fetchApiKeys = async () => {
     try {
@@ -64,6 +76,26 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error in fetchApiKeys:', error);
       toast.error(error instanceof Error ? error.message : 'Error loading API keys');
+    }
+  };
+
+  const fetchVersions = async () => {
+    setIsLoadingVersions(true);
+    try {
+      const response = await fetch('/api/versions');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch versions');
+      }
+      
+      const data = await response.json();
+      setVersions(data.versions || []);
+      setLatestVersion(data.latestVersion || null);
+    } catch (error) {
+      console.error('Error in fetchVersions:', error);
+      toast.error(error instanceof Error ? error.message : 'Error loading version information');
+    } finally {
+      setIsLoadingVersions(false);
     }
   };
 
@@ -142,7 +174,7 @@ export default function SettingsPage() {
         </Stack>
 
         {/* Content Area */}
-        <Tabs variant="enclosed" colorScheme="purple" isLazy>
+        <Tabs variant="enclosed" colorScheme="brand" isLazy>
           <TabList borderBottomColor="gray.700">
             <Tab 
               _selected={{ color: 'white', bg: 'gray.800', borderColor: 'gray.700', borderBottomColor: 'gray.800' }}
@@ -155,6 +187,17 @@ export default function SettingsPage() {
             >
               Access Tokens
             </Tab>
+            <Tab 
+              _selected={{ color: 'white', bg: 'gray.800', borderColor: 'gray.700', borderBottomColor: 'gray.800' }}
+              color="gray.400"
+              borderColor="transparent"
+              borderTopRadius="md"
+              fontWeight="medium"
+              fontSize="sm"
+              onClick={() => setActiveTab('about')}
+            >
+              About
+            </Tab>
           </TabList>
           
           <TabPanels>
@@ -165,7 +208,7 @@ export default function SettingsPage() {
                   <Flex gap={3}>
                     <Flex 
                       bg="gray.700" 
-                      color="purple.400" 
+                      color="brand.400" 
                       boxSize={10} 
                       borderRadius="md" 
                       alignItems="center" 
@@ -208,7 +251,7 @@ export default function SettingsPage() {
                           bg="gray.900"
                           borderColor="gray.700"
                           _hover={{ borderColor: "gray.600" }}
-                          _focus={{ borderColor: "purple.500", boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)" }}
+                          _focus={{ borderColor: "brand.500", boxShadow: "0 0 0 1px var(--chakra-colors-brand-500)" }}
                           isDisabled={isCreating}
                         />
                         <FormHelperText fontSize="xs" color="gray.500">
@@ -219,7 +262,7 @@ export default function SettingsPage() {
                       <HStack spacing={2}>
                         <Button
                           type="submit"
-                          colorScheme="purple"
+                          colorScheme="brand"
                           isLoading={isCreating}
                           loadingText="Creating..."
                           isDisabled={isCreating}
@@ -241,7 +284,7 @@ export default function SettingsPage() {
                   <Button
                     onClick={() => setShowCreateForm(true)}
                     leftIcon={<Icon as={PlusIcon} boxSize={4} />}
-                    colorScheme="purple"
+                    colorScheme="brand"
                     size="md"
                     alignSelf="flex-start"
                   >
@@ -327,7 +370,7 @@ export default function SettingsPage() {
                             <Flex align="center" gap={2}>
                               <Flex 
                                 bg="gray.700" 
-                                color="purple.400" 
+                                color="brand.400" 
                                 boxSize={8} 
                                 borderRadius="md" 
                                 alignItems="center" 
@@ -368,6 +411,75 @@ export default function SettingsPage() {
                     ))
                   )}
                 </VStack>
+              </VStack>
+            </TabPanel>
+            
+            <TabPanel p={4}>
+              <VStack spacing={6} align="stretch">
+                {/* About Information */}
+                <Card bg="gray.800" borderWidth="1px" borderColor="gray.700" borderRadius="md" p={4}>
+                  <Flex gap={3}>
+                    <Flex 
+                      bg="gray.700" 
+                      color="brand.400" 
+                      boxSize={10} 
+                      borderRadius="md" 
+                      alignItems="center" 
+                      justifyContent="center"
+                      flexShrink={0}
+                    >
+                      <Icon as={InfoIcon} boxSize={5} />
+                    </Flex>
+                    <Box>
+                      <Heading as="h3" fontSize="md" fontWeight="semibold" color="white" mb={2}>
+                        About Infinity v4
+                      </Heading>
+                      <Text color="gray.400" fontSize="sm">
+                        Infinity v4 is a powerful platform for managing your tasks and projects.
+                        View release history and changelog information below.
+                      </Text>
+                    </Box>
+                  </Flex>
+                </Card>
+
+                {/* Loading state */}
+                {isLoadingVersions && (
+                  <Flex justify="center" py={8}>
+                    <Spinner size="md" color="brand.500" />
+                  </Flex>
+                )}
+
+                {/* No versions found */}
+                {!isLoadingVersions && versions.length === 0 && (
+                  <Card bg="gray.800" p={4} borderWidth="1px" borderColor="gray.700">
+                    <Text color="gray.400" textAlign="center">
+                      No version information available.
+                    </Text>
+                  </Card>
+                )}
+
+                {/* Latest Version */}
+                {!isLoadingVersions && latestVersion && (
+                  <Box>
+                    <Heading as="h3" fontSize="md" fontWeight="semibold" color="white" mb={3}>
+                      Current Version
+                    </Heading>
+                    <VersionDisplay version={latestVersion} isLatest={true} />
+                  </Box>
+                )}
+
+                {/* Version History */}
+                {!isLoadingVersions && versions.length > 1 && (
+                  <Box>
+                    <Heading as="h3" fontSize="md" fontWeight="semibold" color="white" mb={3}>
+                      Version History
+                    </Heading>
+                    
+                    {versions.slice(1).map((version) => (
+                      <VersionDisplay key={version.version} version={version} />
+                    ))}
+                  </Box>
+                )}
               </VStack>
             </TabPanel>
           </TabPanels>

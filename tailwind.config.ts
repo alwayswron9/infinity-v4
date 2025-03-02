@@ -33,9 +33,9 @@ export default {
           foreground: "var(--chakra-colors-white)",
         },
         primary: {
-          DEFAULT: "var(--chakra-colors-purple-500)",
+          DEFAULT: "var(--chakra-colors-brand-500)",
           foreground: "var(--chakra-colors-white)",
-          hover: "var(--chakra-colors-purple-600)",
+          hover: "var(--chakra-colors-brand-600)",
         },
         secondary: {
           DEFAULT: "var(--chakra-colors-gray-700)",
@@ -44,12 +44,12 @@ export default {
         },
         border: {
           DEFAULT: "var(--chakra-colors-gray-700)",
-          focus: "var(--chakra-colors-purple-500)",
+          focus: "var(--chakra-colors-brand-500)",
         },
         brand: {
-          primary: "var(--chakra-colors-purple-500)",
-          secondary: "var(--chakra-colors-purple-400)",
-          tertiary: "var(--chakra-colors-purple-600)",
+          primary: "var(--chakra-colors-brand-500)",
+          secondary: "var(--chakra-colors-brand-400)",
+          tertiary: "var(--chakra-colors-brand-600)",
         },
         surface: {
           0: "var(--chakra-colors-gray-900)",
@@ -58,10 +58,10 @@ export default {
           3: "var(--chakra-colors-gray-600)",
         },
         state: {
-          hover: "rgba(124, 58, 237, 0.1)",
-          focus: "rgba(124, 58, 237, 0.2)",
-          active: "rgba(124, 58, 237, 0.3)",
-          selected: "rgba(124, 58, 237, 0.15)",
+          hover: "rgba(44, 122, 123, 0.1)",
+          focus: "rgba(44, 122, 123, 0.2)",
+          active: "rgba(44, 122, 123, 0.3)",
+          selected: "rgba(44, 122, 123, 0.15)",
         },
         status: {
           success: "var(--chakra-colors-green-500)",

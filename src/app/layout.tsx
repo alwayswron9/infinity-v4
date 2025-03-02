@@ -27,7 +27,7 @@ export default function RootLayout({
       data-theme={initialColorMode}
       style={{ colorScheme: initialColorMode }}
     >
-      <body className={inter.className}>
+      <body className={`${inter.className} chakra-ui-dark`}>
         <Providers>
           {children}
         </Providers>

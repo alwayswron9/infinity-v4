@@ -22,7 +22,7 @@ The registration page is designed with a minimalist approach focusing on clarity
 
 ### Visual Design
 - **Color scheme**
-  - Primary brand color: #7056F8 (vibrant purple)
+  - Primary brand color: #7056F8 (vibrant brand)
   - Dark, professional background
   - Subtle border treatments
 - **Typography**

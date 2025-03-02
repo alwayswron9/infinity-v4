@@ -41,7 +41,7 @@ const QuickStartCard = ({ title, description, icon: IconComponent, href }: { tit
       _hover={{ 
         boxShadow: 'lg', 
         transform: 'translateY(-2px)',
-        borderColor: 'purple.500',
+        borderColor: 'brand.500',
         transition: 'all 0.2s ease' 
       }}
       h="full"
@@ -49,8 +49,8 @@ const QuickStartCard = ({ title, description, icon: IconComponent, href }: { tit
       <Flex alignItems="start" gap="4">
         <Box flexShrink={0}>
           <Flex 
-            bg="purple.900" 
-            color="purple.400" 
+            bg="brand.900" 
+            color="brand.400" 
             boxSize={10} 
             borderRadius="md" 
             alignItems="center" 
@@ -95,12 +95,12 @@ const FeatureCard = ({ title, description, icon: IconComponent }: {
     borderColor="gray.700" 
     rounded="lg" 
     bg="gray.800"
-    _hover={{ borderColor: 'purple.500', transition: 'all 0.2s ease' }}
+    _hover={{ borderColor: 'brand.500', transition: 'all 0.2s ease' }}
   >
     <Flex direction="column" gap={3}>
       <Flex 
-        bg="purple.900" 
-        color="purple.400" 
+        bg="brand.900" 
+        color="brand.400" 
         boxSize={10} 
         borderRadius="md" 
         alignItems="center" 
@@ -133,7 +133,7 @@ export default function Dashboard() {
             
             <Link href="/models/new">
               <Button
-                colorScheme="purple"
+                colorScheme="brand"
                 size="md"
                 fontWeight="medium"
                 borderRadius="md"
@@ -158,8 +158,8 @@ export default function Dashboard() {
             <List spacing="3">
               <ListItem display="flex" alignItems="center" gap="3">
                 <Flex 
-                  bg="purple.900" 
-                  color="purple.400" 
+                  bg="brand.900" 
+                  color="brand.400" 
                   boxSize={8} 
                   borderRadius="md" 
                   alignItems="center" 
@@ -171,8 +171,8 @@ export default function Dashboard() {
               </ListItem>
               <ListItem display="flex" alignItems="center" gap="3">
                 <Flex 
-                  bg="purple.900" 
-                  color="purple.400" 
+                  bg="brand.900" 
+                  color="brand.400" 
                   boxSize={8} 
                   borderRadius="md" 
                   alignItems="center" 
@@ -184,8 +184,8 @@ export default function Dashboard() {
               </ListItem>
               <ListItem display="flex" alignItems="center" gap="3">
                 <Flex 
-                  bg="purple.900" 
-                  color="purple.400" 
+                  bg="brand.900" 
+                  color="brand.400" 
                   boxSize={8} 
                   borderRadius="md" 
                   alignItems="center" 
@@ -296,7 +296,7 @@ GET /api/public/data/orders?page=2&limit=50`} />
               </ListItem>
               <ListItem color="gray.100">
                 <Text color="gray.100">
-                  <ChakraLink href="mailto:aiwahlabs@gmail.com" color="purple.400">Email us</ChakraLink> for n8n access credentials
+                  <ChakraLink href="mailto:aiwahlabs@gmail.com" color="brand.400">Email us</ChakraLink> for n8n access credentials
                 </Text>
                 <Text color="gray.400" fontSize="sm">We'll set you up with a dedicated instance</Text>
               </ListItem>
@@ -307,7 +307,7 @@ GET /api/public/data/orders?page=2&limit=50`} />
             </List>
             <Flex mt={2} justifyContent="center">
               <ChakraLink href="https://automate.aiwahlabs.xyz" isExternal>
-                <Button colorScheme="purple" size="md">
+                <Button colorScheme="brand" size="md">
                   Get Started with n8n
                 </Button>
               </ChakraLink>
@@ -342,7 +342,7 @@ GET /api/public/data/orders?page=2&limit=50`} />
             
             <Box mt={4} textAlign="center">
               <Text color="gray.400" fontSize="sm">
-                Need help getting started? <ChakraLink href="mailto:aiwahlabs@gmail.com" color="purple.400">Contact our support team</ChakraLink>
+                Need help getting started? <ChakraLink href="mailto:aiwahlabs@gmail.com" color="brand.400">Contact our support team</ChakraLink>
               </Text>
             </Box>
           </Stack>

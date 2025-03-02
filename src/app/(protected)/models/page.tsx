@@ -140,7 +140,7 @@ export default function ModelsPage() {
             <Link href="/models/new">
               <Button
                 leftIcon={<Icon as={Plus} boxSize={4} />}
-                colorScheme="purple"
+                colorScheme="brand"
                 size="md"
                 fontWeight="medium"
                 borderRadius="md"
@@ -171,8 +171,8 @@ export default function ModelsPage() {
                   fontSize="sm"
                   _hover={{ borderColor: "gray.600" }}
                   _focus={{ 
-                    borderColor: "purple.500", 
-                    boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)" 
+                    borderColor: "brand.500", 
+                    boxShadow: "0 0 0 1px var(--chakra-colors-brand-500)" 
                   }}
                   _placeholder={{ color: "gray.500" }}
                 />
@@ -184,7 +184,7 @@ export default function ModelsPage() {
         {/* Content Area */}
         {loading ? (
           <Flex justify="center" align="center" py={16}>
-            <Spinner color="purple.500" size="xl" thickness="3px" speed="0.8s" emptyColor="gray.700" />
+            <Spinner color="brand.500" size="xl" thickness="3px" speed="0.8s" emptyColor="gray.700" />
           </Flex>
         ) : error ? (
           <Card bg="red.900" borderColor="red.700" color="white" p={4} borderRadius="lg" maxW="lg" mx="auto">
@@ -192,7 +192,7 @@ export default function ModelsPage() {
             <Text fontSize="sm" color="red.200">{error}</Text>
           </Card>
         ) : (
-          <Tabs variant="enclosed" colorScheme="purple" isLazy mt={6}>
+          <Tabs variant="enclosed" colorScheme="brand" isLazy mt={6}>
             <TabList borderBottomColor="gray.700">
               <Tab 
                 _selected={{ color: 'white', bg: 'gray.800', borderColor: 'gray.700', borderBottomColor: 'gray.800' }}

@@ -7,7 +7,7 @@ export function EmptyStateView({ onCreateView }: EmptyStateViewProps) {
     <Center height="100%" p={8}>
       <VStack spacing={4}>
         <Text>No active view. Create a view to start exploring data.</Text>
-        <Button colorScheme="purple" onClick={onCreateView}>
+        <Button colorScheme="brand" onClick={onCreateView}>
           Create View
         </Button>
       </VStack>

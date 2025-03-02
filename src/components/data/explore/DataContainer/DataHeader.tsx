@@ -10,7 +10,7 @@ import {
 import { LayoutDashboard } from 'lucide-react';
 import { SimpleFilterButton } from '../SimpleFilterButton';
 import { SimpleColumnSelector } from '../SimpleColumnSelector';
-import { ViewSelector } from '../../table/ViewSelector';
+import { ViewSelector } from '../ViewSelector';
 import { EditableHeading } from '../EditableHeading';
 import { DataHeaderProps } from './types';
 

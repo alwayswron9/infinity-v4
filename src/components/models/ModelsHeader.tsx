@@ -51,7 +51,7 @@ export function ModelsHeader({
         <Link href="/models/new" style={{ textDecoration: 'none' }}>
           <Button
             leftIcon={<Icon as={Plus} boxSize="4" />}
-            colorScheme="purple"
+            colorScheme="brand"
             size="md"
             fontWeight="medium"
             borderRadius="md"
@@ -92,8 +92,8 @@ export function ModelsHeader({
                   borderRadius="md"
                   _hover={{ borderColor: "gray.600" }}
                   _focus={{ 
-                    borderColor: "purple.500", 
-                    boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)",
+                    borderColor: "brand.500", 
+                    boxShadow: "0 0 0 1px var(--chakra-colors-brand-500)",
                     bg: "gray.900" 
                   }}
                   _placeholder={{ color: "gray.500" }}
@@ -111,7 +111,7 @@ export function ModelsHeader({
                 id="show-archived"
                 isChecked={showArchived}
                 onChange={(e) => onShowArchivedChange(e.target.checked)}
-                colorScheme="purple"
+                colorScheme="brand"
                 size="md"
               />
             </FormControl>

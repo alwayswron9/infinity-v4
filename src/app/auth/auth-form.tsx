@@ -117,7 +117,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 bg="gray.800"
                 borderColor="gray.600"
                 _hover={{ borderColor: 'gray.500' }}
-                _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                 fontSize="md"
               />
               <InputRightElement color="gray.500">
@@ -144,7 +144,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                     bg="gray.800"
                     borderColor="gray.600"
                     _hover={{ borderColor: 'gray.500' }}
-                    _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                    _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     fontSize="md"
                   />
                   <InputRightElement color="gray.500">
@@ -167,7 +167,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                     bg="gray.800"
                     borderColor="gray.600"
                     _hover={{ borderColor: 'gray.500' }}
-                    _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                    _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     fontSize="md"
                   />
                   <InputRightElement color="gray.500">
@@ -194,7 +194,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 bg="gray.800"
                 borderColor="gray.600"
                 _hover={{ borderColor: 'gray.500' }}
-                _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                 fontSize="md"
               />
               <InputRightElement color="gray.500">
@@ -219,7 +219,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               type="submit"
               isLoading={loading}
               loadingText="Processing..."
-              colorScheme="purple"
+              colorScheme="brand"
               size="md"
               width="full"
               borderRadius="md"
@@ -233,4 +233,4 @@ export function AuthForm({ mode }: AuthFormProps) {
       </form>
     </Box>
   );
-}
+} 

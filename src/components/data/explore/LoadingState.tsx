@@ -21,7 +21,7 @@ export function LoadingState({ message = "Loading..." }: LoadingStateProps) {
           thickness="4px"
           speed="0.65s"
           emptyColor="gray.700"
-          color="purple.500"
+          color="brand.500"
           size="xl"
         />
         <Text fontSize="lg" color={textColor}>{message}</Text>
