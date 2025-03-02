@@ -2,6 +2,26 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { 
+  Button, 
+  FormControl, 
+  FormLabel,
+  FormErrorMessage, 
+  Input, 
+  InputGroup, 
+  InputRightElement, 
+  VStack, 
+  Text, 
+  Box, 
+  Icon,
+  Divider,
+  Stack
+} from '@chakra-ui/react';
+import { 
+  User, 
+  Mail, 
+  Lock 
+} from 'lucide-react';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -81,122 +101,136 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
   };
 
-  // Helper to get input error state
-  const getInputErrorClass = (fieldName: string) => 
-    error?.field === fieldName 
-      ? 'border-status-error focus:border-status-error' 
-      : 'border-transparent focus:border-brand-primary/20';
-
-  const inputClasses = "w-full px-4 py-2 mb-3 text-sm bg-surface-1 border-b border-border-primary placeholder-text-tertiary text-text-primary focus:outline-none focus:ring-0 transition-colors duration-200";
-
   return (
-    <div>
-      <form className="space-y-1" onSubmit={handleSubmit}>
-        {/* Username */}
-        <div className="relative">
-          <input
-            id="username"
-            name="username"
-            type="text"
-            required
-            className={`${inputClasses} ${getInputErrorClass('username')}`}
-            placeholder="Username"
-          />
-          <div className="absolute right-3 top-3 text-text-tertiary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-        </div>
-
-        {/* Email and Name - Only for Register */}
-        {mode === 'register' && (
-          <>
-            <div className="relative">
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className={`${inputClasses} ${getInputErrorClass('email')}`}
-                placeholder="Email address"
-              />
-              <div className="absolute right-3 top-3 text-text-tertiary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-              </div>
-            </div>
-
-            <div className="relative">
-              <input
-                id="name"
-                name="name"
+    <Box>
+      <form onSubmit={handleSubmit}>
+        <Stack spacing={4}>
+          {/* Username */}
+          <FormControl isInvalid={error?.field === 'username'}>
+            <InputGroup size="md">
+              <Input
+                id="username"
+                name="username"
                 type="text"
                 required
-                className={`${inputClasses} ${getInputErrorClass('name')}`}
-                placeholder="Full name"
+                placeholder="Username"
+                bg="gray.800"
+                borderColor="gray.600"
+                _hover={{ borderColor: 'gray.500' }}
+                _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                fontSize="md"
               />
-              <div className="absolute right-3 top-3 text-text-tertiary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Password */}
-        <div className="relative">
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            required
-            className={`${inputClasses} ${getInputErrorClass('password')}`}
-            placeholder="Password"
-          />
-          <div className="absolute right-3 top-3 text-text-tertiary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-          </div>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="text-xs font-light text-status-error pt-1 pb-2">
-            {formatErrorMessage(error)}
-          </div>
-        )}
-
-        {/* Submit Button */}
-        <div className="pt-3 flex justify-center">
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-base bg-brand-primary hover:bg-brand-primary/90 px-8 py-2 text-xs text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-full shadow-sm hover:shadow-md"
-          >
-            {loading ? (
-              <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Processing...</span>
-              </div>
-            ) : (
-              mode === 'login' ? 'Log In' : 'Register'
+              <InputRightElement color="gray.500">
+                <Icon as={User} boxSize={4} />
+              </InputRightElement>
+            </InputGroup>
+            {error?.field === 'username' && (
+              <FormErrorMessage>{error.message}</FormErrorMessage>
             )}
-          </button>
-        </div>
+          </FormControl>
+
+          {/* Email and Name - Only for Register */}
+          {mode === 'register' && (
+            <>
+              <FormControl isInvalid={error?.field === 'email'}>
+                <InputGroup size="md">
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder="Email address"
+                    bg="gray.800"
+                    borderColor="gray.600"
+                    _hover={{ borderColor: 'gray.500' }}
+                    _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                    fontSize="md"
+                  />
+                  <InputRightElement color="gray.500">
+                    <Icon as={Mail} boxSize={4} />
+                  </InputRightElement>
+                </InputGroup>
+                {error?.field === 'email' && (
+                  <FormErrorMessage>{error.message}</FormErrorMessage>
+                )}
+              </FormControl>
+
+              <FormControl isInvalid={error?.field === 'name'}>
+                <InputGroup size="md">
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    placeholder="Full name"
+                    bg="gray.800"
+                    borderColor="gray.600"
+                    _hover={{ borderColor: 'gray.500' }}
+                    _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                    fontSize="md"
+                  />
+                  <InputRightElement color="gray.500">
+                    <Icon as={User} boxSize={4} />
+                  </InputRightElement>
+                </InputGroup>
+                {error?.field === 'name' && (
+                  <FormErrorMessage>{error.message}</FormErrorMessage>
+                )}
+              </FormControl>
+            </>
+          )}
+
+          {/* Password */}
+          <FormControl isInvalid={error?.field === 'password'}>
+            <InputGroup size="md">
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                required
+                placeholder="Password"
+                bg="gray.800"
+                borderColor="gray.600"
+                _hover={{ borderColor: 'gray.500' }}
+                _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                fontSize="md"
+              />
+              <InputRightElement color="gray.500">
+                <Icon as={Lock} boxSize={4} />
+              </InputRightElement>
+            </InputGroup>
+            {error?.field === 'password' && (
+              <FormErrorMessage>{error.message}</FormErrorMessage>
+            )}
+          </FormControl>
+
+          {/* Generic Error Message */}
+          {error && !error.field && (
+            <Text fontSize="sm" color="red.500" textAlign="center">
+              {error.message}
+            </Text>
+          )}
+
+          {/* Submit Button */}
+          <Box pt={2}>
+            <Button
+              type="submit"
+              isLoading={loading}
+              loadingText="Processing..."
+              colorScheme="purple"
+              size="md"
+              width="full"
+              borderRadius="md"
+              _hover={{ transform: 'translateY(-1px)', boxShadow: 'md' }}
+              _active={{ transform: 'translateY(0)', boxShadow: 'sm' }}
+            >
+              {mode === 'login' ? 'Sign In' : 'Create Account'}
+            </Button>
+          </Box>
+        </Stack>
       </form>
-    </div>
+    </Box>
   );
 }

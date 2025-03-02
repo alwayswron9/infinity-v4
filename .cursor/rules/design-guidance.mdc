@@ -1,0 +1,10 @@
+---
+description: Making UI components and design decisions
+globs: *.tsx 
+alwaysApply: false
+---
+
+# Your rule content
+
+Always use saas ui defaults for all components to the extend possible
+Do not use custom components unless you dont have a choice

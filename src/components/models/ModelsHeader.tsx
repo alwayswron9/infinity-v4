@@ -1,7 +1,24 @@
 import Link from 'next/link';
 import { Search, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { 
+  Box, 
+  Button,
+  Card,
+  CardBody,
+  Flex, 
+  Heading, 
+  Icon, 
+  Input,
+  InputGroup,
+  InputLeftElement,
+  FormControl,
+  FormLabel,
+  Switch, 
+  HStack,
+  Stack,
+  Text,
+  Spacer
+} from '@chakra-ui/react';
 
 interface ModelsHeaderProps {
   searchQuery: string;
@@ -17,49 +34,90 @@ export function ModelsHeader({
   onShowArchivedChange
 }: ModelsHeaderProps) {
   return (
-    <div className="space-y-6">
-      <div className="page-header">
-        <h1 className="page-title">Models</h1>
-        <Link href="/models/new">
-          <Button variant="primary" size="default" className="h-10 px-4">
-            <Plus className="h-4 w-4 mr-2" />
+    <Stack spacing="6">
+      <Flex 
+        justifyContent="space-between" 
+        alignItems="center" 
+      >
+        <Box>
+          <Heading as="h1" size="lg" fontWeight="semibold" letterSpacing="-0.02em" color="white">
+            Models
+          </Heading>
+          <Text color="gray.400" mt="1" fontSize="sm">
+            Create and manage your data models
+          </Text>
+        </Box>
+        
+        <Link href="/models/new" style={{ textDecoration: 'none' }}>
+          <Button
+            leftIcon={<Icon as={Plus} boxSize="4" />}
+            colorScheme="purple"
+            size="md"
+            fontWeight="medium"
+            borderRadius="md"
+            px="4"
+            _hover={{ transform: 'translateY(-1px)', boxShadow: 'md' }}
+          >
             Add model
           </Button>
         </Link>
-      </div>
+      </Flex>
 
-      <div className="flex flex-col space-y-5">
-        <div className="search-filter-container">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="search-input w-full"
-              style={{ 
-                backgroundColor: 'var(--surface-0)', 
-                color: 'var(--text-primary)',
-                border: '1px solid var(--surface-2)',
-                boxShadow: 'none'
-              }}
-            />
-          </div>
-          
-          <div className="flex items-center justify-end">
-            <div className="flex items-center space-x-2">
-              <div className="text-sm text-text-primary font-medium">Show archived</div>
+      <Card 
+        bg="gray.800" 
+        borderColor="gray.700"
+        variant="outline"
+        borderRadius="lg"
+        boxShadow="sm"
+      >
+        <CardBody py="4">
+          <Flex 
+            direction={{ base: "column", md: "row" }} 
+            gap={{ base: "4", md: "6" }}
+            alignItems={{ md: "center" }}
+          >
+            <Box flex="1" maxW={{ md: "md" }}>
+              <InputGroup size="md">
+                <InputLeftElement pointerEvents="none">
+                  <Icon as={Search} color="gray.500" boxSize="4" />
+                </InputLeftElement>
+                <Input
+                  placeholder="Search models..."
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  bg="gray.900"
+                  color="gray.100"
+                  borderColor="gray.700"
+                  fontSize="sm"
+                  borderRadius="md"
+                  _hover={{ borderColor: "gray.600" }}
+                  _focus={{ 
+                    borderColor: "purple.500", 
+                    boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)",
+                    bg: "gray.900" 
+                  }}
+                  _placeholder={{ color: "gray.500" }}
+                />
+              </InputGroup>
+            </Box>
+            
+            <Spacer display={{ base: "none", md: "block" }} />
+            
+            <FormControl display="flex" alignItems="center" width="auto" justifyContent="flex-end">
+              <FormLabel htmlFor="show-archived" mb="0" mr="3" fontSize="sm" color="gray.300" fontWeight="medium">
+                Show archived
+              </FormLabel>
               <Switch
                 id="show-archived"
-                checked={showArchived}
-                onCheckedChange={onShowArchivedChange}
-                className="data-[state=checked]:bg-brand-primary border-surface-3"
+                isChecked={showArchived}
+                onChange={(e) => onShowArchivedChange(e.target.checked)}
+                colorScheme="purple"
+                size="md"
               />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+            </FormControl>
+          </Flex>
+        </CardBody>
+      </Card>
+    </Stack>
   );
 } 

@@ -1,7 +1,4 @@
 import "./globals.css";
-import "./models.css";
-import "./explore.css";
-import "@/styles/theme.css";
 import "@/styles/calendar.css";
 
 import type { Metadata } from "next";
@@ -20,9 +17,17 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Hardcode the initial color mode since we know we're using dark mode
+  // This prevents the server component from trying to import the client-side theme
+  const initialColorMode = "dark";
+  
   return (
-    <html lang="en">
-      <body className={`${inter.className} antialiased bg-background text-foreground`}>
+    <html 
+      lang="en" 
+      data-theme={initialColorMode}
+      style={{ colorScheme: initialColorMode }}
+    >
+      <body className={inter.className}>
         <Providers>
           {children}
         </Providers>

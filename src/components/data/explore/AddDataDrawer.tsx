@@ -1,5 +1,13 @@
 import React from 'react';
-import { SideDrawer } from '@/components/layout/SideDrawer';
+import {
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  Box
+} from '@chakra-ui/react';
 import { ModelDataForm } from '@/components/models/ModelDataForm';
 
 interface AddDataDrawerProps {
@@ -18,19 +26,28 @@ export function AddDataDrawer({
   onSubmit
 }: AddDataDrawerProps) {
   return (
-    <SideDrawer
+    <Drawer
       isOpen={isOpen}
+      placement="right"
       onClose={onClose}
-      title={`Add Data to ${modelName}`}
-      className="record-drawer"
+      size="lg"
     >
-      <div className="record-form-container">
-        <ModelDataForm
-          model={modelDefinition}
-          onSubmit={onSubmit}
-          onCancel={onClose}
-        />
-      </div>
-    </SideDrawer>
+      <DrawerOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+      <DrawerContent bg="gray.800" borderLeftWidth="1px" borderColor="gray.700">
+        <DrawerHeader borderBottomWidth="1px" borderColor="gray.700" py={4}>
+          {`Add Data to ${modelName}`}
+          <DrawerCloseButton size="lg" color="gray.400" _hover={{ bg: "gray.700", color: "gray.200" }} />
+        </DrawerHeader>
+        <DrawerBody p={6}>
+          <Box>
+            <ModelDataForm
+              model={modelDefinition}
+              onSubmit={onSubmit}
+              onCancel={onClose}
+            />
+          </Box>
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
   );
 } 

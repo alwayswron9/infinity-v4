@@ -1,20 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ViewFilterConfig } from '@/types/viewDefinition';
-import { cn } from '@/lib/utils';
-
-interface FilterGroup {
-  filters: ViewFilterConfig[];
-  conjunction: 'and' | 'or';
-}
+import { 
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  Button,
+  FormControl,
+  FormLabel,
+  Select,
+  Input,
+  VStack,
+  HStack,
+  Box,
+  Text,
+  IconButton,
+  useColorModeValue,
+  Divider,
+  ButtonGroup,
+  Flex,
+  Alert,
+  AlertIcon,
+  Icon
+} from '@chakra-ui/react';
+import type { ModelView as ModelViewType, ViewFilterConfig } from '@/types/viewDefinition';
 
 interface FilterDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  availableFields: string[];
-  currentFilters: ViewFilterConfig[];
-  onApplyFilters: (filters: ViewFilterConfig[]) => void;
+  currentView: ModelViewType;
+  onConfigChange: (config: any) => void;
 }
 
 const FILTER_OPERATORS: { value: ViewFilterConfig['operator']; label: string }[] = [
@@ -38,12 +55,28 @@ const NO_VALUE_OPERATORS = ['isNull', 'isNotNull'];
 export function FilterDrawer({ 
   isOpen, 
   onClose, 
-  availableFields, 
-  currentFilters,
-  onApplyFilters 
+  currentView,
+  onConfigChange 
 }: FilterDrawerProps) {
   const [filters, setFilters] = useState<ViewFilterConfig[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Pre-compute all color mode values at the top level to maintain hook ordering
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const filterBgColor = useColorModeValue('gray.50', 'gray.700');
+
+  // Get available fields from the current view's columns
+  const availableFields = React.useMemo(() => {
+    if (!currentView || !currentView.config || !currentView.config.columns) return [];
+    return currentView.config.columns.map(col => col.field);
+  }, [currentView]);
+
+  // Get current filters from the view config
+  const currentFilters = React.useMemo(() => {
+    if (!currentView || !currentView.config || !currentView.config.filters) return [];
+    return currentView.config.filters;
+  }, [currentView]);
 
   // Sort available fields for better UX
   const sortedAvailableFields = React.useMemo(() => {
@@ -113,7 +146,12 @@ export function FilterDrawer({
         (NO_VALUE_OPERATORS.includes(filter.operator) || filter.value !== undefined)
     );
     
-    onApplyFilters(validFilters);
+    // Update the view config with the new filters
+    onConfigChange({
+      ...currentView.config,
+      filters: validFilters
+    });
+    
     onClose();
   };
 
@@ -123,194 +161,170 @@ export function FilterDrawer({
     setHasChanges(true);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
-      <div className="bg-surface-0 w-full max-w-md h-full overflow-auto">
-        {/* Drawer Header */}
-        <div className="border-b border-border p-4 flex items-center justify-between bg-surface-1">
-          <h2 className="text-lg font-medium text-text-primary">Filter Data</h2>
-          <button 
-            onClick={onClose}
-            className="rounded-full p-1 hover:bg-surface-2 text-text-secondary"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Drawer isOpen={isOpen} onClose={onClose} placement="right" size="md">
+      <DrawerOverlay />
+      <DrawerContent bg={bgColor}>
+        <DrawerCloseButton />
+        <DrawerHeader borderBottomWidth="1px" borderColor={borderColor}>
+          Filter Data
+        </DrawerHeader>
 
-        {/* Drawer Content */}
-        <div className="p-4">
-          {/* Filter Builder */}
-          <div className="space-y-4">
+        <DrawerBody>
+          <VStack spacing={4} align="stretch" py={2}>
             {filters.length === 0 || sortedAvailableFields.length === 0 ? (
-              <div className="text-center py-6 text-text-secondary">
-                <Info className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p>
+              <Box textAlign="center" py={8}>
+                <Icon as={Info} boxSize={8} mb={4} color="gray.400" />
+                <Text color="gray.500">
                   {sortedAvailableFields.length === 0 
                     ? "No filterable fields available." 
                     : "No filters created yet. Add a filter to start."}
-                </p>
-              </div>
+                </Text>
+              </Box>
             ) : (
-              <div className="space-y-4">
+              <VStack spacing={4} align="stretch">
                 {filters.map((filter, index) => (
-                  <div 
+                  <Box 
                     key={index} 
-                    className="bg-surface-1 p-3 rounded-md border border-border"
+                    p={4}
+                    borderWidth="1px"
+                    borderColor={borderColor}
+                    borderRadius="md"
+                    bg={filterBgColor}
                   >
                     {/* Conjunction - only show for filters after the first one */}
                     {index > 0 && (
-                      <div className="mb-3 flex items-center">
-                        <span className="text-sm font-medium mr-2 text-text-secondary">Join with:</span>
-                        <div className="flex rounded-md overflow-hidden border border-border">
-                          <button
-                            type="button"
+                      <Box mb={3}>
+                        <FormLabel fontSize="sm" fontWeight="medium" mb={1}>
+                          Join with:
+                        </FormLabel>
+                        <ButtonGroup isAttached size="sm" mb={2}>
+                          <Button
+                            colorScheme={filter.conjunction === 'and' ? "blue" : "gray"}
                             onClick={() => handleFilterChange(index, 'conjunction', 'and')}
-                            className={cn(
-                              "px-3 py-1 text-sm",
-                              filter.conjunction === 'and' 
-                                ? "bg-brand-primary text-white"
-                                : "bg-surface-2 text-text-primary hover:bg-surface-3"
-                            )}
                           >
                             AND
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            colorScheme={filter.conjunction === 'or' ? "blue" : "gray"}
                             onClick={() => handleFilterChange(index, 'conjunction', 'or')}
-                            className={cn(
-                              "px-3 py-1 text-sm",
-                              filter.conjunction === 'or' 
-                                ? "bg-brand-primary text-white"
-                                : "bg-surface-2 text-text-primary hover:bg-surface-3"
-                            )}
                           >
                             OR
-                          </button>
-                        </div>
-                      </div>
+                          </Button>
+                        </ButtonGroup>
+                      </Box>
                     )}
 
-                    {/* Filter Field, Operator and Value */}
-                    <div className="space-y-3">
+                    <Flex justify="space-between" mb={2}>
+                      <Text fontWeight="medium" fontSize="sm">Filter {index + 1}</Text>
+                      <IconButton
+                        size="sm"
+                        variant="ghost"
+                        colorScheme="red"
+                        icon={<Icon as={Trash2} />}
+                        aria-label="Remove filter"
+                        onClick={() => handleRemoveFilter(index)}
+                        isDisabled={filters.length === 1}
+                      />
+                    </Flex>
+
+                    <VStack spacing={3} align="stretch">
                       {/* Field selection */}
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1">
-                          Field
-                        </label>
-                        <select
+                      <FormControl>
+                        <FormLabel fontSize="sm" mb={1}>Field</FormLabel>
+                        <Select
+                          size="sm"
                           value={filter.field}
                           onChange={(e) => handleFilterChange(index, 'field', e.target.value)}
-                          className="w-full h-9 rounded-md px-3 text-sm bg-surface-2 text-text-primary border-border
-                                     focus:outline-none focus:ring-1 focus:ring-brand-primary"
                         >
                           {sortedAvailableFields.map((field) => (
                             <option key={field} value={field}>
                               {field}
                             </option>
                           ))}
-                        </select>
-                      </div>
+                        </Select>
+                      </FormControl>
 
                       {/* Operator selection */}
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1">
-                          Operator
-                        </label>
-                        <select
+                      <FormControl>
+                        <FormLabel fontSize="sm" mb={1}>Operator</FormLabel>
+                        <Select
+                          size="sm"
                           value={filter.operator}
                           onChange={(e) => handleFilterChange(
                             index, 
                             'operator', 
                             e.target.value as ViewFilterConfig['operator']
                           )}
-                          className="w-full h-9 rounded-md px-3 text-sm bg-surface-2 text-text-primary border-border
-                                     focus:outline-none focus:ring-1 focus:ring-brand-primary"
                         >
                           {FILTER_OPERATORS.map((op) => (
                             <option key={op.value} value={op.value}>
                               {op.label}
                             </option>
                           ))}
-                        </select>
-                      </div>
+                        </Select>
+                      </FormControl>
 
                       {/* Value input - only show for operators that need values */}
                       {!NO_VALUE_OPERATORS.includes(filter.operator) && (
-                        <div>
-                          <label className="block text-sm font-medium text-text-secondary mb-1">
-                            Value
-                          </label>
-                          <input
-                            type="text"
+                        <FormControl>
+                          <FormLabel fontSize="sm" mb={1}>Value</FormLabel>
+                          <Input
+                            size="sm"
                             value={filter.value || ''}
                             onChange={(e) => handleFilterChange(index, 'value', e.target.value)}
-                            className="w-full h-9 rounded-md px-3 text-sm bg-surface-2 text-text-primary border-border
-                                     focus:outline-none focus:ring-1 focus:ring-brand-primary"
-                            placeholder={`Value for ${filter.field}...`}
                           />
-                        </div>
+                        </FormControl>
                       )}
-                    </div>
-
-                    {/* Remove filter button */}
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFilter(index)}
-                        className="inline-flex items-center text-text-secondary hover:text-status-error
-                                  text-xs rounded px-2 py-1 hover:bg-surface-2"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Remove
-                      </button>
-                    </div>
-                  </div>
+                    </VStack>
+                  </Box>
                 ))}
-              </div>
+              </VStack>
             )}
 
-            {sortedAvailableFields.length > 0 && (
-              <button
-                type="button"
-                onClick={handleAddFilter}
-                className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed
-                          border-border rounded-md text-text-secondary hover:text-text-primary
-                          hover:bg-surface-1 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Filter</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Drawer Footer */}
-        <div className="border-t border-border p-4 bg-surface-1 sticky bottom-0">
-          <div className="flex justify-between gap-3">
-            <Button 
-              variant="tertiary" 
-              onClick={handleClearFilters}
-              className="flex-1"
-              disabled={sortedAvailableFields.length === 0}
+            {/* Add filter button */}
+            <Button
+              leftIcon={<Icon as={Plus} />}
+              variant="outline"
+              onClick={handleAddFilter}
+              isDisabled={sortedAvailableFields.length === 0}
+              size="sm"
+              width="full"
             >
-              Clear All
+              Add Filter
             </Button>
+
+            {sortedAvailableFields.length === 0 && (
+              <Alert status="info" size="sm" borderRadius="md">
+                <AlertIcon />
+                No fields are available for filtering. Make sure your view has columns configured.
+              </Alert>
+            )}
+          </VStack>
+
+          <Divider my={6} />
+
+          {/* Footer actions */}
+          <HStack spacing={3} justifyContent="flex-end">
             <Button 
-              variant="primary" 
+              variant="ghost" 
+              onClick={handleClearFilters}
+              isDisabled={filters.length === 0 || filters.length === 1 && !filters[0].value}
+              size="sm"
+            >
+              Clear Filters
+            </Button>
+            <Button
+              colorScheme="blue"
               onClick={handleApplyFilters}
-              className="flex-1"
-              disabled={
-                (!hasChanges && filters.length <= 1 && !filters[0]?.field) || 
-                sortedAvailableFields.length === 0
-              }
+              isDisabled={!hasChanges || sortedAvailableFields.length === 0}
+              size="sm"
             >
               Apply Filters
             </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+          </HStack>
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
   );
 } 

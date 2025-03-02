@@ -1,23 +1,76 @@
 import Link from 'next/link';
 import { Database, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  Box,
+  Button,
+  Center,
+  Heading,
+  Icon,
+  Text,
+  VStack,
+  Flex,
+  Circle
+} from '@chakra-ui/react';
 
 export function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-14 text-center">
-      <div className="bg-highlight rounded-full p-3 mb-3">
-        <Database className="h-7 w-7 text-primary" />
-      </div>
-      <h3 className="text-base font-medium mb-1.5 text-text-primary">No models found</h3>
-      <p className="text-text-secondary mb-5 max-w-md text-sm">
-        Create your first model to start organizing and managing your data
-      </p>
-      <Link href="/models/new">
-        <Button className="gap-2 bg-primary hover:bg-primary-hover text-white py-2 px-4 rounded-md h-9">
-          <Plus className="h-4 w-4" />
-          Create New Model
-        </Button>
-      </Link>
-    </div>
+    <Box
+      bg="gray.800" 
+      borderWidth="1px" 
+      borderColor="gray.700" 
+      borderRadius="md"
+      py={16}
+      px={4}
+      textAlign="center"
+    >
+      <Center>
+        <VStack spacing={5} maxW="md">
+          <Circle
+            size="24"
+            bg="gray.700"
+          >
+            <Icon as={Database} boxSize="10" color="purple.400" />
+          </Circle>
+          
+          <VStack spacing={2}>
+            <Heading 
+              as="h3" 
+              size="md" 
+              fontWeight="semibold" 
+              color="white"
+              letterSpacing="-0.01em"
+            >
+              No models found
+            </Heading>
+            
+            <Text 
+              color="gray.400" 
+              fontSize="sm" 
+              maxW="md" 
+              lineHeight="tall"
+            >
+              Create your first model to start organizing and managing your data effectively.
+              Models allow you to define your data structure with validation rules.
+            </Text>
+          </VStack>
+          
+          <Box pt={2}>
+            <Link href="/models/new">
+              <Button
+                leftIcon={<Icon as={Plus} boxSize={4} />}
+                colorScheme="purple"
+                size="md"
+                fontWeight="medium"
+                px={6}
+                borderRadius="md"
+                _hover={{ transform: 'translateY(-1px)', boxShadow: 'md' }}
+              >
+                Create your first model
+              </Button>
+            </Link>
+          </Box>
+        </VStack>
+      </Center>
+    </Box>
   );
 } 

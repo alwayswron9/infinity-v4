@@ -1,6 +1,18 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  Box,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  Heading,
+  IconButton,
+  Icon,
+  useColorModeValue
+} from '@chakra-ui/react';
 
 interface SideDrawerProps {
   isOpen: boolean;
@@ -38,38 +50,22 @@ export function SideDrawer({
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div
-        className={cn(
-          "fixed right-0 top-0 h-full w-full md:w-1/2 z-50",
-          "transform transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0" : "translate-x-full",
-          className
-        )}
-      >
-        {/* Header */}
-        <div className="record-drawer-header">
-          <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 hover:bg-surface-2 transition-colors text-text-secondary"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="h-[calc(100vh-65px)] overflow-y-auto">
+    <Drawer
+      isOpen={isOpen}
+      placement="right"
+      onClose={onClose}
+      size="lg"
+    >
+      <DrawerOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+      <DrawerContent bg="gray.900" borderLeftWidth="1px" borderColor="gray.700">
+        <DrawerHeader borderBottomWidth="1px" borderColor="gray.800" py={4}>
+          <Heading size="md" color="gray.100">{title}</Heading>
+          <DrawerCloseButton size="lg" color="gray.400" _hover={{ bg: "gray.800", color: "gray.200" }} />
+        </DrawerHeader>
+        <DrawerBody p={6}>
           {children}
-        </div>
-      </div>
-    </>
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
   );
 } 

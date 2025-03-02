@@ -1,448 +1,413 @@
-"use client";
-
-import React, { useEffect } from 'react';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  ColumnDef,
-  SortingState,
-  ColumnFiltersState,
-  flexRender,
-} from '@tanstack/react-table';
-import type { ViewConfig } from '@/types/viewDefinition';
-import { PaginationControls } from './PaginationControls';
-import { ArrowUpDown, Filter, Columns, Save } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import {
+import React, { useMemo, useEffect, useState } from 'react';
+import { 
+  Box, 
+  Center, 
+  Spinner,
+  useColorModeValue,
+  Text,
+  VStack,
+  Icon,
   Table,
-  TableContainer,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  Card,
-  Skeleton,
-  Alert,
-  AlertDescription,
-} from './TableComponents';
-import { Button } from '@/components/ui/button';
-import { ColumnSelector } from './ColumnSelector';
-import { DataTableHeader } from './TableHeader';
-import { DataTableBody } from './TableBody';
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Flex,
+  HStack,
+  Button,
+  IconButton
+} from '@chakra-ui/react';
+import { DataTable } from '@saas-ui/react';
+import type { ColumnDef, CellContext } from '@tanstack/react-table';
+import { FileText, Trash, Eye } from 'lucide-react';
 
-interface EnhancedDataTableProps<T> {
-  data: T[];
-  columns: ColumnDef<T>[];
-  viewConfig: ViewConfig;
-  onConfigChange?: (config: Partial<ViewConfig>) => void;
-  pagination?: {
-    pageIndex: number;
-    pageSize: number;
-    pageCount: number;
-    total: number;
-  };
-  onPaginationChange?: (pageIndex: number, pageSize: number) => void;
+// Define custom meta type for columns
+interface CustomColumnMeta {
+  isAction?: boolean;
+  [key: string]: any;
+}
+
+interface EmptyStateMessageProps {
+  message: string;
+}
+
+function EmptyStateMessage({ message }: EmptyStateMessageProps) {
+  return (
+    <Center 
+      position="absolute" 
+      top="0" 
+      left="0" 
+      right="0" 
+      bottom="0"
+      pointerEvents="none"
+    >
+      <VStack spacing={3}>
+        <Icon as={FileText} boxSize={10} color="gray.400" />
+        <Text color="gray.500" fontSize="sm" fontWeight="medium">{message}</Text>
+      </VStack>
+    </Center>
+  );
+}
+
+interface EnhancedDataTableProps {
+  data: any[];
+  columns: ColumnDef<Record<string, any>, any>[];
   isLoading?: boolean;
-  error?: string | null;
-  hasUnsavedChanges?: boolean;
-  onSave?: () => void;
-  showRowActions?: boolean;
-  onEditRow?: (row: T) => void;
-  onDeleteRow?: (row: T) => void;
-  availableColumns?: string[];
+  onRowClick?: (row: Record<string, any>) => void;
+  onDeleteRow?: (row: Record<string, any>) => void;
+  emptyStateMessage?: string;
+  isHoverable?: boolean;
 }
 
-interface TableFilter {
-  id: string;
-  value: any;
-  operator: 'equals' | 'notEquals' | 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'in' | 'notIn' | 'isNull' | 'isNotNull';
-}
-
-const tableStyles = {
-  width: '100%',
-  tableLayout: 'fixed' as const,
-};
-
-export function EnhancedDataTable<T>({
-  data,
-  columns,
-  viewConfig,
-  onConfigChange,
-  pagination,
-  onPaginationChange,
+export function EnhancedDataTable({ 
+  data = [], 
+  columns, 
   isLoading = false,
-  error = null,
-  hasUnsavedChanges = false,
-  onSave,
-  showRowActions = false,
-  onEditRow,
+  onRowClick,
   onDeleteRow,
-  availableColumns = [],
-}: EnhancedDataTableProps<T>) {
-  // Log pagination data for debugging
-  useEffect(() => {
-    console.log('EnhancedDataTable pagination:', pagination);
-  }, [pagination]);
+  emptyStateMessage = "No data available",
+  isHoverable = true
+}: EnhancedDataTableProps) {
+  // Table styling
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const tableBackgroundColor = useColorModeValue('white', 'gray.800');
+  const tableHeaderColor = useColorModeValue('gray.50', 'gray.700');
+  const hoverBgColor = useColorModeValue('gray.50', 'gray.700');
+  const headerTextColor = useColorModeValue('gray.600', 'gray.300');
 
-  // Process columns to apply appropriate widths and classes
-  const processedColumns = React.useMemo(() => {
-    return columns.map(column => {
-      const columnKey = 'accessorKey' in column ? String(column.accessorKey) : String(column.id);
-      
-      // Apply special classes for specific columns
-      let className = '';
-      if (columnKey === '_id') {
-        className = 'id-column';
-      } else if (columnKey.startsWith('_')) {
-        className = 'meta-column';
-      }
-      
-      // Combine with existing meta
-      return {
-        ...column,
-        meta: {
-          ...column.meta,
-          className
+  // State for container dimensions
+  const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [columnWidths, setColumnWidths] = useState<number[]>([]);
+
+  // First load flag
+  const [firstLoad, setFirstLoad] = useState(true);
+  
+  // Effect to measure container width and calculate column sizes
+  useEffect(() => {
+    if (containerRef) {
+      // Measure the container width
+      const measureContainer = () => {
+        const newWidth = containerRef.getBoundingClientRect().width;
+        if (newWidth !== containerWidth) {
+          setContainerWidth(newWidth);
         }
       };
+
+      // Initial measurement
+      measureContainer();
+
+      // Add resize listener
+      const resizeObserver = new ResizeObserver(measureContainer);
+      resizeObserver.observe(containerRef);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, [containerRef, containerWidth]);
+
+  // Effect to handle first load state
+  useEffect(() => {
+    if (!isLoading && firstLoad) {
+      setFirstLoad(false);
+    }
+  }, [isLoading, firstLoad]);
+
+  // Calculate dynamic column widths to fit container width
+  const getColumnWidths = useMemo(() => {
+    if (!columns || columns.length === 0 || containerWidth === 0) return {};
+    
+    // Constants for width calculations
+    const MIN_COLUMN_WIDTH = 80;
+    const ACTION_COLUMN_WIDTH = 120;
+    let availableWidth = containerWidth;
+    let numberOfContentColumns = columns.length;
+    let reservedWidth = 0;
+    
+    // First, reserve space for the action column (if it exists or will be created)
+    const hasOrWillHaveActionsColumn = (onRowClick || onDeleteRow) || columns.some(col => col.id === 'actions');
+    
+    if (hasOrWillHaveActionsColumn) {
+      reservedWidth += ACTION_COLUMN_WIDTH;
+      availableWidth -= ACTION_COLUMN_WIDTH;
+      numberOfContentColumns--; // Reduce by one as we've accounted for the actions column
+    }
+    
+    // Find out which columns are visible
+    const visibleColumns = columns.filter(col => {
+      // Consider column visible if no meta is provided or it doesn't have visible: false
+      return !col.meta || (col.meta as any).visible !== false;
     });
-  }, [columns]);
-
-  // Get valid column IDs
-  const validColumnIds = React.useMemo(() => 
-    new Set(columns.map(col => {
-      if ('accessorKey' in col) {
-        return String(col.accessorKey);
-      }
-      return String(col.id);
-    })), 
-    [columns]
-  );
-
-  // Get all filterable fields from the model data and view config
-  const filterableColumns = React.useMemo(() => {
-    // Start with all available columns from the model
-    let fieldsFromModel = [...availableColumns];
     
-    // Add any additional fields defined in the view config
-    if (viewConfig?.columns?.length) {
-      const fieldsFromConfig = viewConfig.columns
-        .filter(col => col.filterable)
-        .map(col => col.field);
-      
-      // Combine and deduplicate
-      fieldsFromModel = [...new Set([...fieldsFromModel, ...fieldsFromConfig])];
-    }
+    // Count only visible content columns
+    numberOfContentColumns = visibleColumns.filter(col => 
+      col.id !== 'actions' && 
+      (!(col.meta as CustomColumnMeta)?.isAction)
+    ).length;
     
-    // If we have actual data, extract fields from the first data item
-    if (data.length > 0) {
-      const firstItem = data[0];
-      const fieldsFromData = Object.keys(firstItem as Record<string, any>);
-      
-      // Add fields found in data but not in model definition or view config
-      fieldsFromModel = [...new Set([...fieldsFromModel, ...fieldsFromData])];
-    }
-    
-    return fieldsFromModel;
-  }, [availableColumns, viewConfig.columns, data]);
-
-  // Convert view filters to table filters
-  const viewFiltersToTableFilters = React.useCallback((filters: typeof viewConfig.filters): TableFilter[] => {
-    return filters
-      .filter((filter) => validColumnIds.has(filter.field))
-      .map((filter) => ({
-        id: filter.field,
-        value: filter.value ?? '',
-        operator: filter.operator
-      }));
-  }, [validColumnIds]);
-
-  // Convert view sorting to table sorting
-  const viewSortingToTableSorting = React.useCallback((sorting: typeof viewConfig.sorting) => {
-    return sorting
-      .filter((sort) => validColumnIds.has(sort.field))
-      .map((sort) => ({
-        id: sort.field,
-        desc: sort.direction === 'desc'
-      }));
-  }, [validColumnIds]);
-
-  // Initialize states from view config
-  const [columnFilters, setColumnFilters] = React.useState<TableFilter[]>(() => 
-    viewFiltersToTableFilters(viewConfig.filters)
-  );
-  
-  const [sorting, setSorting] = React.useState(() => 
-    viewSortingToTableSorting(viewConfig.sorting)
-  );
-
-  const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
-  const [isColumnSelectorOpen, setIsColumnSelectorOpen] = React.useState(false);
-  const columnSelectorRef = React.useRef<HTMLDivElement>(null);
-
-  // Helper function to check if a column has an active filter
-  const hasActiveFilter = React.useCallback((columnId: string) => {
-    return viewConfig.filters.some(f => 
-      f.field === columnId && 
-      f.value != null && 
-      f.value !== ''
-    );
-  }, [viewConfig.filters]);
-
-  // Row click handler
-  const handleRowClick = React.useCallback((row: T) => {
-    if (onEditRow) {
-      onEditRow(row);
-    }
-  }, [onEditRow]);
-
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting,
-      columnFilters,
-      pagination: pagination ? {
-        pageIndex: pagination.pageIndex,
-        pageSize: pagination.pageSize,
-      } : undefined,
-    },
-    onSortingChange: (updater) => {
-      const newSorting = typeof updater === 'function' ? updater(sorting) : updater;
-      setSorting(newSorting);
-      
-      if (onConfigChange) {
-        const viewSorting = newSorting.map(sort => ({
-          field: String(sort.id),
-          direction: sort.desc ? ('desc' as const) : ('asc' as const)
-        }));
-        
-        onConfigChange({
-          ...viewConfig,
-          sorting: viewSorting
-        });
-      }
-    },
-    onColumnFiltersChange: async (updater) => {
-      const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
-      const tableFilters = newFilters.map(filter => ({
-        id: filter.id,
-        value: filter.value,
-        operator: (filter as any).operator || 'contains'
-      })) as TableFilter[];
-      
-      setColumnFilters(tableFilters);
-      
-      if (onConfigChange) {
-        const viewFilters = tableFilters.map(filter => ({
-          field: String(filter.id),
-          operator: filter.operator,
-          value: filter.value ?? '',
-          conjunction: 'and' as const
-        }));
-
-        // Update view config with new filters
-        await onConfigChange({
-          ...viewConfig,
-          filters: viewFilters
-        });
-        
-        // Reset to first page when filters change
-        if (onPaginationChange && pagination) {
-          onPaginationChange(0, pagination.pageSize);
-        }
-      }
-    },
-    onPaginationChange: onPaginationChange ? 
-      (updater) => {
-        if (typeof updater === 'function') {
-          const state = updater({ pageIndex: 0, pageSize: 10 });
-          onPaginationChange(state.pageIndex, state.pageSize);
-        } else {
-          onPaginationChange(updater.pageIndex, updater.pageSize);
-        }
-      } : undefined,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    manualFiltering: true,
-    manualPagination: Boolean(pagination),
-    pageCount: pagination?.pageCount ?? -1,
-  });
-
-  // Sync view config changes to table state
-  React.useEffect(() => {
-    const tableFilters = viewFiltersToTableFilters(viewConfig.filters);
-    const tableSorting = viewSortingToTableSorting(viewConfig.sorting);
-    
-    setColumnFilters(tableFilters);
-    setSorting(tableSorting);
-  }, [viewConfig, viewFiltersToTableFilters, viewSortingToTableSorting]);
-
-  // Handle click outside for column selector
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (columnSelectorRef.current && !columnSelectorRef.current.contains(event.target as Node)) {
-        setIsColumnSelectorOpen(false);
-      }
+    // Define column type weights - some columns should be wider than others
+    const columnTypeWeights: {[key: string]: number} = {
+      id: 0.7,        // ID columns (narrower)
+      date: 1.2,       // Date columns 
+      time: 1.2,       // Time columns
+      created: 1.1,    // Created/updated dates
+      status: 0.8,     // Status columns (usually short text)
+      default: 1.5     // Default for text columns - give them reasonable space
     };
+    
+    // Assign weights to columns based on their type or id
+    const columnWeights = visibleColumns.map(col => {
+      // Skip action columns as we've already accounted for them
+      if (col.id === 'actions' || (col.meta as CustomColumnMeta)?.isAction) {
+        return 0; // Zero weight, since we already reserved space
+      }
+      
+      // Check for special column types by ID or accessor
+      const columnId = String(col.id || '').toLowerCase();
+      
+      if (columnId.includes('id') || columnId.startsWith('_')) return columnTypeWeights.id;
+      if (columnId.includes('date')) return columnTypeWeights.date;
+      if (columnId.includes('time')) return columnTypeWeights.time;
+      if (columnId.includes('created') || columnId.includes('updated')) return columnTypeWeights.created;
+      if (columnId.includes('status') || columnId.includes('state')) return columnTypeWeights.status;
+      
+      return columnTypeWeights.default;
+    });
+    
+    // Calculate total weight, only considering content columns
+    const totalWeight = columnWeights.reduce((sum, weight) => sum + weight, 0);
+    
+    // Calculate width per weight unit
+    const widthPerWeightUnit = totalWeight > 0 ? availableWidth / totalWeight : 0;
+    
+    // Generate an object mapping column indices to widths
+    const widths: {[key: number]: number} = {};
+    
+    columns.forEach((column, index) => {
+      // Set fixed width for action columns
+      if (column.id === 'actions' || (column.meta as CustomColumnMeta)?.isAction) {
+        widths[index] = ACTION_COLUMN_WIDTH;
+        return;
+      }
+      
+      // Skip hidden columns
+      if (column.meta && (column.meta as any).visible === false) {
+        widths[index] = 0; // Zero width for hidden columns
+        return;
+      }
+      
+      // For visible content columns, calculate based on weight
+      const weight = columnWeights[visibleColumns.findIndex(vc => vc.id === column.id)] || columnTypeWeights.default;
+      const calculatedWidth = Math.max(MIN_COLUMN_WIDTH, Math.floor(weight * widthPerWeightUnit));
+      widths[index] = calculatedWidth;
+    });
+    
+    console.log("Calculated column widths:", widths);
+    return widths;
+  }, [columns, containerWidth, onRowClick, onDeleteRow]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+  // Enhanced columns with clickable rows and responsive widths
+  const enhancedColumns = useMemo(() => {
+    if (!columns) return [];
+    
+    // Format column headers to look nicer
+    const formatColumnHeader = (columnId: string): string => {
+      // Remove prefixes like '_' and make more readable
+      let header = columnId.replace(/^_/, '');
+      
+      // Replace underscores with spaces
+      header = header.replace(/_/g, ' ');
+      
+      // Capitalize first letter of each word
+      return header
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     };
-  }, []);
+    
+    // Process columns but don't make all cells clickable
+    const processedColumns = columns.map((column, index) => {
+      // Create a new column definition
+      const newColumn = { ...column };
+      
+      // Format column header if it's not already defined
+      if (!newColumn.header && newColumn.id) {
+        newColumn.header = formatColumnHeader(newColumn.id);
+      }
+      
+      // Set width based on our calculated proportions
+      if (containerWidth > 0 && getColumnWidths[index]) {
+        newColumn.size = getColumnWidths[index];
+      }
+      
+      // We're removing the cell click renderer since we don't want the whole cell to be clickable
+      
+      return newColumn;
+    });
+    
+    // Add an actions column if needed
+    if ((onRowClick || onDeleteRow) && !columns.some(col => col.id === 'actions')) {
+      const actionColumn: ColumnDef<Record<string, any>> = {
+        id: 'actions',
+        header: 'Actions',
+        size: 120,
+        cell: (info: CellContext<Record<string, any>, unknown>) => (
+          <HStack spacing={2} justifyContent="center">
+            {onRowClick && (
+              <IconButton
+                icon={<Eye size={16} />}
+                aria-label="View"
+                size="xs"
+                colorScheme="blue"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRowClick(info.row.original);
+                }}
+              />
+            )}
+            {onDeleteRow && (
+              <IconButton
+                icon={<Trash size={16} />}
+                aria-label="Delete"
+                size="xs"
+                colorScheme="red"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteRow(info.row.original);
+                }}
+              />
+            )}
+          </HStack>
+        ),
+        meta: {
+          isAction: true
+        } as CustomColumnMeta
+      };
+      
+      return [...processedColumns, actionColumn];
+    }
+    
+    return processedColumns;
+  }, [columns, onRowClick, onDeleteRow, containerWidth, getColumnWidths]);
 
   return (
-    <div className="enhanced-data-table">
-      {error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : (
-        <Card className="h-full flex flex-col overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* Table controls */}
-          <DataTableHeader
-            table={table}
-            viewConfig={viewConfig}
-            onConfigChange={onConfigChange}
-            hasUnsavedChanges={hasUnsavedChanges}
-            onSave={onSave}
-            availableColumns={filterableColumns}
+    <Box 
+      position="relative" 
+      height="100%" 
+      width="100%" 
+      overflow="auto"
+      ref={setContainerRef}
+      minHeight="250px" // Ensure loading spinner has space
+    >
+      {isLoading ? (
+        <Center height="100%" width="100%" py={10}>
+          <Spinner 
+            size="xl" 
+            thickness="3px" 
+            color="purple.500" 
+            emptyColor="gray.200"
+            speed="0.8s"
           />
+        </Center>
+      ) : data.length === 0 ? (
+        <EmptyStateMessage message={emptyStateMessage} />
+      ) : (
+        <Table 
+          width="100%" 
+          style={{ borderCollapse: 'separate', borderSpacing: 0 }}
+          size="sm"
+        >
+          {/* Fixed header - Updated styling to match SaaS UI standards */}
+          <Thead bg={tableHeaderColor} position="sticky" top={0} zIndex={1}>
+            <Tr>
+              {enhancedColumns.map((column, idx) => (
+                <Th 
+                  key={idx}
+                  width={column.size ? `${column.size}px` : undefined}
+                  textTransform="none"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  color="gray.500"
+                  borderBottomWidth="1px"
+                  borderColor={borderColor}
+                  p="10px 16px"
+                  whiteSpace="nowrap"
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  letterSpacing="0.5px"
+                >
+                  {typeof column.header === 'function' 
+                    ? column.header({} as any) 
+                    : column.header as React.ReactNode}
+                </Th>
+              ))}
+            </Tr>
+          </Thead>
           
-          {/* Table content with new structure */}
-          <Table>
-            <TableContainer>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      // Apply column-specific classes
-                      const columnMeta = header.column.columnDef.meta as { className?: string } | undefined;
-                      const className = columnMeta?.className || '';
-                      
-                      return (
-                        <TableHead key={header.id} className={className}>
-                          {header.isPlaceholder ? null : (
-                            <div>
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                            </div>
-                          )}
-                        </TableHead>
-                      );
-                    })}
-                    {/* Add action column header if actions are enabled */}
-                    {showRowActions && (
-                      <TableHead className="action-column text-right">
-                        Actions
-                      </TableHead>
-                    )}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={`skeleton-${index}`}>
-                      {Array.from({ length: columns.length }).map((_, cellIndex) => {
-                        // Apply column-specific classes to skeleton cells
-                        const columnMeta = columns[cellIndex] && 'meta' in columns[cellIndex] 
-                          ? columns[cellIndex].meta as { className?: string } | undefined
-                          : undefined;
-                        const className = columnMeta?.className || '';
-                        
-                        return (
-                          <TableCell key={`skeleton-cell-${cellIndex}`} className={className}>
-                            <Skeleton className="h-6 w-full" />
-                          </TableCell>
-                        );
-                      })}
-                      {showRowActions && (
-                        <TableCell className="action-column">
-                          <Skeleton className="h-6 w-full" />
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                ) : table.getRowModel().rows.length > 0 ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow 
-                      key={row.id} 
-                      onClick={() => handleRowClick(row.original)}
-                      className="cursor-pointer"
+          {/* Scrollable body area - Remove row click handler */}
+          <Tbody>
+            {data.map((row, rowIdx) => (
+              <Tr 
+                key={rowIdx}
+                // Removed cursor pointer and onClick for the entire row
+                bg={tableBackgroundColor}
+                _hover={{
+                  bg: hoverBgColor,
+                }}
+                transition="background-color 0.2s"
+              >
+                {enhancedColumns.map((column, colIdx) => {
+                  // Get the value using the column id
+                  let value = null;
+                  
+                  if (column.id) {
+                    value = row[column.id];
+                  } else if ('accessorKey' in column) {
+                    value = row[(column as any).accessorKey];
+                  }
+                  
+                  // Format the cell content
+                  let cellContent;
+                  if (typeof column.cell === 'function') {
+                    const info = {
+                      getValue: () => value,
+                      row: { original: row },
+                      column: column
+                    } as CellContext<Record<string, any>, unknown>;
+                    cellContent = column.cell(info);
+                  } else if (value === null || value === undefined || value === '') {
+                    cellContent = <Text color="gray.400">-</Text>;
+                  } else if (typeof value === 'object') {
+                    cellContent = JSON.stringify(value);
+                  } else {
+                    cellContent = String(value);
+                  }
+                  
+                  return (
+                    <Td 
+                      key={colIdx}
+                      p="12px 16px"
+                      borderColor={borderColor}
+                      fontSize="sm"
+                      overflow="hidden"
+                      textOverflow="ellipsis"
+                      whiteSpace="nowrap"
+                      width={column.size ? `${column.size}px` : undefined}
+                      title={typeof cellContent === 'string' ? cellContent : undefined}
                     >
-                      {row.getVisibleCells().map((cell) => {
-                        // Apply column-specific classes
-                        const columnMeta = cell.column.columnDef.meta as { className?: string } | undefined;
-                        const className = columnMeta?.className || '';
-                        
-                        return (
-                          <TableCell key={cell.id} className={className}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        );
-                      })}
-                      {showRowActions && (
-                        <TableCell className="action-column text-right" onClick={(e) => e.stopPropagation()}>
-                          {onDeleteRow && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="delete-button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteRow(row.original);
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell 
-                      colSpan={columns.length + (showRowActions ? 1 : 0)} 
-                      className="text-center py-8"
-                    >
-                      No results found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </TableContainer>
-          </Table>
-          
-          {/* Pagination */}
-          <div className="mt-auto">
-            <PaginationControls
-              currentPage={pagination ? pagination.pageIndex + 1 : 1}
-              totalPages={pagination ? pagination.pageCount : 0}
-              pageSize={pagination ? pagination.pageSize : 10}
-              totalItems={pagination ? pagination.total : 0}
-              onPageChange={(page) => {
-                if (onPaginationChange && pagination) {
-                  onPaginationChange(page - 1, pagination.pageSize);
-                }
-              }}
-              onPageSizeChange={(size) => {
-                if (onPaginationChange && pagination) {
-                  onPaginationChange(0, size);
-                }
-              }}
-            />
-          </div>
-        </Card>
+                      {cellContent}
+                    </Td>
+                  );
+                })}
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
       )}
-    </div>
+    </Box>
   );
 } 

@@ -1,285 +1,184 @@
 "use client";
 
-import React from 'react';
-import { useParams } from 'next/navigation';
-import type { ModelView as ModelViewType, ViewConfig, ViewColumnConfig } from '@/types/viewDefinition';
+import { useState, useEffect, useContext, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { 
+  Box, 
+  Flex, 
+  Spinner,
+  useDisclosure,
+} from '@chakra-ui/react';
 import type { ColumnDef } from '@tanstack/react-table';
+
+import { Section } from '@/components/layout/Section';
+import { ModelContext } from '../layout';
 import { useModelData } from '@/hooks/useModelData';
 import { useViewManagement } from '@/hooks/useViewManagement';
 import useViewStore from '@/lib/stores/viewStore';
-import { toast } from 'sonner';
 
-// Import our new components
-import { ModelHeader } from '@/components/data/explore/ModelHeader';
+// Import the actual components we should be using
 import { DataContainer } from '@/components/data/explore/DataContainer';
-import { RecordDrawer } from '@/components/data/explore/RecordDrawer';
 import { AddDataDrawer } from '@/components/data/explore/AddDataDrawer';
-import { LoadingState } from '@/components/data/explore/LoadingState';
-import { ErrorState } from '@/components/data/explore/ErrorState';
-
-// Import explore.css styles
-import '@/app/explore.css';
+import { RecordDrawer } from '@/components/data/explore/RecordDrawer';
 
 export default function ExplorePage() {
-  const params = useParams();
-  const modelId = typeof params.id === 'string' ? params.id : '';
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
-  // Track if initial data load has happened
-  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
-  const [modelName, setModelName] = React.useState<string>('');
-  const [modelDefinition, setModelDefinition] = React.useState<any>(null);
-  const [copyingDetails, setCopyingDetails] = React.useState(false);
+  // Use the shared model context
+  const { model, modelId, loading: modelLoading, refreshModel } = useContext(ModelContext);
   
-  // State for the add data drawer
-  const [isAddDataOpen, setIsAddDataOpen] = React.useState(false);
+  // Record editing state
+  const [currentRecord, setCurrentRecord] = useState<Record<string, any> | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [copyingDetails, setCopyingDetails] = useState(false);
   
-  // State for record details/edit
-  const [isEditMode, setIsEditMode] = React.useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
-  const [currentRecord, setCurrentRecord] = React.useState<Record<string, any> | null>(null);
+  // For view name editing
+  const [editedName, setEditedName] = useState<string>('');
+  const [isEditingName, setIsEditingName] = useState(false);
   
-  // Fetch model details
-  React.useEffect(() => {
-    const fetchModelDetails = async () => {
-      try {
-        const response = await fetch(`/api/models?id=${modelId}`);
-        if (!response.ok) throw new Error('Failed to fetch model details');
-        const data = await response.json();
-        if (data.success && data.data) {
-          setModelName(data.data.name);
-          setModelDefinition(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching model details:', error);
-      }
-    };
-
-    if (modelId) {
-      fetchModelDetails();
-    }
-  }, [modelId]);
-
+  // Drawers state
+  const { isOpen: isAddDataOpen, onOpen: onAddDataOpen, onClose: onAddDataClose } = useDisclosure();
+  const { isOpen: isRecordDrawerOpen, onOpen: onRecordDrawerOpen, onClose: onRecordDrawerClose } = useDisclosure();
+  
+  // Use the model data hook
   const {
-    data,
-    isLoading: isLoadingData,
-    error: dataError,
+    data: records,
+    isLoading: recordsLoading,
+    error: recordsError,
     availableColumns,
+    systemColumns,
     pagination,
     loadModelData,
-  } = useModelData({ modelId });
-
-  // Cast the currentView to the consistent ModelViewType to fix type issues
+    setPagination,
+  } = useModelData({
+    modelId: modelId || '',
+  });
+  
+  // Get views from the store directly to ensure consistent state
+  const views = useViewStore(state => state.views) || [];
+  const activeViewId = useViewStore(state => state.activeView);
+  
+  // Use the view management hook
   const {
-    currentView: viewManagementCurrentView,
-    loading: isLoadingViews,
-    error: viewError,
-    handleViewSelect: baseHandleViewSelect,
+    currentView,
+    isEditing,
+    loading: viewsLoading,
+    error: viewsError,
+    handleViewSelect,
     handleCreateView,
+    handleEditView,
+    handleDeleteView,
     handleSaveView,
-    handleViewConfigChange: baseHandleViewConfigChange,
-    handleDeleteView: baseHandleDeleteView,
-  } = useViewManagement({ modelId });
-
-  // Explicitly type the currentView to resolve type conflicts
-  const currentView = viewManagementCurrentView as ModelViewType | undefined;
-
-  const { views: storeViews, activeView } = useViewStore();
-
-  // Explicitly type the views array to match the component expectations
-  const views = storeViews as ModelViewType[];
-
-  // Add state for view name editing
-  const [isEditingName, setIsEditingName] = React.useState(false);
-  const [editedName, setEditedName] = React.useState('');
-
-  // Handle view selection
-  const handleViewSelect = React.useCallback((viewId: string) => {
-    baseHandleViewSelect(viewId);
-    setIsInitialLoad(true); // Reset initial load flag to trigger data reload
-    setHasUnsavedChanges(false);
-  }, [baseHandleViewSelect]);
-
-  // Handle view deletion
-  const handleDeleteView = React.useCallback(async (viewId: string) => {
-    if (!baseHandleDeleteView) return;
-    try {
-      await baseHandleDeleteView(viewId);
-      
-      // After successful deletion, if this was the active view, select another view
-      if (activeView === viewId && views.length > 1) {
-        const remainingViews = views.filter(v => v.id !== viewId);
-        const defaultView = remainingViews.find(v => v.is_default);
-        const nextView = defaultView || remainingViews[0];
-        if (nextView) {
-          handleViewSelect(nextView.id);
-        }
-      }
-    } catch (error) {
-      console.error('Error deleting view:', error);
+    handleViewConfigChange,
+    setIsEditing,
+  } = useViewManagement({ 
+    modelId: modelId || '' 
+  });
+  
+  // Create columns for the data table
+  const columns = useMemo(() => {
+    if (!availableColumns) return [];
+    
+    // Transform availableColumns to the format expected by DataContainer
+    return availableColumns.map(column => ({
+      id: column,
+      accessorKey: column,
+      header: column.charAt(0).toUpperCase() + column.slice(1).replace(/_/g, ' '),
+    })) as ColumnDef<Record<string, any>>[];
+  }, [availableColumns]);
+  
+  // Load data when modelId changes
+  useEffect(() => {
+    if (modelId) {
+      loadModelData(1, 10);
     }
-  }, [baseHandleDeleteView, activeView, views, handleViewSelect]);
-
-  // Handle view name edit
-  const handleViewNameEdit = React.useCallback(async (newName: string) => {
-    if (!currentView || newName === currentView.name) return;
+  }, [modelId, loadModelData]);
+  
+  // Check for action=add in URL query params
+  useEffect(() => {
+    if (searchParams?.get('action') === 'add' && model) {
+      onAddDataOpen();
+      // Clear the URL parameter after opening
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, model, onAddDataOpen]);
+  
+  // Handle pagination change
+  const handlePaginationChange = (pageIndex: number, pageSize: number) => {
+    setPagination({
+      pageIndex,
+      pageSize,
+      pageCount: Math.ceil((pagination?.total || 0) / pageSize),
+      total: pagination?.total || 0
+    });
+    loadModelData(pageIndex + 1, pageSize);
+  };
+  
+  // Handle config change
+  const handleConfigChange = (config: any) => {
+    if (!currentView) return;
+    handleViewConfigChange(config);
+    // Set isEditing flag to ensure Save button appears when config changes
+    setIsEditing(true);
+  };
+  
+  // Handle save view changes
+  const handleSaveChanges = async () => {
+    if (!currentView) return;
+    
     try {
       await handleSaveView({
         ...currentView,
-        name: newName
+        name: editedName || currentView.name
       });
-      setHasUnsavedChanges(false);  // Name updates are saved immediately
-    } catch (error) {
-      console.error('Error updating view name:', error);
+      
+      toast.success('View saved successfully');
+    } catch (error: any) {
+      toast.error(error.message);
     }
-  }, [currentView, handleSaveView]);
-
-  // Load initial data when views are ready
-  React.useEffect(() => {
-    if (!modelId || isLoadingViews || !currentView) return;
-    
-    if (isInitialLoad) {
-      loadModelData(1, 10);
-      setIsInitialLoad(false);
-    }
-  }, [modelId, isLoadingViews, currentView, isInitialLoad, loadModelData]);
-
-  // Update edited name when current view changes
-  React.useEffect(() => {
-    if (currentView) {
-      setEditedName(currentView.name);
-      setHasUnsavedChanges(false);
-    }
-  }, [currentView]);
-
-  // Handle pagination changes
-  const handlePaginationChange = React.useCallback((pageIndex: number, pageSize: number) => {
-    if (!currentView) return;
-    loadModelData(pageIndex + 1, pageSize);
-  }, [currentView, loadModelData]);
-
-  // Handle view config changes (filters, sorting, etc.)
-  const handleViewConfigChange = React.useCallback(async (configUpdate: Partial<ViewConfig>) => {
-    if (!currentView) return;
+  };
+  
+  // Handle view name edit
+  const handleViewNameEdit = (newName: string) => {
+    setEditedName(newName);
+    setIsEditingName(true);
+    // Also set the main isEditing flag to ensure Save button appears
+    setIsEditing(true);
+  };
+  
+  // Handle row click
+  const handleRowClick = (row: Record<string, any>) => {
+    setCurrentRecord(row);
+    setIsEditMode(false);
+    onRecordDrawerOpen();
+  };
+  
+  // Handle delete row
+  const handleDeleteRow = async (row: Record<string, any>) => {
+    if (!model || !row.id) return;
     
     try {
-      // Create updated view with new config
-      const updatedView = {
-        ...currentView,
-        config: { ...currentView.config, ...configUpdate }
-      };
-
-      // Update the local state
-      await baseHandleViewConfigChange(configUpdate);
+      const response = await fetch(`/api/data/${modelId}/${row.id}`, {
+        method: 'DELETE'
+      });
       
-      setHasUnsavedChanges(true);
+      if (!response.ok) throw new Error('Failed to delete record');
       
-      if (pagination) {
-        handlePaginationChange(0, pagination.pageSize);
-      }
-    } catch (error) {
-      console.error('Error updating view config:', error);
+      toast.success('Record deleted successfully');
+      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
+      refreshModel(); // Refresh model data in context to update record count
+    } catch (error: any) {
+      toast.error(error.message);
     }
-  }, [currentView, baseHandleViewConfigChange, pagination, handlePaginationChange]);
-
-  // Handle saving the current view
-  const handleSaveCurrentView = React.useCallback(async () => {
-    if (!currentView) return;
-    
-    try {
-      // Get the current view from the store to ensure we have the latest state
-      const viewToSave = useViewStore.getState().views.find(v => v.id === currentView.id);
-      if (!viewToSave) return;
-
-      await handleSaveView(viewToSave as ModelViewType);
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error('Error saving view:', error);
-    }
-  }, [currentView, handleSaveView]);
-
-  const getColumns = React.useCallback((view: ModelViewType): ColumnDef<Record<string, any>>[] => {
-    // If we have modelDefinition, use its fields to ensure all columns are available
-    if (modelDefinition) {
-      const allFields = Object.keys(modelDefinition.fields);
-      
-      // If view doesn't have columns config yet, create it from model fields
-      if (!view?.config?.columns) {
-        return allFields.map(field => ({
-          accessorKey: field,
-          header: field,
-          enableSorting: true,
-          enableColumnFilter: true,
-          cell: ({ getValue }) => {
-            const value = getValue();
-            // Truncate long text values
-            if (typeof value === 'string' && value.length > 100) {
-              return value.slice(0, 100) + '...';
-            }
-            return value;
-          }
-        }));
-      }
-      
-      // Ensure all model fields are in the view columns
-      const existingFields = new Set(view.config.columns.map(col => col.field));
-      const missingFields = allFields.filter(field => !existingFields.has(field));
-      
-      // Add any missing fields to the columns config
-      const updatedColumns = [
-        ...view.config.columns,
-        ...missingFields.map(field => ({
-          field,
-          visible: true,
-          sortable: true,
-          filterable: true,
-          width: 150
-        }))
-      ];
-      
-      return updatedColumns
-        .filter((col) => col.visible)
-        .map((col) => ({
-          accessorKey: col.field,
-          header: col.field,
-          size: col.width,
-          enableSorting: col.sortable ?? true,
-          enableColumnFilter: col.filterable ?? true,
-          cell: ({ getValue }) => {
-            const value = getValue();
-            // Truncate long text values
-            if (typeof value === 'string' && value.length > 100) {
-              return value.slice(0, 100) + '...';
-            }
-            return value;
-          }
-        }));
-    }
-    
-    // Fallback to existing behavior if no modelDefinition
-    if (!view?.config?.columns) return [];
-    
-    return view.config.columns
-      .filter((col) => col.visible)
-      .map((col) => ({
-        accessorKey: col.field,
-        header: col.field,
-        size: col.width,
-        enableSorting: col.sortable ?? true,
-        enableColumnFilter: col.filterable ?? true,
-        cell: ({ getValue }) => {
-          const value = getValue();
-          // Truncate long text values
-          if (typeof value === 'string' && value.length > 100) {
-            return value.slice(0, 100) + '...';
-          }
-          return value;
-        }
-      }));
-  }, [modelDefinition]);
-
-  // Handle form submission
+  };
+  
+  // Handle add data
   const handleSubmitData = async (data: Record<string, any>) => {
+    if (!model) return;
+    
     try {
       const response = await fetch(`/api/data/${modelId}`, {
         method: 'POST',
@@ -288,286 +187,160 @@ export default function ExplorePage() {
         },
         body: JSON.stringify({ fields: data }),
       });
-
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error?.message || 'Failed to add data');
       }
-
+      
       toast.success('Data added successfully');
-      setIsAddDataOpen(false);
-      
-      // Reload the data table
-      if (pagination) {
-        handlePaginationChange(0, pagination.pageSize);
-      }
+      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
+      onAddDataClose();
+      refreshModel(); // Refresh the model data in context
+      return Promise.resolve();
     } catch (error: any) {
       toast.error(error.message);
-      throw error;
+      return Promise.reject(error);
     }
   };
-
-  // Handle clearing all data
-  const handleClearData = async () => {
-    try {
-      const response = await fetch(`/api/data/${modelId}/clear`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to clear data');
-      }
-
-      toast.success('All data cleared successfully');
-      
-      // Reload the data table
-      if (pagination) {
-        handlePaginationChange(0, pagination.pageSize);
-      }
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
-  // Handle opening record details
-  const handleOpenRecord = (row: Record<string, any>) => {
-    // Extract the record data
-    const { _id, _created_at, _updated_at, _vector, ...recordData } = row;
-    
-    // Set the current record
-    setCurrentRecord({
-      _id,
-      ...recordData
-    });
-    
-    // Reset edit mode and open details drawer
-    setIsEditMode(false);
-    setIsDetailsOpen(true);
-  };
-
-  // Handle submitting edited data
-  const handleSubmitEditedData = async (data: Record<string, any>) => {
-    if (!currentRecord || !currentRecord._id) {
-      toast.error('Record ID is missing');
-      return;
-    }
+  
+  // Handle update record
+  const handleUpdateRecord = async (data: Record<string, any>) => {
+    if (!model || !currentRecord?.id) return;
     
     try {
-      const response = await fetch(`/api/data/${modelId}?id=${currentRecord._id}`, {
+      const response = await fetch(`/api/data/${modelId}/${currentRecord.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ fields: data }),
       });
-
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error?.message || 'Failed to update record');
       }
-
+      
       toast.success('Record updated successfully');
-      
-      // Exit edit mode but keep drawer open
-      setIsEditMode(false);
-      
-      // Update current record with new data
-      setCurrentRecord({
-        _id: currentRecord._id,
-        ...data
-      });
-      
-      // Reload the data table
-      if (pagination) {
-        handlePaginationChange(pagination.pageIndex, pagination.pageSize);
-      }
+      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
+      onRecordDrawerClose();
+      return Promise.resolve();
     } catch (error: any) {
-      console.error('Error updating record:', error);
-      toast.error(error.message || 'Failed to update record');
+      toast.error(error.message);
+      return Promise.reject(error);
     }
   };
-
-  // Handle deleting a record
-  const handleDeleteRow = async (row: Record<string, any>) => {
-    if (!row._id) {
-      toast.error('Record ID is missing');
-      return;
-    }
-    
-    // Confirm deletion
-    if (!window.confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
-      return;
-    }
+  
+  // Handle clear data
+  const handleClearData = async () => {
+    if (!model) return;
     
     try {
-      const response = await fetch(`/api/data/${modelId}?id=${row._id}`, {
-        method: 'DELETE',
+      const response = await fetch(`/api/data/${modelId}/clear`, {
+        method: 'POST',
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to delete record');
-      }
-
-      toast.success('Record deleted successfully');
       
-      // Reload the data table
-      if (pagination) {
-        handlePaginationChange(pagination.pageIndex, pagination.pageSize);
-      }
+      if (!response.ok) throw new Error('Failed to clear data');
+      
+      toast.success('All data cleared successfully');
+      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
+      refreshModel(); // Refresh model data in context
     } catch (error: any) {
-      console.error('Error deleting record:', error);
-      toast.error(error.message || 'Failed to delete record');
+      toast.error(error.message);
     }
   };
-
-  // Handle copying model details
+  
+  // Handle copy model details
   const handleCopyModelDetails = async () => {
-    if (!modelId) return;
+    if (!model) return;
     
     setCopyingDetails(true);
     try {
-      const response = await fetch(`/api/models/${modelId}/details`, {
-        credentials: 'same-origin'
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch model details');
-      }
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch model details');
-      }
-
-      const details = data.data;
+      // Create a formatted string with model details
+      const detailsText = `Model: ${model.name}
+ID: ${model.id}
+Description: ${model.description || 'N/A'}
+Fields: ${Object.keys(model.fields || {}).join(', ')}`;
       
-      // Format the details as a readable string
-      const formattedDetails = [
-        `Model: ${details.name}`,
-        `Description: ${details.description}`,
-        `ID: ${details.id}`,
-        `Record Count: ${details.recordCount}`,
-        `Created: ${details.createdAt}`,
-        `Updated: ${details.updatedAt}`,
-        '',
-        'Fields:',
-        ...details.fields.map((field: any) => 
-          `  - ${field.name} (${field.type})${field.required ? ' [Required]' : ''}${field.unique ? ' [Unique]' : ''}`
-        ),
-        '',
-        `Vector Search: ${details.vectorSearch.enabled ? 'Enabled' : 'Disabled'}`,
-        details.vectorSearch.enabled ? `  Source Fields: ${details.vectorSearch.sourceFields.join(', ')}` : '',
-        '',
-        'Relationships:',
-        details.relationships.length > 0 
-          ? details.relationships.map((rel: any) => `  - ${rel.name}: ${rel.type} to ${rel.target_model}`) 
-          : '  None',
-        '',
-        'Indexes:',
-        details.indexes.length > 0 
-          ? details.indexes.map((idx: any) => `  - ${idx.name}: ${idx.fields.join(', ')}`) 
-          : '  None'
-      ].filter(Boolean).join('\n');
-
-      await navigator.clipboard.writeText(formattedDetails);
+      await navigator.clipboard.writeText(detailsText);
       toast.success('Model details copied to clipboard');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error('Failed to copy details');
     } finally {
       setCopyingDetails(false);
     }
   };
-
-  // Determine overall loading state
-  const isLoading = isLoadingViews || (isInitialLoad && isLoadingData);
-  const error = viewError || dataError;
-
-  // Show loading state during initial load
-  if (isLoading) {
-    return <LoadingState message={isLoadingViews ? 'Loading views...' : 'Loading data...'} />;
-  }
-
-  // Ensure views is always defined
-  const safeViews = views || [];
-
-  // Show error state if either views or data failed to load
-  if (error) {
-    return <ErrorState error={error} />;
+  
+  // Early return if model is loading
+  if (modelLoading || !model) {
+    return (
+      <Flex justify="center" align="center" py={16}>
+        <Spinner color="primary.500" size="xl" />
+      </Flex>
+    );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-65px)]">
-      <ModelHeader
-        modelId={modelId}
-        modelName={modelName}
-        currentView={currentView || null}
-        editedName={editedName}
-        isEditingName={isEditingName}
-        setEditingName={setIsEditingName}
-        onViewNameEdit={handleViewNameEdit}
-        onCopyModelDetails={handleCopyModelDetails}
-        onAddData={() => setIsAddDataOpen(true)}
-        onClearData={handleClearData}
-        copyingDetails={copyingDetails}
-        views={safeViews}
-        activeViewId={activeView}
-        onViewSelect={handleViewSelect}
-        onCreateView={handleCreateView}
-        onDeleteView={handleDeleteView}
-        setEditedName={setEditedName}
-      />
-
-      <DataContainer
-        currentView={currentView || null}
-        data={data}
-        columns={currentView ? getColumns(currentView) : []}
-        pagination={pagination}
-        isLoadingData={isLoadingData}
-        isInitialLoad={isInitialLoad}
-        hasUnsavedChanges={hasUnsavedChanges}
-        availableColumns={availableColumns}
-        onPaginationChange={handlePaginationChange}
-        onConfigChange={handleViewConfigChange}
-        onSave={handleSaveCurrentView}
-        onEditRow={handleOpenRecord}
-        onDeleteRow={handleDeleteRow}
-        onCreateView={handleCreateView}
-      />
-
+    <Box>
+      <Section>
+        {/* Use DataContainer to display the data */}
+        <DataContainer
+          currentView={currentView as any} // Using 'as any' to avoid type conflicts
+          data={records}
+          columns={columns}
+          pagination={pagination}
+          isLoadingData={recordsLoading}
+          isInitialLoad={recordsLoading && records.length === 0}
+          hasUnsavedChanges={isEditing}
+          availableColumns={availableColumns || []}
+          views={views} // Get views directly from the store
+          activeViewId={activeViewId}
+          modelName={model.name}
+          onPaginationChange={handlePaginationChange}
+          onConfigChange={handleConfigChange}
+          onSave={handleSaveChanges}
+          onEditRow={handleRowClick}
+          onDeleteRow={handleDeleteRow}
+          onCreateView={handleCreateView}
+          onViewSelect={handleViewSelect}
+          onDeleteView={handleDeleteView}
+          onAddData={onAddDataOpen}
+          onCopyModelDetails={handleCopyModelDetails}
+          onClearData={handleClearData}
+          onViewNameEdit={handleViewNameEdit}
+          copyingDetails={copyingDetails}
+          editedName={editedName}
+          isEditingName={isEditingName}
+          setEditingName={setIsEditingName}
+          setEditedName={setEditedName}
+        />
+      </Section>
+      
       {/* Add Data Drawer */}
-      {modelDefinition && (
+      {model && (
         <AddDataDrawer
           isOpen={isAddDataOpen}
-          onClose={() => setIsAddDataOpen(false)}
-          modelName={modelName}
-          modelDefinition={modelDefinition}
+          onClose={onAddDataClose}
+          modelName={model.name}
+          modelDefinition={model}
           onSubmit={handleSubmitData}
         />
       )}
       
-      {/* Record Details Drawer */}
-      {modelDefinition && currentRecord && (
+      {/* Record Drawer */}
+      {model && currentRecord && (
         <RecordDrawer
-          isOpen={isDetailsOpen}
-          onClose={() => {
-            setIsDetailsOpen(false);
-            setCurrentRecord(null);
-            setIsEditMode(false);
-          }}
+          isOpen={isRecordDrawerOpen}
+          onClose={onRecordDrawerClose}
           isEditMode={isEditMode}
           setEditMode={setIsEditMode}
-          title={isEditMode ? "Edit Record" : "Record Details"}
+          title={isEditMode ? 'Edit Record' : 'View Record'}
           record={currentRecord}
-          model={modelDefinition}
-          onSubmit={handleSubmitEditedData}
+          model={model}
+          onSubmit={handleUpdateRecord}
         />
       )}
-    </div>
+    </Box>
   );
 } 

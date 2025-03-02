@@ -2,6 +2,31 @@ import { InfoIcon, PlusIcon, TrashIcon } from 'lucide-react';
 import { useState } from 'react';
 import { ModelDefinition, FieldType, CreatableFieldDefinition, FieldDefinition } from '@/types/modelDefinition';
 import { toast } from 'react-hot-toast';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  FormControl,
+  FormLabel,
+  HStack,
+  IconButton,
+  Input,
+  Select,
+  Table,
+  Tbody,
+  Td,
+  Text,
+  Textarea,
+  Th,
+  Thead,
+  Tooltip,
+  Tr,
+  VStack,
+  Alert,
+  AlertIcon,
+  AlertDescription
+} from '@chakra-ui/react';
 
 const FIELD_TYPES = {
   string: 'String',
@@ -85,147 +110,161 @@ export function FieldsSection({ model, onChange }: FieldsSectionProps) {
   };
 
   return (
-    <section className="bg-white rounded-xl p-6 shadow-sm border border-border/40">
-      <div className="flex items-center gap-3 mb-6">
-        <h2 className="text-xl font-medium">Fields</h2>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm">
-          <InfoIcon className="w-4 h-4" />
-          <span>Vector fields are handled automatically by the platform</span>
-        </div>
-      </div>
+    <VStack spacing={4} align="stretch" width="100%">
+      <Alert status="info" variant="subtle" borderRadius="md">
+        <AlertIcon />
+        <AlertDescription>
+          Vector fields are handled automatically by the platform
+        </AlertDescription>
+      </Alert>
       
       {/* Existing Fields */}
-      <div className="space-y-3 mb-6">
-        {(Object.entries(model.fields) as [string, FieldDefinition][])
-          .filter(([_, field]) => field.type !== 'vector')
-          .map(([name, field]) => (
-            <div
-              key={field.id}
-              className="grid grid-cols-12 gap-4 p-4 bg-surface/50 rounded-lg items-center hover:bg-surface transition-colors"
-            >
-              <div className="col-span-3">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => updateField(name, e.target.value, {})}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  placeholder="Field name"
-                />
-              </div>
-              <div className="col-span-2">
-                <select
-                  value={field.type}
-                  onChange={(e) => {
-                    const type = e.target.value as FieldTypes;
-                    updateField(name, name, { type });
-                  }}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                >
-                  {Object.entries(FIELD_TYPES).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-span-5 flex gap-4">
-                <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-surface/80">
-                  <input
-                    type="checkbox"
-                    checked={field.required}
+      {Object.entries(model.fields).length > 0 ? (
+        <Table variant="simple" size="sm">
+          <Thead>
+            <Tr>
+              <Th>Name</Th>
+              <Th>Type</Th>
+              <Th>Required</Th>
+              <Th>Unique</Th>
+              <Th>Description</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {Object.entries(model.fields).map(([name, field]) => (
+              <Tr key={field.id}>
+                <Td>
+                  <Input
+                    size="sm"
+                    value={name}
+                    onChange={(e) => {
+                      if (e.target.value && e.target.value !== name) {
+                        updateField(name, e.target.value, {});
+                      }
+                    }}
+                  />
+                </Td>
+                <Td>
+                  <Select
+                    size="sm"
+                    value={field.type}
+                    onChange={(e) => updateField(name, name, { type: e.target.value as FieldTypes })}
+                  >
+                    {Object.entries(FIELD_TYPES).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </Td>
+                <Td>
+                  <Checkbox
+                    isChecked={field.required}
                     onChange={(e) => updateField(name, name, { required: e.target.checked })}
-                    className="rounded border-border"
                   />
-                  <span className="text-sm">Required</span>
-                </label>
-                <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-surface/80">
-                  <input
-                    type="checkbox"
-                    checked={field.unique}
+                </Td>
+                <Td>
+                  <Checkbox
+                    isChecked={field.unique}
                     onChange={(e) => updateField(name, name, { unique: e.target.checked })}
-                    className="rounded border-border"
                   />
-                  <span className="text-sm">Unique</span>
-                </label>
-                <input
-                  type="text"
-                  value={field.description || ''}
-                  onChange={(e) => updateField(name, name, { description: e.target.value })}
-                  className="flex-1 px-3 py-2 rounded-lg border border-border bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  placeholder="Description (optional)"
-                />
-              </div>
-              <div className="col-span-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => removeField(name)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-      </div>
+                </Td>
+                <Td>
+                  <Input
+                    size="sm"
+                    value={field.description || ''}
+                    onChange={(e) => updateField(name, name, { description: e.target.value })}
+                    placeholder="Description (optional)"
+                  />
+                </Td>
+                <Td textAlign="right">
+                  <IconButton
+                    aria-label="Remove field"
+                    icon={<TrashIcon size={16} />}
+                    size="sm"
+                    colorScheme="red"
+                    variant="ghost"
+                    onClick={() => removeField(name)}
+                  />
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      ) : (
+        <Box py={4} textAlign="center" bg="gray.50" rounded="md" borderWidth="1px" borderStyle="dashed" _dark={{ bg: "gray.700" }}>
+          <Text color="gray.500">No fields defined yet. Add your first field below.</Text>
+        </Box>
+      )}
 
       {/* Add Field Form */}
-      <div className="grid grid-cols-12 gap-4 items-center bg-surface/30 p-4 rounded-lg border border-dashed border-border">
-        <div className="col-span-3">
-          <input
-            type="text"
-            value={newField.name}
-            onChange={e => setNewField(prev => ({ ...prev, name: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-            placeholder="New field name"
-          />
-        </div>
-        <div className="col-span-2">
-          <select
-            value={newField.type}
-            onChange={e => setNewField(prev => ({ ...prev, type: e.target.value as FieldTypes }))}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+      <Box p={4} bg="gray.50" rounded="md" borderWidth="1px" _dark={{ bg: "gray.700" }}>
+        <HStack spacing={4} align="flex-end">
+          <FormControl flex="2">
+            <FormLabel fontSize="sm" fontWeight="medium">Field Name</FormLabel>
+            <Input
+              value={newField.name}
+              onChange={e => setNewField(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="New field name"
+              size="md"
+            />
+          </FormControl>
+          
+          <FormControl flex="1">
+            <FormLabel fontSize="sm" fontWeight="medium">Type</FormLabel>
+            <Select
+              value={newField.type}
+              onChange={e => setNewField(prev => ({ ...prev, type: e.target.value as FieldTypes }))}
+              size="md"
+            >
+              {Object.entries(FIELD_TYPES).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl flex="1">
+            <HStack spacing={4} mt={2}>
+              <Checkbox
+                isChecked={newField.required}
+                onChange={e => setNewField(prev => ({ ...prev, required: e.target.checked }))}
+              >
+                Required
+              </Checkbox>
+              
+              <Checkbox
+                isChecked={newField.unique}
+                onChange={e => setNewField(prev => ({ ...prev, unique: e.target.checked }))}
+              >
+                Unique
+              </Checkbox>
+            </HStack>
+          </FormControl>
+          
+          <Button
+            onClick={addField}
+            colorScheme="primary"
+            leftIcon={<PlusIcon size={16} />}
+            size="md"
           >
-            {Object.entries(FIELD_TYPES).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="col-span-5 flex gap-4">
-          <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-surface/80">
-            <input
-              type="checkbox"
-              checked={newField.required}
-              onChange={e => setNewField(prev => ({ ...prev, required: e.target.checked }))}
-              className="rounded border-border"
-            />
-            <span className="text-sm">Required</span>
-          </label>
-          <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-surface/80">
-            <input
-              type="checkbox"
-              checked={newField.unique}
-              onChange={e => setNewField(prev => ({ ...prev, unique: e.target.checked }))}
-              className="rounded border-border"
-            />
-            <span className="text-sm">Unique</span>
-          </label>
-          <input
-            type="text"
+            Add Field
+          </Button>
+        </HStack>
+        
+        <FormControl mt={4}>
+          <FormLabel fontSize="sm" fontWeight="medium">Description (optional)</FormLabel>
+          <Textarea
             value={newField.description || ''}
             onChange={e => setNewField(prev => ({ ...prev, description: e.target.value }))}
-            className="flex-1 px-3 py-2 rounded-lg border border-border bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-            placeholder="Description (optional)"
+            placeholder="Enter a description for this field"
+            size="md"
+            rows={2}
           />
-        </div>
-        <div className="col-span-2 flex justify-end">
-          <button
-            type="button"
-            onClick={addField}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
-          >
-            <PlusIcon className="w-4 h-4" />
-            <span>Add</span>
-          </button>
-        </div>
-      </div>
-    </section>
+        </FormControl>
+      </Box>
+    </VStack>
   );
 } 
