@@ -131,9 +131,8 @@ export default function Dashboard() {
               </Text>
             </Box>
             
-            <Link href="/models/new" passHref>
+            <Link href="/models/new">
               <Button
-                as="a"
                 colorScheme="purple"
                 size="md"
                 fontWeight="medium"

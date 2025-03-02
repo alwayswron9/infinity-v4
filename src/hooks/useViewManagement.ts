@@ -446,6 +446,10 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         ...currentView,
         config: updatedConfig,
       };
+      
+      // Set editing flag to true to indicate unsaved changes
+      setIsEditing(true);
+      
       updateView(currentView.id, updatedView);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to update view configuration');

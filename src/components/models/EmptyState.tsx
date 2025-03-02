@@ -55,9 +55,8 @@ export function EmptyState() {
           </VStack>
           
           <Box pt={2}>
-            <Link href="/models/new" passHref>
+            <Link href="/models/new">
               <Button
-                as="a"
                 leftIcon={<Icon as={Plus} boxSize={4} />}
                 colorScheme="purple"
                 size="md"

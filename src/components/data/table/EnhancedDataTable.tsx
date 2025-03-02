@@ -6,11 +6,21 @@ import {
   useColorModeValue,
   Text,
   VStack,
-  Icon
+  Icon,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Flex,
+  HStack,
+  Button,
+  IconButton
 } from '@chakra-ui/react';
 import { DataTable } from '@saas-ui/react';
 import type { ColumnDef, CellContext } from '@tanstack/react-table';
-import { FileText } from 'lucide-react';
+import { FileText, Trash, Eye } from 'lucide-react';
 
 // Define custom meta type for columns
 interface CustomColumnMeta {
@@ -45,55 +55,115 @@ interface EnhancedDataTableProps {
   columns: ColumnDef<Record<string, any>, any>[];
   isLoading?: boolean;
   onRowClick?: (row: Record<string, any>) => void;
+  onDeleteRow?: (row: Record<string, any>) => void;
   emptyStateMessage?: string;
   isHoverable?: boolean;
 }
 
 export function EnhancedDataTable({ 
-  data, 
+  data = [], 
   columns, 
   isLoading = false,
   onRowClick,
-  emptyStateMessage = "No data to display",
+  onDeleteRow,
+  emptyStateMessage = "No data available",
   isHoverable = true
 }: EnhancedDataTableProps) {
-  const [containerWidth, setContainerWidth] = useState<number>(0);
+  // Table styling
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const tableBackgroundColor = useColorModeValue('white', 'gray.800');
+  const tableHeaderColor = useColorModeValue('gray.50', 'gray.700');
+  const hoverBgColor = useColorModeValue('gray.50', 'gray.700');
+  const headerTextColor = useColorModeValue('gray.600', 'gray.300');
+
+  // State for container dimensions
+  const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [columnWidths, setColumnWidths] = useState<number[]>([]);
+
+  // First load flag
+  const [firstLoad, setFirstLoad] = useState(true);
   
-  // Set up a resize observer to update column widths when the container resizes
+  // Effect to measure container width and calculate column sizes
   useEffect(() => {
-    const tableContainer = document.querySelector('[data-enhanced-table-container]');
-    if (!tableContainer) return;
-    
-    const resizeObserver = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
-      }
-    });
-    
-    resizeObserver.observe(tableContainer);
-    
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
+    if (containerRef) {
+      // Measure the container width
+      const measureContainer = () => {
+        const newWidth = containerRef.getBoundingClientRect().width;
+        if (newWidth !== containerWidth) {
+          setContainerWidth(newWidth);
+        }
+      };
+
+      // Initial measurement
+      measureContainer();
+
+      // Add resize listener
+      const resizeObserver = new ResizeObserver(measureContainer);
+      resizeObserver.observe(containerRef);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, [containerRef, containerWidth]);
+
+  // Effect to handle first load state
+  useEffect(() => {
+    if (!isLoading && firstLoad) {
+      setFirstLoad(false);
+    }
+  }, [isLoading, firstLoad]);
 
   // Calculate dynamic column widths to fit container width
   const getColumnWidths = useMemo(() => {
     if (!columns || columns.length === 0 || containerWidth === 0) return {};
     
+    // Constants for width calculations
+    const MIN_COLUMN_WIDTH = 80;
+    const ACTION_COLUMN_WIDTH = 120;
+    let availableWidth = containerWidth;
+    let numberOfContentColumns = columns.length;
+    let reservedWidth = 0;
+    
+    // First, reserve space for the action column (if it exists or will be created)
+    const hasOrWillHaveActionsColumn = (onRowClick || onDeleteRow) || columns.some(col => col.id === 'actions');
+    
+    if (hasOrWillHaveActionsColumn) {
+      reservedWidth += ACTION_COLUMN_WIDTH;
+      availableWidth -= ACTION_COLUMN_WIDTH;
+      numberOfContentColumns--; // Reduce by one as we've accounted for the actions column
+    }
+    
+    // Find out which columns are visible
+    const visibleColumns = columns.filter(col => {
+      // Consider column visible if no meta is provided or it doesn't have visible: false
+      return !col.meta || (col.meta as any).visible !== false;
+    });
+    
+    // Count only visible content columns
+    numberOfContentColumns = visibleColumns.filter(col => 
+      col.id !== 'actions' && 
+      (!(col.meta as CustomColumnMeta)?.isAction)
+    ).length;
+    
     // Define column type weights - some columns should be wider than others
     const columnTypeWeights: {[key: string]: number} = {
-      id: 1,           // ID columns (usually narrow)
+      id: 0.7,        // ID columns (narrower)
       date: 1.2,       // Date columns 
       time: 1.2,       // Time columns
       created: 1.1,    // Created/updated dates
       status: 0.8,     // Status columns (usually short text)
-      actions: 0.6,    // Action columns (usually buttons)
-      default: 2       // Default for text columns - give them more space
+      default: 1.5     // Default for text columns - give them reasonable space
     };
     
     // Assign weights to columns based on their type or id
-    const columnWeights = columns.map(col => {
+    const columnWeights = visibleColumns.map(col => {
+      // Skip action columns as we've already accounted for them
+      if (col.id === 'actions' || (col.meta as CustomColumnMeta)?.isAction) {
+        return 0; // Zero weight, since we already reserved space
+      }
+      
       // Check for special column types by ID or accessor
       const columnId = String(col.id || '').toLowerCase();
       
@@ -102,25 +172,41 @@ export function EnhancedDataTable({
       if (columnId.includes('time')) return columnTypeWeights.time;
       if (columnId.includes('created') || columnId.includes('updated')) return columnTypeWeights.created;
       if (columnId.includes('status') || columnId.includes('state')) return columnTypeWeights.status;
-      if (columnId === 'actions' || (col.meta as CustomColumnMeta)?.isAction) return columnTypeWeights.actions;
       
       return columnTypeWeights.default;
     });
     
-    // Calculate total weight
+    // Calculate total weight, only considering content columns
     const totalWeight = columnWeights.reduce((sum, weight) => sum + weight, 0);
     
     // Calculate width per weight unit
-    const widthPerWeightUnit = containerWidth / totalWeight;
+    const widthPerWeightUnit = totalWeight > 0 ? availableWidth / totalWeight : 0;
     
     // Generate an object mapping column indices to widths
     const widths: {[key: number]: number} = {};
-    columnWeights.forEach((weight, index) => {
-      widths[index] = Math.floor(weight * widthPerWeightUnit);
+    
+    columns.forEach((column, index) => {
+      // Set fixed width for action columns
+      if (column.id === 'actions' || (column.meta as CustomColumnMeta)?.isAction) {
+        widths[index] = ACTION_COLUMN_WIDTH;
+        return;
+      }
+      
+      // Skip hidden columns
+      if (column.meta && (column.meta as any).visible === false) {
+        widths[index] = 0; // Zero width for hidden columns
+        return;
+      }
+      
+      // For visible content columns, calculate based on weight
+      const weight = columnWeights[visibleColumns.findIndex(vc => vc.id === column.id)] || columnTypeWeights.default;
+      const calculatedWidth = Math.max(MIN_COLUMN_WIDTH, Math.floor(weight * widthPerWeightUnit));
+      widths[index] = calculatedWidth;
     });
     
+    console.log("Calculated column widths:", widths);
     return widths;
-  }, [columns, containerWidth]);
+  }, [columns, containerWidth, onRowClick, onDeleteRow]);
 
   // Enhanced columns with clickable rows and responsive widths
   const enhancedColumns = useMemo(() => {
@@ -141,9 +227,9 @@ export function EnhancedDataTable({
         .join(' ');
     };
     
-    // Make data columns clickable and adjust widths
+    // Process columns but don't make all cells clickable
     const processedColumns = columns.map((column, index) => {
-      // Create a new column definition with an enhanced cell renderer
+      // Create a new column definition
       const newColumn = { ...column };
       
       // Format column header if it's not already defined
@@ -156,68 +242,46 @@ export function EnhancedDataTable({
         newColumn.size = getColumnWidths[index];
       }
       
-      // Add cell renderer to make cells clickable if onRowClick provided
-      if (onRowClick) {
-        const cellRenderer = (info: CellContext<Record<string, any>, unknown>) => {
-          // Get the original cell content
-          let displayContent;
-          
-          if (typeof column.cell === 'function') {
-            // Use the original cell renderer if it exists
-            displayContent = column.cell(info);
-          } else {
-            // Otherwise just get the value directly
-            const value = info.getValue();
-            
-            // For empty values, show a dash
-            if (value === null || value === undefined || value === '') {
-              return <Text color="gray.400">-</Text>;
-            }
-            
-            displayContent = String(value);
-          }
-          
-          return (
-            <Box 
-              onClick={() => onRowClick(info.row.original)}
-              cursor="pointer"
-              _hover={{ color: "blue.500" }}
-              textOverflow="ellipsis"
-              overflow="hidden"
-              whiteSpace="nowrap"
-              maxW="100%"
-              title={typeof displayContent === 'string' ? displayContent : undefined}
-            >
-              {displayContent}
-            </Box>
-          );
-        };
-        
-        // Assign the cell renderer
-        newColumn.cell = cellRenderer;
-      }
+      // We're removing the cell click renderer since we don't want the whole cell to be clickable
       
       return newColumn;
     });
     
-    // Add an actions column if it doesn't exist and onRowClick is provided
-    if (onRowClick && !columns.some(col => col.id === 'actions')) {
+    // Add an actions column if needed
+    if ((onRowClick || onDeleteRow) && !columns.some(col => col.id === 'actions')) {
       const actionColumn: ColumnDef<Record<string, any>> = {
         id: 'actions',
         header: 'Actions',
-        size: 80, // Fixed size for actions column
+        size: 120,
         cell: (info: CellContext<Record<string, any>, unknown>) => (
-          <Box 
-            textAlign="center" 
-            color="blue.500" 
-            cursor="pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRowClick(info.row.original);
-            }}
-          >
-            View
-          </Box>
+          <HStack spacing={2} justifyContent="center">
+            {onRowClick && (
+              <IconButton
+                icon={<Eye size={16} />}
+                aria-label="View"
+                size="xs"
+                colorScheme="blue"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRowClick(info.row.original);
+                }}
+              />
+            )}
+            {onDeleteRow && (
+              <IconButton
+                icon={<Trash size={16} />}
+                aria-label="Delete"
+                size="xs"
+                colorScheme="red"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteRow(info.row.original);
+                }}
+              />
+            )}
+          </HStack>
         ),
         meta: {
           isAction: true
@@ -228,103 +292,121 @@ export function EnhancedDataTable({
     }
     
     return processedColumns;
-  }, [columns, onRowClick, containerWidth, getColumnWidths]);
-  
-  const tableBackgroundColor = useColorModeValue('white', 'gray.800');
-  const tableHeaderColor = useColorModeValue('gray.50', 'gray.700');
+  }, [columns, onRowClick, onDeleteRow, containerWidth, getColumnWidths]);
 
   return (
     <Box 
       position="relative" 
+      height="100%" 
       width="100%" 
-      height="100%"
-      overflow="hidden"
-      data-enhanced-table-container
+      overflow="auto"
+      ref={setContainerRef}
+      minHeight="250px" // Ensure loading spinner has space
     >
-      {isLoading && (
-        <Center 
-          position="absolute" 
-          top="0" 
-          left="0" 
-          right="0" 
-          bottom="0" 
-          bg="blackAlpha.300" 
-          zIndex="1"
-        >
-          <Spinner size="xl" color="purple.500" />
+      {isLoading ? (
+        <Center height="100%" width="100%" py={10}>
+          <Spinner 
+            size="xl" 
+            thickness="3px" 
+            color="purple.500" 
+            emptyColor="gray.200"
+            speed="0.8s"
+          />
         </Center>
-      )}
-      
-      <Box 
-        width="100%" 
-        height="100%"
-        overflow="auto"
-        css={{
-          // Scrollbar styling
-          '&::-webkit-scrollbar': {
-            width: '8px',
-            height: '8px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: useColorModeValue('gray.100', 'gray.800'),
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: useColorModeValue('gray.300', 'gray.600'),
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb:hover': {
-            background: useColorModeValue('gray.400', 'gray.500'),
-          },
-          // Sticky headers
-          'thead tr th': {
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            background: tableHeaderColor,
-            fontWeight: 'medium',
-            fontSize: 'sm',
-            textTransform: 'none'
-          }
-        }}
-      >
-        <DataTable
-          columns={enhancedColumns}
-          data={data}
-          isSortable={true}
-          isSelectable={false}
-          size="md"
-          variant="default"
-          sx={{ 
-            width: '100%',
-            tableLayout: 'fixed',
-            '& tbody tr': {
-              backgroundColor: tableBackgroundColor,
-              transition: 'background-color 0.2s',
-              '&:hover': {
-                backgroundColor: useColorModeValue('gray.50', 'gray.700'),
-              }
-            },
-            '& th, & td': {
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              padding: '12px 16px',
-              lineHeight: '1.2',
-              borderColor: useColorModeValue('gray.200', 'gray.700')
-            },
-            '& th': {
-              color: useColorModeValue('gray.700', 'gray.200'),
-            },
-            '& td': {
-              color: useColorModeValue('gray.800', 'gray.300'),
-              fontSize: 'sm'
-            }
-          }}
-        />
-      </Box>
-      
-      {data.length === 0 && !isLoading && (
+      ) : data.length === 0 ? (
         <EmptyStateMessage message={emptyStateMessage} />
+      ) : (
+        <Table 
+          width="100%" 
+          style={{ borderCollapse: 'separate', borderSpacing: 0 }}
+          size="sm"
+        >
+          {/* Fixed header - Updated styling to match SaaS UI standards */}
+          <Thead bg={tableHeaderColor} position="sticky" top={0} zIndex={1}>
+            <Tr>
+              {enhancedColumns.map((column, idx) => (
+                <Th 
+                  key={idx}
+                  width={column.size ? `${column.size}px` : undefined}
+                  textTransform="none"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  color="gray.500"
+                  borderBottomWidth="1px"
+                  borderColor={borderColor}
+                  p="10px 16px"
+                  whiteSpace="nowrap"
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  letterSpacing="0.5px"
+                >
+                  {typeof column.header === 'function' 
+                    ? column.header({} as any) 
+                    : column.header as React.ReactNode}
+                </Th>
+              ))}
+            </Tr>
+          </Thead>
+          
+          {/* Scrollable body area - Remove row click handler */}
+          <Tbody>
+            {data.map((row, rowIdx) => (
+              <Tr 
+                key={rowIdx}
+                // Removed cursor pointer and onClick for the entire row
+                bg={tableBackgroundColor}
+                _hover={{
+                  bg: hoverBgColor,
+                }}
+                transition="background-color 0.2s"
+              >
+                {enhancedColumns.map((column, colIdx) => {
+                  // Get the value using the column id
+                  let value = null;
+                  
+                  if (column.id) {
+                    value = row[column.id];
+                  } else if ('accessorKey' in column) {
+                    value = row[(column as any).accessorKey];
+                  }
+                  
+                  // Format the cell content
+                  let cellContent;
+                  if (typeof column.cell === 'function') {
+                    const info = {
+                      getValue: () => value,
+                      row: { original: row },
+                      column: column
+                    } as CellContext<Record<string, any>, unknown>;
+                    cellContent = column.cell(info);
+                  } else if (value === null || value === undefined || value === '') {
+                    cellContent = <Text color="gray.400">-</Text>;
+                  } else if (typeof value === 'object') {
+                    cellContent = JSON.stringify(value);
+                  } else {
+                    cellContent = String(value);
+                  }
+                  
+                  return (
+                    <Td 
+                      key={colIdx}
+                      p="12px 16px"
+                      borderColor={borderColor}
+                      fontSize="sm"
+                      overflow="hidden"
+                      textOverflow="ellipsis"
+                      whiteSpace="nowrap"
+                      width={column.size ? `${column.size}px` : undefined}
+                      title={typeof cellContent === 'string' ? cellContent : undefined}
+                    >
+                      {cellContent}
+                    </Td>
+                  );
+                })}
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
       )}
     </Box>
   );

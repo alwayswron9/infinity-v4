@@ -11,31 +11,46 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Important: To prevent flickering, we don't want to render until after hydration
     setMounted(true);
+    
+    // Ensure the chakra-ui-dark class is added to body consistently
+    // This matches what the server rendering expects
+    if (!document.body.classList.contains('chakra-ui-dark')) {
+      document.body.classList.add('chakra-ui-dark');
+    }
   }, []);
 
+  // This approach ensures SSR works properly with Chakra UI
+  // By rendering an exact HTML structure match during SSR and first render
   return (
     <>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
       <ChakraProvider theme={theme} resetCSS={true}>
         <SaasProvider theme={theme}>
-          {/* Render children only after component has mounted on client */}
-          {mounted ? children : <div style={{ visibility: 'hidden' }}>{children}</div>}
-          <Toaster 
-            position="bottom-right"
-            duration={1000}
-            richColors
-            closeButton
-            toastOptions={{
-              duration: 1000,
-              style: {
-                background: 'var(--chakra-colors-gray-800)',
-                color: 'var(--chakra-colors-white)',
-                border: '1px solid var(--chakra-colors-gray-700)',
-              },
-              className: 'font-medium',
-            }}
-          />
+          {mounted ? (
+            <>
+              {children}
+              <Toaster 
+                position="bottom-right"
+                duration={4000}
+                richColors
+                closeButton
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: 'var(--chakra-colors-gray-800)',
+                    color: 'var(--chakra-colors-white)',
+                    border: '1px solid var(--chakra-colors-gray-700)',
+                  },
+                  className: 'font-medium',
+                }}
+              />
+            </>
+          ) : (
+            // This div matches the structure but remains invisible until client hydration
+            <div style={{ visibility: 'hidden' }}>{children}</div>
+          )}
         </SaasProvider>
       </ChakraProvider>
     </>

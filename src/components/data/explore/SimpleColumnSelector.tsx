@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   IconButton,
   Popover,
@@ -14,7 +14,8 @@ import {
   Text,
   useColorModeValue,
   Divider,
-  Box
+  Box,
+  useDisclosure
 } from '@chakra-ui/react';
 import { Columns } from 'lucide-react';
 
@@ -32,25 +33,64 @@ interface SimpleColumnSelectorProps {
 export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSelectorProps) {
   const popoverBg = useColorModeValue('white', 'gray.800');
   const headerBg = useColorModeValue('gray.50', 'gray.700');
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Keep a local copy of column visibility state to ensure UI updates immediately
+  const [localColumns, setLocalColumns] = useState<Column[]>(columns);
+  
+  // Update local columns when props change
+  React.useEffect(() => {
+    setLocalColumns(columns);
+    console.log("SimpleColumnSelector received columns:", columns);
+  }, [columns]);
   
   // Group columns into system fields (starting with _) and regular fields
-  const regularColumns = columns.filter(col => !col.key.startsWith('_'));
-  const systemColumns = columns.filter(col => col.key.startsWith('_'));
+  const regularColumns = localColumns.filter(col => !col.key.startsWith('_'));
+  const systemColumns = localColumns.filter(col => col.key.startsWith('_'));
+
+  const handleColumnToggle = useCallback((columnKey: string, isChecked: boolean) => {
+    console.log(`SimpleColumnSelector: Toggling column ${columnKey} to ${isChecked}`);
+    
+    // Update local state immediately for better UX
+    setLocalColumns(prev => 
+      prev.map(col => 
+        col.key === columnKey ? { ...col, visible: isChecked } : col
+      )
+    );
+    
+    // Call the parent's toggle handler and log when it's done
+    onColumnToggle(columnKey, isChecked);
+    console.log(`SimpleColumnSelector: Called parent onColumnToggle for ${columnKey}`);
+  }, [onColumnToggle]);
 
   return (
-    <Popover placement="bottom-end">
+    <Popover 
+      placement="bottom-end" 
+      closeOnBlur={true} 
+      gutter={4} 
+      isOpen={isOpen}
+      onOpen={onOpen}
+      onClose={onClose}
+      autoFocus={false}
+    >
       <PopoverTrigger>
         <Tooltip label="Select columns">
           <IconButton
             aria-label="Select columns"
             icon={<Columns size={18} />}
-            variant="ghost"
+            variant="outline"
             colorScheme="gray"
             size="sm"
           />
         </Tooltip>
       </PopoverTrigger>
-      <PopoverContent width="250px" bg={popoverBg} shadow="lg">
+      <PopoverContent 
+        width="250px" 
+        bg={popoverBg} 
+        shadow="lg" 
+        zIndex={9999}
+        borderColor={useColorModeValue('gray.200', 'gray.700')}
+      >
         <PopoverArrow />
         <PopoverCloseButton />
         <PopoverHeader bg={headerBg} borderTopRadius="md">
@@ -67,7 +107,7 @@ export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSe
                   <Checkbox
                     key={column.key}
                     isChecked={column.visible}
-                    onChange={(e) => onColumnToggle(column.key, e.target.checked)}
+                    onChange={(e) => handleColumnToggle(column.key, e.target.checked)}
                     size="sm"
                     width="100%"
                   >
@@ -89,7 +129,7 @@ export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSe
                   <Checkbox
                     key={column.key}
                     isChecked={column.visible}
-                    onChange={(e) => onColumnToggle(column.key, e.target.checked)}
+                    onChange={(e) => handleColumnToggle(column.key, e.target.checked)}
                     size="sm"
                     width="100%"
                   >
@@ -100,7 +140,7 @@ export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSe
             </>
           )}
           
-          {columns.length === 0 && (
+          {localColumns.length === 0 && (
             <Box textAlign="center" py={4}>
               <Text color="gray.500">No columns available</Text>
             </Box>

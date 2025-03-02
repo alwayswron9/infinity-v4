@@ -17,8 +17,16 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Hardcode the initial color mode since we know we're using dark mode
+  // This prevents the server component from trying to import the client-side theme
+  const initialColorMode = "dark";
+  
   return (
-    <html lang="en" className="dark">
+    <html 
+      lang="en" 
+      data-theme={initialColorMode}
+      style={{ colorScheme: initialColorMode }}
+    >
       <body className={inter.className}>
         <Providers>
           {children}

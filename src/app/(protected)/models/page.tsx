@@ -137,9 +137,8 @@ export default function ModelsPage() {
               </Text>
             </Box>
             
-            <Link href="/models/new" passHref>
+            <Link href="/models/new">
               <Button
-                as="a"
                 leftIcon={<Icon as={Plus} boxSize={4} />}
                 colorScheme="purple"
                 size="md"

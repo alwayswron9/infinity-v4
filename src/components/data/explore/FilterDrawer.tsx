@@ -61,6 +61,11 @@ export function FilterDrawer({
   const [filters, setFilters] = useState<ViewFilterConfig[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Pre-compute all color mode values at the top level to maintain hook ordering
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const filterBgColor = useColorModeValue('gray.50', 'gray.700');
+
   // Get available fields from the current view's columns
   const availableFields = React.useMemo(() => {
     if (!currentView || !currentView.config || !currentView.config.columns) return [];
@@ -156,9 +161,6 @@ export function FilterDrawer({
     setHasChanges(true);
   };
 
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-
   return (
     <Drawer isOpen={isOpen} onClose={onClose} placement="right" size="md">
       <DrawerOverlay />
@@ -188,7 +190,7 @@ export function FilterDrawer({
                     borderWidth="1px"
                     borderColor={borderColor}
                     borderRadius="md"
-                    bg={useColorModeValue('gray.50', 'gray.700')}
+                    bg={filterBgColor}
                   >
                     {/* Conjunction - only show for filters after the first one */}
                     {index > 0 && (

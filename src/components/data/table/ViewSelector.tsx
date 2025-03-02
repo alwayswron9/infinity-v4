@@ -60,7 +60,7 @@ export function ViewSelector({
   };
 
   return (
-    <Menu closeOnSelect={false}>
+    <Menu closeOnSelect={true} placement="bottom-end" gutter={4}>
       <MenuButton
         as={Button}
         rightIcon={<Icon as={ChevronDown} boxSize={4} />}
@@ -69,13 +69,13 @@ export function ViewSelector({
         isLoading={isLoading}
         fontWeight="medium"
       >
-        {activeView?.name || 'Select View'}
+        Views
       </MenuButton>
       <MenuList
         bg={menuBg}
         borderColor={menuBorderColor}
-        boxShadow="md"
-        zIndex={10}
+        boxShadow="lg"
+        zIndex={1400}
         minW="220px"
       >
         <MenuGroup title="Views" fontWeight="medium" fontSize="sm" px={3} pb={2}>
@@ -92,20 +92,27 @@ export function ViewSelector({
               >
                 <Flex justify="space-between" align="center" width="100%">
                   <Flex align="center">
-                    <Text>{view.name}</Text>
+                    <Text fontWeight={view.id === activeViewId ? "medium" : "normal"}>
+                      {view.name}
+                    </Text>
                     {view.is_default && (
                       <Text ml={2} fontSize="xs" color={defaultLabelColor}>(Default)</Text>
                     )}
                   </Flex>
-                  <IconButton
+                  <Box
                     aria-label="Delete view"
-                    icon={<Icon as={Trash2} boxSize={3} />}
-                    variant="ghost"
-                    size="xs"
-                    isDisabled={views.length <= 1 || (view.is_default && views.length === 1)}
-                    onClick={(e) => handleDeleteView(view.id, e)}
+                    color="gray.400"
+                    cursor={views.length <= 1 || (view.is_default && views.length === 1) ? "not-allowed" : "pointer"}
+                    opacity={views.length <= 1 || (view.is_default && views.length === 1) ? 0.5 : 1}
+                    onClick={(e) => {
+                      if (views.length <= 1 || (view.is_default && views.length === 1)) return;
+                      handleDeleteView(view.id, e);
+                    }}
                     _hover={{ color: 'red.500' }}
-                  />
+                    p={1}
+                  >
+                    <Icon as={Trash2} boxSize={3} />
+                  </Box>
                 </Flex>
               </MenuItem>
             ))}
