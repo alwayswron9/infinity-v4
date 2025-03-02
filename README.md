@@ -32,6 +32,14 @@ Comprehensive documentation is available in the [docs](/docs) directory, coverin
 - [Authentication](/docs/authentication.md)
 - [Deployment](/docs/deployment.md)
 - [License](/docs/license.md)
+- [Versioning](/VERSIONING.md)
+
+## Versioning
+
+This project uses a simple markdown-based versioning system to track changes between releases. 
+To learn more about how versioning works and how to create new versions, see the [Versioning documentation](/VERSIONING.md).
+
+Current version: v0.2.0
 
 ## License
 

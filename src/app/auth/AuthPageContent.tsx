@@ -1,7 +1,6 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
-import { AuthForm } from "@/components/ui/auth-form";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -13,14 +12,38 @@ import {
   VStack, 
   Card,
   CardBody,
-  CardHeader
+  CardHeader,
+  Badge
 } from "@chakra-ui/react";
+import { AuthForm } from "./auth-form";
+import { VersionInfo } from "@/utils/versions";
 
-export default function Auth() {
+export default function AuthPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [randomQuote, setRandomQuote] = useState('');
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+  const [versionLoading, setVersionLoading] = useState(true);
+
+  // Fetch version info
+  useEffect(() => {
+    async function fetchVersionInfo() {
+      try {
+        const response = await fetch('/api/versions');
+        if (response.ok) {
+          const data = await response.json();
+          setVersionInfo(data.latestVersion);
+        }
+      } catch (error) {
+        console.error('Failed to fetch version info:', error);
+      } finally {
+        setVersionLoading(false);
+      }
+    }
+    
+    fetchVersionInfo();
+  }, []);
 
   // Helper to determine if we need to set initial mode
   useEffect(() => {
@@ -43,13 +66,30 @@ export default function Auth() {
     }
   }, [searchParams]);
 
-  const toggleMode = (newMode: "login" | "register") => {
-    setMode(newMode);
-    // This function is kept for backward compatibility
-  };
-
   return (
-    <Box minH="100vh" display="flex" flexDirection="column" bg="gray.900">
+    <Box 
+      minH="100vh" 
+      display="flex" 
+      flexDirection="column" 
+      position="relative"
+      sx={{
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          bgImage: "url('/space.jpg')",
+          bgSize: "cover",
+          bgPosition: "center",
+          bgRepeat: "no-repeat",
+          filter: "grayscale(100%)",
+          WebkitFilter: "grayscale(100%)",
+          zIndex: -1
+        }
+      }}
+    >
       {/* Beta warning banner */}
       <Box w="full" bg="orange.900" py={1} textAlign="center">
         <Text fontSize="xs" fontWeight="light" color="orange.500">
@@ -62,17 +102,13 @@ export default function Auth() {
         <Container maxW={mode === "login" ? "md" : "lg"} py={8}>
           {/* Logo and Title */}
           <VStack mb={6} spacing={2} textAlign="center">
-            <Heading as="h1" fontSize="4xl" fontWeight="medium" color="purple.500" letterSpacing="tight">
+            <Heading as="h1" fontSize="4xl" fontWeight="medium" color="brand.500" letterSpacing="tight">
               Infinity
             </Heading>
-            {mode === "login" ? (
-              <Text fontSize="md" color="gray.400" maxW="md">
-                {randomQuote}
-              </Text>
-            ) : (
-              <Text fontSize="md" color="gray.400" maxW="md">
-                The predictable core bringing structure to your automation journey.
-              </Text>
+            {versionInfo && (
+              <Badge colorScheme="gray" fontSize="xs" variant="subtle">
+                v{versionInfo.version} - unstable preview
+              </Badge>
             )}
           </VStack>
 
@@ -94,7 +130,7 @@ export default function Auth() {
             <Link
               href={mode === "login" ? "/auth?mode=register" : "/auth?mode=login"}
               style={{
-                color: 'var(--chakra-colors-purple-500)',
+                color: 'var(--chakra-colors-brand-500)',
                 fontWeight: '500',
                 transition: 'color 0.2s ease'
               }}
@@ -106,4 +142,4 @@ export default function Auth() {
       </Center>
     </Box>
   );
-}
+} 

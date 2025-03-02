@@ -156,7 +156,7 @@ export function ModelDataForm({
                     color="gray.100"
                     borderColor="gray.700"
                     _hover={{ borderColor: "gray.600" }}
-                    _focus={{ borderColor: "purple.500" }}
+                    _focus={{ borderColor: "brand.500" }}
                     rows={4}
                   />
                 ) : (
@@ -170,7 +170,7 @@ export function ModelDataForm({
                     color="gray.100"
                     borderColor="gray.700"
                     _hover={{ borderColor: "gray.600" }}
-                    _focus={{ borderColor: "purple.500" }}
+                    _focus={{ borderColor: "brand.500" }}
                   />
                 )
               )}
@@ -189,7 +189,7 @@ export function ModelDataForm({
                   <NumberInputField 
                     color="gray.100"
                     _hover={{ borderColor: "gray.600" }}
-                    _focus={{ borderColor: "purple.500" }}
+                    _focus={{ borderColor: "brand.500" }}
                   />
                   <NumberInputStepper>
                     <NumberIncrementStepper color="gray.400" />
@@ -203,7 +203,7 @@ export function ModelDataForm({
                   id={fieldName}
                   isChecked={value}
                   onChange={(e) => handleFieldChange(fieldName, e.target.checked)}
-                  colorScheme="purple"
+                  colorScheme="brand"
                   size="md"
                 />
               )}
@@ -234,7 +234,7 @@ export function ModelDataForm({
           <Button
             type="submit"
             isLoading={loading}
-            colorScheme="purple"
+            colorScheme="brand"
             size="md"
           >
             {submitButtonText}

@@ -424,10 +424,23 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
   };
 
   const handleViewConfigChange = async (configUpdate: Partial<ViewConfig>) => {
-    if (!currentView?.id || !currentView.config) return;
+    console.log("useViewManagement: handleViewConfigChange called with:", configUpdate);
+    
+    if (!currentView?.id || !currentView.config) {
+      console.error("useViewManagement: Cannot update config - no current view or config");
+      return;
+    }
     
     try {
       const baseConfig = currentView.config;
+      
+      // Log the columns before update
+      if (configUpdate.columns) {
+        console.log("useViewManagement: Updating columns. Current visible columns:", 
+          baseConfig.columns.filter(col => col.visible).map(col => col.field));
+        console.log("useViewManagement: New columns config:", configUpdate.columns);
+      }
+      
       const updatedConfig: ViewConfig = {
         columns: Array.isArray(configUpdate.columns) ? configUpdate.columns : baseConfig.columns,
         sorting: Array.isArray(configUpdate.sorting) ? configUpdate.sorting : baseConfig.sorting,
@@ -448,10 +461,19 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
       };
       
       // Set editing flag to true to indicate unsaved changes
+      console.log("useViewManagement: Setting isEditing to true");
       setIsEditing(true);
       
+      console.log("useViewManagement: Updating view in store");
       updateView(currentView.id, updatedView);
+      
+      // Log the columns after update
+      if (configUpdate.columns) {
+        console.log("useViewManagement: Updated visible columns:", 
+          updatedConfig.columns.filter(col => col.visible).map(col => col.field));
+      }
     } catch (error) {
+      console.error("useViewManagement: Error updating config:", error);
       setError(error instanceof Error ? error.message : 'Failed to update view configuration');
       throw error;
     }

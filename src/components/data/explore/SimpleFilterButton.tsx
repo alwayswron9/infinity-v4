@@ -20,7 +20,7 @@ export function SimpleFilterButton({
 }: SimpleFilterButtonProps) {
   // Check if there are any active filters
   const hasActiveFilters = filters.some(f => f.value !== undefined && f.value !== '');
-  const dotColor = useColorModeValue('purple.500', 'purple.400');
+  const dotColor = useColorModeValue('brand.500', 'brand.400');
   const dotBorderColor = useColorModeValue('white', 'gray.800');
 
   return (
@@ -31,7 +31,7 @@ export function SimpleFilterButton({
           icon={<Filter size={18} />}
           onClick={onClick}
           variant="ghost"
-          colorScheme={hasActiveFilters ? "purple" : "gray"}
+          colorScheme={hasActiveFilters ? "brand" : "gray"}
           size="sm"
         />
         

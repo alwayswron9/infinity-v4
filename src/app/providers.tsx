@@ -14,11 +14,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Important: To prevent flickering, we don't want to render until after hydration
     setMounted(true);
     
-    // Ensure the chakra-ui-dark class is added to body consistently
-    // This matches what the server rendering expects
-    if (!document.body.classList.contains('chakra-ui-dark')) {
-      document.body.classList.add('chakra-ui-dark');
-    }
+    // We no longer need to add the class here since it's already added in layout.tsx
+    // This prevents class manipulation during hydration which can cause mismatches
   }, []);
 
   // This approach ensures SSR works properly with Chakra UI

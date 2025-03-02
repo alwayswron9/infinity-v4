@@ -119,9 +119,18 @@ export default function ExplorePage() {
   
   // Handle config change
   const handleConfigChange = (config: any) => {
-    if (!currentView) return;
+    console.log("ExplorePage: handleConfigChange called with config:", config);
+    
+    if (!currentView) {
+      console.error("ExplorePage: Cannot change config - no current view");
+      return;
+    }
+    
+    console.log("ExplorePage: Calling handleViewConfigChange");
     handleViewConfigChange(config);
+    
     // Set isEditing flag to ensure Save button appears when config changes
+    console.log("ExplorePage: Setting isEditing to true");
     setIsEditing(true);
   };
   

@@ -29,7 +29,7 @@ export function EmptyState() {
             size="24"
             bg="gray.700"
           >
-            <Icon as={Database} boxSize="10" color="purple.400" />
+            <Icon as={Database} boxSize="10" color="brand.400" />
           </Circle>
           
           <VStack spacing={2}>
@@ -58,7 +58,7 @@ export function EmptyState() {
             <Link href="/models/new">
               <Button
                 leftIcon={<Icon as={Plus} boxSize={4} />}
-                colorScheme="purple"
+                colorScheme="brand"
                 size="md"
                 fontWeight="medium"
                 px={6}

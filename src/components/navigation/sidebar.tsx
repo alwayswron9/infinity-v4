@@ -62,7 +62,7 @@ export default function Sidebar() {
       flexDirection="column"
     >
       <Box p="6">
-        <Heading size="md" fontWeight="semibold" color="purple.500">Infinity</Heading>
+        <Heading size="md" fontWeight="semibold" color="brand.500">Infinity</Heading>
       </Box>
       
       <VStack as="nav" flex="1" px="4" spacing="2" align="stretch">
@@ -78,10 +78,10 @@ export default function Sidebar() {
                 py="2"
                 borderRadius="lg"
                 transition="all 0.2s"
-                bg={isActive ? 'purple.500' : 'transparent'}
+                bg={isActive ? 'brand.500' : 'transparent'}
                 color={isActive ? 'white' : 'gray.400'}
                 _hover={{
-                  bg: isActive ? 'purple.600' : 'gray.800',
+                  bg: isActive ? 'brand.600' : 'gray.800',
                   color: isActive ? 'white' : 'gray.200'
                 }}
               >

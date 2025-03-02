@@ -23,7 +23,8 @@ import {
   StatNumber,
   useDisclosure,
   Divider,
-  Tag
+  Tag,
+  Portal
 } from '@chakra-ui/react';
 
 export interface ModelDefinition {
@@ -58,7 +59,7 @@ export function ModelCard({
       borderWidth="1px" 
       borderColor="gray.700" 
       borderRadius="md"
-      overflow="hidden"
+      overflow="visible"
       transition="all 0.2s ease"
       position="relative"
       h="full"
@@ -71,6 +72,7 @@ export function ModelCard({
       <Flex 
         direction="column" 
         h="full"
+        overflow="hidden"
       >
         <Box p={3}>
           {/* Header */}
@@ -78,7 +80,7 @@ export function ModelCard({
             <HStack spacing={2} alignItems="center">
               <Flex 
                 bg="gray.700" 
-                color="purple.400" 
+                color="brand.400" 
                 boxSize={8} 
                 borderRadius="md" 
                 alignItems="center" 
@@ -114,7 +116,7 @@ export function ModelCard({
                   Archived
                 </Badge>
               )}
-              <Menu>
+              <Menu placement="bottom-end" strategy="fixed" autoSelect={false} closeOnSelect={true}>
                 <MenuButton
                   as={IconButton}
                   aria-label="Options"
@@ -122,70 +124,72 @@ export function ModelCard({
                   variant="ghost"
                   size="sm"
                   color="gray.400"
-                  _hover={{ bg: 'gray.700', color: 'white' }}
+                  _hover={{ bg: "gray.700", color: "white" }}
                 />
-                <MenuList 
-                  zIndex={10} 
-                  bg="gray.800" 
-                  borderColor="gray.700" 
-                  py={1} 
-                  boxShadow="lg"
-                  fontSize="sm"
-                >
-                  <MenuGroup title="Actions" color="gray.400" fontWeight="medium" fontSize="xs" ml={3} mb={1}>
-                    <MenuItem
-                      icon={<Icon as={FileText} boxSize={4} />}
-                      onClick={() => onAddData(model.id)}
-                      isDisabled={isArchived}
-                      _hover={{ bg: 'gray.700' }}
-                      color="gray.200"
-                    >
-                      Add Data
-                    </MenuItem>
-                    <Link href={`/models/${model.id}/explore`} style={{ width: '100%' }}>
+                <Portal>
+                  <MenuList 
+                    zIndex={9999} 
+                    bg="gray.800" 
+                    borderColor="gray.700" 
+                    py={1} 
+                    boxShadow="lg"
+                    fontSize="sm"
+                  >
+                    <MenuGroup title="Actions" color="gray.400" fontWeight="medium" fontSize="xs" ml={3} mb={1}>
                       <MenuItem
-                        icon={<Icon as={Compass} boxSize={4} />}
+                        icon={<Icon as={FileText} boxSize={4} />}
+                        onClick={() => onAddData(model.id)}
                         isDisabled={isArchived}
                         _hover={{ bg: 'gray.700' }}
                         color="gray.200"
                       >
-                        Explore Data
+                        Add Data
                       </MenuItem>
-                    </Link>
-                  </MenuGroup>
-                  
-                  <MenuDivider borderColor="gray.700" my={1} />
-                  
-                  <MenuGroup title="Management" color="gray.400" fontWeight="medium" fontSize="xs" ml={3} mb={1}>
-                    <MenuItem
-                      icon={<Icon as={isArchived ? RotateCcw : Archive} boxSize={4} />}
-                      onClick={() => onArchiveToggle(model.id, model.status || 'active')}
-                      _hover={{ bg: 'gray.700' }}
-                      color="gray.200"
-                    >
-                      {isArchived ? 'Restore Model' : 'Archive Model'}
-                    </MenuItem>
+                      <Link href={`/models/${model.id}/explore`} style={{ width: '100%' }}>
+                        <MenuItem
+                          icon={<Icon as={Compass} boxSize={4} />}
+                          isDisabled={isArchived}
+                          _hover={{ bg: 'gray.700' }}
+                          color="gray.200"
+                        >
+                          Explore Data
+                        </MenuItem>
+                      </Link>
+                    </MenuGroup>
                     
-                    {!isArchived && (
+                    <MenuDivider borderColor="gray.700" my={1} />
+                    
+                    <MenuGroup title="Management" color="gray.400" fontWeight="medium" fontSize="xs" ml={3} mb={1}>
                       <MenuItem
-                        onClick={() => onClearData(model.id, model.name)}
+                        icon={<Icon as={isArchived ? RotateCcw : Archive} boxSize={4} />}
+                        onClick={() => onArchiveToggle(model.id, model.status || 'active')}
                         _hover={{ bg: 'gray.700' }}
-                        color="yellow.300"
+                        color="gray.200"
                       >
-                        Clear All Data
+                        {isArchived ? 'Restore Model' : 'Archive Model'}
                       </MenuItem>
-                    )}
-                    
-                    <MenuItem
-                      icon={<Icon as={Trash2} boxSize={4} />}
-                      onClick={() => onDelete(model.id)}
-                      _hover={{ bg: 'gray.700' }}
-                      color="red.300"
-                    >
-                      Delete Model
-                    </MenuItem>
-                  </MenuGroup>
-                </MenuList>
+                      
+                      {!isArchived && (
+                        <MenuItem
+                          onClick={() => onClearData(model.id, model.name)}
+                          _hover={{ bg: 'gray.700' }}
+                          color="yellow.300"
+                        >
+                          Clear All Data
+                        </MenuItem>
+                      )}
+                      
+                      <MenuItem
+                        icon={<Icon as={Trash2} boxSize={4} />}
+                        onClick={() => onDelete(model.id)}
+                        _hover={{ bg: 'gray.700' }}
+                        color="red.300"
+                      >
+                        Delete Model
+                      </MenuItem>
+                    </MenuGroup>
+                  </MenuList>
+                </Portal>
               </Menu>
             </HStack>
           </Flex>
@@ -251,7 +255,7 @@ export function ModelCard({
               <Button
                 width="100%"
                 leftIcon={<Icon as={Compass} boxSize={3} />}
-                colorScheme="purple"
+                colorScheme="brand"
                 size="sm"
                 isDisabled={isArchived}
                 fontWeight="medium"

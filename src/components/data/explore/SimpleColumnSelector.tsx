@@ -1,21 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
-  IconButton,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverHeader,
-  PopoverBody,
-  PopoverArrow,
-  PopoverCloseButton,
+  Button,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuDivider,
   Checkbox,
   VStack,
-  Tooltip,
   Text,
   useColorModeValue,
-  Divider,
   Box,
-  useDisclosure
+  Flex
 } from '@chakra-ui/react';
 import { Columns } from 'lucide-react';
 
@@ -31,17 +27,15 @@ interface SimpleColumnSelectorProps {
 }
 
 export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSelectorProps) {
-  const popoverBg = useColorModeValue('white', 'gray.800');
-  const headerBg = useColorModeValue('gray.50', 'gray.700');
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
+  console.log("SimpleColumnSelector rendering with columns:", columns);
+  
   // Keep a local copy of column visibility state to ensure UI updates immediately
   const [localColumns, setLocalColumns] = useState<Column[]>(columns);
   
   // Update local columns when props change
-  React.useEffect(() => {
+  useEffect(() => {
+    console.log("SimpleColumnSelector columns changed:", columns);
     setLocalColumns(columns);
-    console.log("SimpleColumnSelector received columns:", columns);
   }, [columns]);
   
   // Group columns into system fields (starting with _) and regular fields
@@ -58,45 +52,33 @@ export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSe
       )
     );
     
-    // Call the parent's toggle handler and log when it's done
+    // Call the parent's toggle handler
+    console.log(`SimpleColumnSelector: Calling parent onColumnToggle for ${columnKey}`);
     onColumnToggle(columnKey, isChecked);
-    console.log(`SimpleColumnSelector: Called parent onColumnToggle for ${columnKey}`);
   }, [onColumnToggle]);
 
+  const menuBg = useColorModeValue('white', 'gray.800');
+  const menuBorder = useColorModeValue('gray.200', 'gray.700');
+
   return (
-    <Popover 
-      placement="bottom-end" 
-      closeOnBlur={true} 
-      gutter={4} 
-      isOpen={isOpen}
-      onOpen={onOpen}
-      onClose={onClose}
-      autoFocus={false}
-    >
-      <PopoverTrigger>
-        <Tooltip label="Select columns">
-          <IconButton
-            aria-label="Select columns"
-            icon={<Columns size={18} />}
-            variant="outline"
-            colorScheme="gray"
-            size="sm"
-          />
-        </Tooltip>
-      </PopoverTrigger>
-      <PopoverContent 
-        width="250px" 
-        bg={popoverBg} 
-        shadow="lg" 
-        zIndex={9999}
-        borderColor={useColorModeValue('gray.200', 'gray.700')}
+    <Menu closeOnSelect={false}>
+      <MenuButton 
+        as={Button}
+        leftIcon={<Columns size={18} />}
+        variant="outline"
+        colorScheme="gray"
+        size="sm"
+        onClick={() => console.log("SimpleColumnSelector: Button clicked")}
       >
-        <PopoverArrow />
-        <PopoverCloseButton />
-        <PopoverHeader bg={headerBg} borderTopRadius="md">
-          <Text fontWeight="medium">Toggle Columns</Text>
-        </PopoverHeader>
-        <PopoverBody maxH="300px" overflowY="auto" p={3}>
+        Columns
+      </MenuButton>
+      <MenuList 
+        bg={menuBg} 
+        borderColor={menuBorder}
+        minWidth="240px"
+        zIndex={1000}
+      >
+        <Box px={3} py={2}>
           {regularColumns.length > 0 && (
             <>
               <Text fontSize="xs" fontWeight="medium" color="gray.500" mb={2}>
@@ -104,37 +86,50 @@ export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSe
               </Text>
               <VStack align="start" spacing={1} mb={3}>
                 {regularColumns.map((column) => (
-                  <Checkbox
-                    key={column.key}
-                    isChecked={column.visible}
-                    onChange={(e) => handleColumnToggle(column.key, e.target.checked)}
-                    size="sm"
-                    width="100%"
-                  >
-                    <Text fontSize="sm">{column.label}</Text>
-                  </Checkbox>
+                  <Flex key={column.key} width="100%" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      isChecked={column.visible}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        console.log(`SimpleColumnSelector: Checkbox changed for ${column.key} to ${e.target.checked}`);
+                        handleColumnToggle(column.key, e.target.checked);
+                      }}
+                      size="sm"
+                      width="100%"
+                    >
+                      <Text fontSize="sm">{column.label}</Text>
+                    </Checkbox>
+                  </Flex>
                 ))}
               </VStack>
             </>
           )}
           
+          {systemColumns.length > 0 && regularColumns.length > 0 && (
+            <MenuDivider />
+          )}
+          
           {systemColumns.length > 0 && (
             <>
-              {regularColumns.length > 0 && <Divider my={2} />}
               <Text fontSize="xs" fontWeight="medium" color="gray.500" mb={2}>
                 System Fields
               </Text>
               <VStack align="start" spacing={1}>
                 {systemColumns.map((column) => (
-                  <Checkbox
-                    key={column.key}
-                    isChecked={column.visible}
-                    onChange={(e) => handleColumnToggle(column.key, e.target.checked)}
-                    size="sm"
-                    width="100%"
-                  >
-                    <Text fontSize="sm">{column.label.replace(/^_/, '')}</Text>
-                  </Checkbox>
+                  <Flex key={column.key} width="100%" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      isChecked={column.visible}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        console.log(`SimpleColumnSelector: Checkbox changed for ${column.key} to ${e.target.checked}`);
+                        handleColumnToggle(column.key, e.target.checked);
+                      }}
+                      size="sm"
+                      width="100%"
+                    >
+                      <Text fontSize="sm">{column.label.replace(/^_/, '')}</Text>
+                    </Checkbox>
+                  </Flex>
                 ))}
               </VStack>
             </>
@@ -145,8 +140,8 @@ export function SimpleColumnSelector({ columns, onColumnToggle }: SimpleColumnSe
               <Text color="gray.500">No columns available</Text>
             </Box>
           )}
-        </PopoverBody>
-      </PopoverContent>
-    </Popover>
+        </Box>
+      </MenuList>
+    </Menu>
   );
 } 
