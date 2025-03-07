@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { Box, Spinner, Flex, Button, Icon } from '@chakra-ui/react';
@@ -16,13 +16,13 @@ import { Section } from '@/components/layout/Section';
 import { BasicInfoSection } from '@/components/models/BasicInfoSection';
 import { FieldsSection } from '@/components/models/FieldsSection';
 import { VectorSearchSection } from '@/components/models/VectorSearchSection';
-import { ModelContext } from '../layout';
+import { useModelContext } from '../explore/components/ModelContext';
 
 export default function ConfigurePage() {
   const router = useRouter();
   
-  // Use the shared model context
-  const { model: contextModel, modelId, loading: modelLoading, refreshModel } = useContext(ModelContext);
+  // Use the shared model context with the new hook
+  const { model: contextModel, modelId, loading: modelLoading, refreshModel } = useModelContext();
   
   // Local state for the model (to allow editing without affecting the shared context model)
   const [submitting, setSubmitting] = useState(false);
@@ -102,7 +102,7 @@ export default function ConfigurePage() {
   if (modelLoading || !model) {
     return (
       <Flex justify="center" align="center" py={16}>
-        <Spinner color="primary.500" size="xl" />
+        <Spinner color="brand.500" size="xl" />
       </Flex>
     );
   }
@@ -116,7 +116,7 @@ export default function ConfigurePage() {
           form="model-form"
           isLoading={submitting}
           loadingText="Saving..."
-          colorScheme="primary"
+          colorScheme="brand"
           leftIcon={<Icon as={SaveIcon} boxSize={4} />}
           isDisabled={submitting || (model.embedding?.enabled && (!model.embedding.source_fields || model.embedding.source_fields.length === 0))}
         >

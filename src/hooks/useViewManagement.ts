@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { viewService } from '@/lib/services/viewService';
 import type { ModelView, ViewConfig } from '@/types/viewDefinition';
 import useViewStore from '@/lib/stores/viewStore';
@@ -39,6 +39,9 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
   const [isEditing, setIsEditing] = useState(false);
   const [editingView, setEditingView] = useState<ModelView | undefined>();
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  
+  // Track last refresh time
+  const lastRefreshTimeRef = useRef<number>(0);
 
   const {
     views,
@@ -64,7 +67,20 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
     if (!modelId) return;
     
     const loadViewsData = async () => {
+      // Skip if we've already loaded views
       if (hasInitialLoad) return;
+      
+      // Check if we've refreshed too recently (within 2 seconds)
+      const now = Date.now();
+      if (now - lastRefreshTimeRef.current < 2000) {
+        console.log('useViewManagement: Skipping refresh - too soon since last refresh');
+        return;
+      }
+      
+      // Update last refresh time
+      lastRefreshTimeRef.current = now;
+      
+      console.log('useViewManagement: Loading views for model:', modelId);
       
       let loadingToastId: string | number | null = null;
       let toastTimeoutId: NodeJS.Timeout | null = null;
@@ -310,11 +326,15 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
       setEditingView(newView);
       setIsEditing(true);
 
+      // Dismiss the loading toast before showing success
+      toast.dismiss(loadingToast);
       toast.success('New view created successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create view';
       setError(errorMessage);
       console.error('Error creating view:', error);
+      // Dismiss the loading toast before showing error
+      toast.dismiss(loadingToast);
       toast.error(errorMessage);
       
       // Reset editing state on error
@@ -351,10 +371,14 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
           setActiveView(null);
         }
       }
+      // Dismiss the loading toast before showing success
+      toast.dismiss(loadingToast);
       toast.success('View deleted successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
       setError(errorMessage);
+      // Dismiss the loading toast before showing error
+      toast.dismiss(loadingToast);
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -395,6 +419,8 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         );
         updateView(viewId, savedView);
         setActiveView(savedView.id);
+        // Dismiss the loading toast before showing success
+        toast.dismiss(loadingToast);
         toast.success('View updated successfully');
       } else {
         // Create new view
@@ -410,11 +436,15 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         if (savedView.id) {
           setActiveView(savedView.id);
         }
+        // Dismiss the loading toast before showing success
+        toast.dismiss(loadingToast);
         toast.success('View created successfully');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save view';
       setError(errorMessage);
+      // Dismiss the loading toast before showing error
+      toast.dismiss(loadingToast);
       toast.error(errorMessage);
     } finally {
       setLoading(false);

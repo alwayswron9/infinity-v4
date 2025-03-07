@@ -1,12 +1,12 @@
 .rdp {
   --rdp-cell-size: 40px;
-  --rdp-accent-color: var(--primary);
+  --rdp-accent-color: var(--chakra-colors-brand-500);
   --rdp-background-color: var(--surface);
-  --rdp-accent-color-dark: var(--primary-hover);
+  --rdp-accent-color-dark: var(--chakra-colors-brand-600);
   --rdp-background-color-dark: var(--surface-hover);
   --rdp-outline: 2px solid var(--border-focus);
-  --rdp-outline-selected: 2px solid var(--primary-focus);
-  --rdp-selected-color: var(--primary-foreground);
+  --rdp-outline-selected: 2px solid var(--chakra-colors-brand-500);
+  --rdp-selected-color: var(--chakra-colors-white);
   margin: 1em;
 }
 

@@ -24,6 +24,7 @@ export interface DataContainerProps {
   onAddData: () => void;
   onCopyModelDetails: () => void;
   onClearData: () => void;
+  onRefreshData: () => void;
   onViewNameEdit?: (newName: string) => void;
   copyingDetails?: boolean;
   editedName?: string;
@@ -36,7 +37,8 @@ export type DataHeaderProps = Pick<DataContainerProps,
   'currentView' | 'hasUnsavedChanges' | 'activeViewId' | 'views' |
   'onSave' | 'onCreateView' | 'onViewSelect' | 'onDeleteView' | 
   'onCopyModelDetails' | 'copyingDetails' | 'editedName' | 
-  'isEditingName' | 'setEditingName' | 'setEditedName' | 'onViewNameEdit'> & {
+  'isEditingName' | 'setEditingName' | 'setEditedName' | 'onViewNameEdit' |
+  'onRefreshData' | 'isLoadingData'> & {
   viewName: string;
   editing: boolean;
   setEditing: (editing: boolean) => void;

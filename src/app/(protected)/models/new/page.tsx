@@ -207,7 +207,7 @@ export default function NewModelPage() {
             type="submit"
             form="model-form"
             disabled={submitting || (model.embedding?.enabled && model.embedding.source_fields.length === 0)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-tertiary transition-colors disabled:opacity-50"
           >
             <SaveIcon className="w-5 h-5" />
             <span>{submitting ? 'Creating...' : 'Create Model'}</span>
@@ -324,7 +324,7 @@ export default function NewModelPage() {
               <button
                 type="button"
                 onClick={addField}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                className="px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-tertiary transition-colors"
               >
                 <PlusIcon className="w-5 h-5" />
               </button>

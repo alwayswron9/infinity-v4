@@ -6,7 +6,8 @@ import {
   useColorModeValue,
   Table,
   Tbody,
-  useDisclosure
+  useDisclosure,
+  Flex
 } from '@chakra-ui/react';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -49,10 +50,11 @@ export function EnhancedDataTable({
   
   // First load flag
   const [firstLoad, setFirstLoad] = useState(true);
+  // Previous data for smooth transitions
+  const [previousData, setPreviousData] = useState<any[]>([]);
   
   // Delete confirmation dialog
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const cancelRef = useRef<HTMLButtonElement>(null);
   const [recordToDelete, setRecordToDelete] = useState<Record<string, any> | null>(null);
   
   // Effect to measure container width and calculate column sizes
@@ -86,6 +88,13 @@ export function EnhancedDataTable({
     }
   }, [isLoading, firstLoad]);
 
+  // Effect to store previous data for smooth transitions
+  useEffect(() => {
+    if (data.length > 0) {
+      setPreviousData(data);
+    }
+  }, [data]);
+
   // Handle delete confirmation
   const handleDeleteClick = (record: Record<string, any>) => {
     setRecordToDelete(record);
@@ -116,6 +125,11 @@ export function EnhancedDataTable({
     handleDeleteClick
   );
 
+  // Determine which data to display
+  const displayData = isLoading && data.length === 0 && previousData.length > 0 
+    ? previousData 
+    : data;
+
   return (
     <Box 
       position="relative" 
@@ -126,7 +140,7 @@ export function EnhancedDataTable({
       ref={setContainerRef}
       minHeight="250px" // Ensure loading spinner has space
     >
-      {isLoading ? (
+      {isLoading && firstLoad ? (
         <Center height="100%" width="100%" py={10}>
           <Spinner 
             size="xl" 
@@ -136,30 +150,50 @@ export function EnhancedDataTable({
             speed="0.8s"
           />
         </Center>
-      ) : data.length === 0 ? (
+      ) : displayData.length === 0 ? (
         <EmptyStateMessage message={emptyStateMessage} />
       ) : (
-        <Table 
-          width="100%" 
-          layout="fixed" // Force table to respect column widths
-          style={{ borderCollapse: 'separate', borderSpacing: 0 }}
-          size="sm"
-        >
-          {/* Table Header */}
-          <TableHeader columns={enhancedColumns} />
-          
-          {/* Table Body */}
-          <Tbody>
-            {data.map((row, rowIdx) => (
-              <TableRow 
-                key={rowIdx}
-                row={row}
-                columns={enhancedColumns}
-                rowIndex={rowIdx}
+        <Box position="relative">
+          {/* Overlay loading indicator for subsequent loads */}
+          {isLoading && !firstLoad && (
+            <Flex 
+              position="absolute" 
+              top="0" 
+              right="0" 
+              p={2} 
+              zIndex={10}
+            >
+              <Spinner 
+                size="sm" 
+                thickness="2px" 
+                color="brand.500" 
+                speed="0.8s"
               />
-            ))}
-          </Tbody>
-        </Table>
+            </Flex>
+          )}
+          
+          <Table 
+            width="100%" 
+            layout="fixed" // Force table to respect column widths
+            style={{ borderCollapse: 'separate', borderSpacing: 0 }}
+            size="sm"
+          >
+            {/* Table Header */}
+            <TableHeader columns={enhancedColumns} />
+            
+            {/* Table Body */}
+            <Tbody>
+              {displayData.map((row, rowIdx) => (
+                <TableRow 
+                  key={rowIdx}
+                  row={row}
+                  columns={enhancedColumns}
+                  rowIndex={rowIdx}
+                />
+              ))}
+            </Tbody>
+          </Table>
+        </Box>
       )}
       
       {/* Delete Confirmation Dialog */}
@@ -167,7 +201,6 @@ export function EnhancedDataTable({
         isOpen={isOpen}
         onClose={onClose}
         onConfirm={handleConfirmDelete}
-        cancelRef={cancelRef}
       />
     </Box>
   );

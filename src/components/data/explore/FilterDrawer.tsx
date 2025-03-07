@@ -315,10 +315,10 @@ export function FilterDrawer({
               Clear Filters
             </Button>
             <Button
-              colorScheme="blue"
+              size="sm"
+              colorScheme="brand"
               onClick={handleApplyFilters}
               isDisabled={!hasChanges || sortedAvailableFields.length === 0}
-              size="sm"
             >
               Apply Filters
             </Button>

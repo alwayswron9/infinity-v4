@@ -1,6 +1,5 @@
 'use client';
 
-import { useContext } from 'react';
 import { 
   Box, 
   Stack, 
@@ -17,7 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { Section } from '@/components/layout/Section';
 import { CheckIcon, CopyIcon } from 'lucide-react';
-import { ModelContext } from '../layout';
+import { useModelContext } from '../explore/components/ModelContext';
 
 // Copyable code block component
 function CopyableCode({ content, label }: { content: string, label?: string }) {
@@ -60,13 +59,13 @@ function CopyableCode({ content, label }: { content: string, label?: string }) {
 }
 
 export default function IntegratePage() {
-  // Use the shared model context
-  const { model, loading } = useContext(ModelContext);
+  // Use the shared model context with the new hook
+  const { model, loading } = useModelContext();
 
   if (loading || !model) {
     return (
       <Flex justify="center" align="center" py={16}>
-        <Spinner color="primary.500" size="xl" />
+        <Spinner color="brand.500" size="xl" />
       </Flex>
     );
   }
@@ -127,7 +126,7 @@ export default function IntegratePage() {
             <AlertDescription>
               Check out our complete API documentation for detailed usage examples and guides.
             </AlertDescription>
-            <Button size="sm" colorScheme="primary" alignSelf="flex-start" mt={2} width="auto">
+            <Button size="sm" colorScheme="brand" alignSelf="flex-start" mt={2} width="auto">
               View Documentation
             </Button>
           </Stack>

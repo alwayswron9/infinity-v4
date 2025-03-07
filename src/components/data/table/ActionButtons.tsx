@@ -16,7 +16,7 @@ export function ActionButtons({ row, onView, onDelete }: ActionButtonsProps) {
           icon={<Eye size={16} />}
           aria-label="View"
           size="xs"
-          colorScheme="blue"
+          colorScheme="brand"
           variant="ghost"
           onClick={(e) => {
             e.stopPropagation();

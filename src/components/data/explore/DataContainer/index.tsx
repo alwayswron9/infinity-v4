@@ -37,6 +37,7 @@ export function DataContainer({
   onCopyModelDetails,
   onClearData,
   onViewNameEdit,
+  onRefreshData,
   copyingDetails = false,
   editedName,
   isEditingName,
@@ -117,6 +118,8 @@ export function DataContainer({
             handleColumnToggle={handleColumnToggle}
             currentFilters={currentFilters}
             onOpenClearDataDialog={onOpenClearDataDialog}
+            onRefreshData={onRefreshData}
+            isLoadingData={isLoadingData}
           />
           
           <DataTable 

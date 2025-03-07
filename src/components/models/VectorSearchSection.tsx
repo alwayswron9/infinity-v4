@@ -13,7 +13,8 @@ import {
   Alert,
   AlertIcon,
   AlertDescription,
-  Stack
+  Stack,
+  Button
 } from '@chakra-ui/react';
 
 interface VectorSearchSectionProps {
@@ -59,7 +60,7 @@ export function VectorSearchSection({ model, onChange }: VectorSearchSectionProp
           isChecked={model.embedding?.enabled}
           onChange={e => toggleVectorSearch(e.target.checked)}
           size="md"
-          colorScheme="primary"
+          colorScheme="brand"
         >
           Enable vector search for this model
         </Checkbox>
@@ -77,7 +78,7 @@ export function VectorSearchSection({ model, onChange }: VectorSearchSectionProp
                   isChecked={model.embedding?.source_fields?.includes(name)}
                   onChange={() => toggleSourceField(name)}
                   size="md"
-                  colorScheme="primary"
+                  colorScheme="brand"
                 >
                   {name}
                   {field.description && (

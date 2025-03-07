@@ -245,10 +245,9 @@ export function FieldsSection({ model, onChange }: FieldsSectionProps) {
           </FormControl>
           
           <Button
+            size="sm"
+            colorScheme="brand"
             onClick={addField}
-            colorScheme="primary"
-            leftIcon={<PlusIcon size={16} />}
-            size="md"
           >
             Add Field
           </Button>
