@@ -222,8 +222,14 @@ export async function PATCH(request: NextRequest) {
       // Get the partial update data
       const partialUpdate = await authReq.json();
       
-      // Update the record with the partial data
-      const record = await dataService.updateRecord(recordId, partialUpdate);
+      // Extract the data from the current record (excluding system fields)
+      const { _id, _created_at, _updated_at, _vector, ...currentData } = currentRecord;
+      
+      // Merge the current data with the partial update data
+      const mergedData = { ...currentData, ...partialUpdate };
+      
+      // Update the record with the merged data
+      const record = await dataService.updateRecord(recordId, mergedData);
 
       return NextResponse.json({ success: true, data: record });
     } catch (error: any) {
