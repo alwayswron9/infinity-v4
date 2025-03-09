@@ -55,54 +55,51 @@ export function GetApiConfig() {
     return JSON.stringify(selectedView.config.sorting, null, 2);
   };
   
-  const getFullApiConfig = () => {
+  const getPathBasedApiConfig = () => {
     const params = new URLSearchParams({
       page: '1',
       limit: '10'
     });
     
+    let filterParams = '';
+    let sortingParams = '';
+    
     if (selectedView?.config?.filters?.length) {
-      params.append('filter', JSON.stringify(selectedView.config.filters));
+      filterParams = `// Filter config if needed:
+const filter = ${getFilterConfig()};
+// Include in URL: ?filter=${encodeURIComponent(JSON.stringify(selectedView.config.filters))}`;
     }
     
     if (selectedView?.config?.sorting?.length) {
-      params.append('sorting', JSON.stringify(selectedView.config.sorting));
+      sortingParams = `// Sorting config if needed:
+const sorting = ${getSortingConfig()};
+// Include in URL: &sorting=${encodeURIComponent(JSON.stringify(selectedView.config.sorting))}`;
     }
     
-    return `// API URL with query parameters
-fetch('/api/data/${modelId}?${params.toString()}')
+    return `// API URL with path parameters
+fetch('/api/public/data/${model.name}?page=1&limit=10')
   .then(response => response.json())
   .then(data => console.log(data));
 
-// Or with separate parameters
-const params = {
-  page: 1,
-  limit: 10,
-  filter: ${getFilterConfig()},
-  sorting: ${getSortingConfig()}
-};
+${filterParams}
 
-// Then construct your fetch call with these params`;
+${sortingParams}`;
   };
 
-  const getCurlExample = () => {
-    const params = new URLSearchParams({
-      page: '1',
-      limit: '10'
-    });
+  const getPathBasedCurl = () => {
+    let url = `https://your-domain.com/api/public/data/${model.name}?page=1&limit=10`;
     
     if (selectedView?.config?.filters?.length) {
-      params.append('filter', JSON.stringify(selectedView.config.filters));
+      url += `&filter=${encodeURIComponent(JSON.stringify(selectedView.config.filters))}`;
     }
     
     if (selectedView?.config?.sorting?.length) {
-      params.append('sorting', JSON.stringify(selectedView.config.sorting));
+      url += `&sorting=${encodeURIComponent(JSON.stringify(selectedView.config.sorting))}`;
     }
     
     return `curl -X GET \\
-  "https://your-domain.com/api/data/${modelId}?${params.toString()}" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json"`;
+  "${url}" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
   };
 
   const getFilterJson = () => {
@@ -138,17 +135,16 @@ const params = {
   };
 
   const getSingleRecordExample = () => {
-    return `// Get a single record by ID
-fetch('/api/data/${modelId}?id=record-id-1')
+    return `// Get a single record by ID (path parameter)
+fetch('/api/public/data/${model.name}/record-id-1')
   .then(response => response.json())
   .then(data => console.log(data));`;
   };
 
-  const getSingleRecordCurl = () => {
+  const getPathBasedSingleRecordCurl = () => {
     return `curl -X GET \\
-  "https://your-domain.com/api/data/${modelId}?id=record-id-1" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json"`;
+  "https://your-domain.com/api/public/data/${model.name}/record-id-1" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
   };
 
   const getSingleRecordResponse = () => {
@@ -248,15 +244,15 @@ fetch('/api/data/${modelId}?id=record-id-1')
                     </TabPanel>
                     <TabPanel>
                       <CopyableCode 
-                        content={getFullApiConfig()} 
-                        label="JavaScript fetch example" 
+                        content={getPathBasedApiConfig()} 
+                        label="JavaScript example with path parameters" 
                         language="javascript"
                       />
                     </TabPanel>
                     <TabPanel>
                       <CopyableCode 
-                        content={getCurlExample()} 
-                        label="cURL example" 
+                        content={getPathBasedCurl()} 
+                        label="cURL example with path parameters" 
                         language="bash"
                       />
                     </TabPanel>
@@ -273,12 +269,13 @@ fetch('/api/data/${modelId}?id=record-id-1')
             ) : (
               <EmptyState
                 title="No view selected"
-                description="Select a view to see its API configuration"
-                icon={FilterIcon}
-                mt={6}
+                description="Select a view to see the API configuration"
+                colorScheme="gray"
+                mt={4}
               />
             )}
           </TabPanel>
+          
           <TabPanel>
             <Tabs variant="enclosed">
               <TabList>
@@ -290,14 +287,14 @@ fetch('/api/data/${modelId}?id=record-id-1')
                 <TabPanel>
                   <CopyableCode 
                     content={getSingleRecordExample()} 
-                    label="Get a single record by ID" 
+                    label="Get single record by ID" 
                     language="javascript"
                   />
                 </TabPanel>
                 <TabPanel>
                   <CopyableCode 
-                    content={getSingleRecordCurl()} 
-                    label="cURL example" 
+                    content={getPathBasedSingleRecordCurl()} 
+                    label="Get single record by ID" 
                     language="bash"
                   />
                 </TabPanel>

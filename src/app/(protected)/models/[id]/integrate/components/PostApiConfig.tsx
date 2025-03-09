@@ -77,21 +77,6 @@ fetch('/api/data/${modelId}', {
 .catch(error => console.error('Error:', error));`;
   };
 
-  const getPublicPostExample = () => {
-    return `// Example POST request to public API (direct data)
-fetch('/api/public/data?model=${model.name}', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_PUBLIC_API_KEY'
-  },
-  body: JSON.stringify(${getModelStructure()})
-})
-.then(response => response.json())
-.then(data => console.log(data))
-.catch(error => console.error('Error:', error));`;
-  };
-
   const getPublicPathPostExample = () => {
     return `// Example POST request to public API with path parameters
 fetch('/api/public/data/${model.name}', {
@@ -113,14 +98,6 @@ fetch('/api/public/data/${model.name}', {
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '${getRequestBodyWithFields().replace(/\n/g, '\\n')}'`;
-  };
-
-  const getPublicCurlExample = () => {
-    return `curl -X POST \\
-  "https://your-domain.com/api/public/data?model=${model.name}" \\
-  -H "X-API-Key: YOUR_PUBLIC_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '${getRequestBodyDirect().replace(/\n/g, '\\n')}'`;
   };
 
   const getPublicPathCurlExample = () => {
@@ -221,66 +198,31 @@ fetch('/api/public/data/${model.name}', {
             </Tabs>
           </TabPanel>
           <TabPanel>
-            <Heading size="sm" mb={3}>Public API Examples</Heading>
+            <Heading size="sm" mb={3}>Public API Examples (Path Parameters)</Heading>
             <Tabs variant="enclosed">
               <TabList>
-                <Tab>Query Parameters</Tab>
-                <Tab>Path Parameters</Tab>
+                <Tab>JavaScript</Tab>
+                <Tab>cURL</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <Tabs variant="enclosed">
-                    <TabList>
-                      <Tab>JavaScript</Tab>
-                      <Tab>cURL</Tab>
-                    </TabList>
-                    <TabPanels>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicPostExample()} 
-                          label="Public API with query parameters" 
-                          language="javascript"
-                        />
-                      </TabPanel>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicCurlExample()} 
-                          label="cURL example" 
-                          language="bash"
-                        />
-                      </TabPanel>
-                    </TabPanels>
-                  </Tabs>
+                  <CopyableCode 
+                    content={getPublicPathPostExample()} 
+                    label="Public API with path parameters" 
+                    language="javascript"
+                  />
                 </TabPanel>
                 <TabPanel>
-                  <Tabs variant="enclosed">
-                    <TabList>
-                      <Tab>JavaScript</Tab>
-                      <Tab>cURL</Tab>
-                    </TabList>
-                    <TabPanels>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicPathPostExample()} 
-                          label="Public API with path parameters" 
-                          language="javascript"
-                        />
-                      </TabPanel>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicPathCurlExample()} 
-                          label="cURL example" 
-                          language="bash"
-                        />
-                      </TabPanel>
-                    </TabPanels>
-                  </Tabs>
+                  <CopyableCode 
+                    content={getPublicPathCurlExample()} 
+                    label="cURL example" 
+                    language="bash"
+                  />
                 </TabPanel>
               </TabPanels>
             </Tabs>
           </TabPanel>
           <TabPanel>
-            <Heading size="sm" mb={3}>Response</Heading>
             <CopyableCode 
               content={getResponseExample()} 
               label="Example response" 

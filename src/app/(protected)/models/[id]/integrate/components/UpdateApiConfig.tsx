@@ -58,25 +58,6 @@ fetch('/api/data/${modelId}?id=record-id-1', {
 .catch(error => console.error('Error:', error));`;
   };
 
-  const getPublicPutExample = () => {
-    return `// Example PUT request to public API with query parameters
-fetch('/api/public/data?model=${model.name}&id=record-id-1', {
-  method: 'PUT',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_PUBLIC_API_KEY'
-  },
-  body: JSON.stringify({
-    // Include all fields that should be updated
-    field1: 'updated value',
-    field2: 123
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data))
-.catch(error => console.error('Error:', error));`;
-  };
-
   const getPublicPathPutExample = () => {
     return `// Example PUT request to public API with path parameters
 fetch('/api/public/data/${model.name}/record-id-1', {
@@ -106,17 +87,6 @@ fetch('/api/public/data/${model.name}/record-id-1', {
     "field1": "updated value",
     "field2": 123
   }
-}'`;
-  };
-
-  const getPublicCurlExample = () => {
-    return `curl -X PUT \\
-  "https://your-domain.com/api/public/data?model=${model.name}&id=record-id-1" \\
-  -H "X-API-Key: YOUR_PUBLIC_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-  "field1": "updated value",
-  "field2": 123
 }'`;
   };
 
@@ -166,31 +136,6 @@ fetch('/api/data/${modelId}', {
         field1: 'updated value for record 2',
         field2: 456
       }
-    }
-  ])
-})
-.then(response => response.json())
-.then(data => console.log(data))
-.catch(error => console.error('Error:', error));`;
-  };
-
-  const getPublicBulkUpdateExample = () => {
-    return `// Example bulk update request to public API
-fetch('/api/public/data?model=${model.name}', {
-  method: 'PUT',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_PUBLIC_API_KEY'
-  },
-  body: JSON.stringify([
-    {
-      id: 'record-id-1',
-      field1: 'updated value for record 1'
-    },
-    {
-      id: 'record-id-2',
-      field1: 'updated value for record 2',
-      field2: 456
     }
   ])
 })
@@ -252,64 +197,132 @@ fetch('/api/public/data/${model.name}', {
 }`;
   };
   
+  // PATCH methods
+  const getPatchRequestBody = () => {
+    return `{
+  "field1": "updated value"
+}`;
+  };
+
+  const getPatchToggleBody = () => {
+    return `{
+  "isActive": true
+}`;
+  };
+
+  const getPublicPathPatchExample = () => {
+    return `// Example PATCH request to public API with path parameters
+fetch('/api/public/data/${model.name}/record-id-1', {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'YOUR_PUBLIC_API_KEY'
+  },
+  body: JSON.stringify({
+    // Include only fields that should be updated
+    field1: 'updated value'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));`;
+  };
+
+  const getPublicPathPatchCurlExample = () => {
+    return `curl -X PATCH \\
+  "https://your-domain.com/api/public/data/${model.name}/record-id-1" \\
+  -H "X-API-Key: YOUR_PUBLIC_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+  "field1": "updated value"
+}'`;
+  };
+
+  const getPublicPathPatchToggleCurlExample = () => {
+    return `curl -X PATCH \\
+  "https://your-domain.com/api/public/data/${model.name}/record-id-1" \\
+  -H "X-API-Key: YOUR_PUBLIC_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+  "isActive": true
+}'`;
+  };
+  
   return (
     <Box>
       <Banner
-        status="warning"
+        status="info"
         mb={6}
       >
         <Text>
-          Public API routes accept direct data in the request body. Private API routes require the fields wrapper for backward compatibility.
-          Always include the record ID in the URL when updating records.
+          Both PUT and PATCH methods are available for updating records. Use PUT for full record replacement and PATCH for partial updates.
         </Text>
       </Banner>
       
       <Tabs variant="enclosed">
         <TabList>
-          <Tab><Flex align="center" gap={2}><RefreshCwIcon size={14} /> Single Update</Flex></Tab>
-          <Tab><Flex align="center" gap={2}><RefreshCwIcon size={14} /> Bulk Update</Flex></Tab>
+          <Tab><Flex align="center" gap={2}><RefreshCwIcon size={14} /> PUT</Flex></Tab>
+          <Tab><Flex align="center" gap={2}><CodeIcon size={14} /> PATCH</Flex></Tab>
+          <Tab><Flex align="center" gap={2}><CodeIcon size={14} /> Bulk Update</Flex></Tab>
         </TabList>
         
         <TabPanels>
+          {/* PUT Tab */}
           <TabPanel>
             <Tabs variant="enclosed">
               <TabList>
-                <Tab><Flex align="center" gap={2}><ServerIcon size={14} /> Private API</Flex></Tab>
-                <Tab><Flex align="center" gap={2}><GlobeIcon size={14} /> Public API</Flex></Tab>
-                <Tab><Flex align="center" gap={2}><CodeIcon size={14} /> Response</Flex></Tab>
+                <Tab>Request Body</Tab>
+                <Tab>Private API</Tab>
+                <Tab>Public API</Tab>
+                <Tab>Response</Tab>
               </TabList>
-              
               <TabPanels>
                 <TabPanel>
-                  <Heading size="sm" mb={3}>Private API Examples</Heading>
+                  <Heading size="sm" mb={3}>PUT Request Body</Heading>
+                  <Text color="gray.500" mb={4}>
+                    Use PUT when you want to completely replace a record with new data. All fields not included will be set to null.
+                  </Text>
                   <Tabs variant="enclosed">
                     <TabList>
-                      <Tab>Request Body</Tab>
+                      <Tab>Private API</Tab>
+                      <Tab>Public API</Tab>
+                    </TabList>
+                    <TabPanels>
+                      <TabPanel>
+                        <CopyableCode 
+                          content={getPrivateRequestBodyJson()} 
+                          label="Private API request body" 
+                          language="json"
+                        />
+                      </TabPanel>
+                      <TabPanel>
+                        <CopyableCode 
+                          content={getPublicRequestBodyJson()} 
+                          label="Public API request body" 
+                          language="json"
+                        />
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
+                </TabPanel>
+                <TabPanel>
+                  <Tabs variant="enclosed">
+                    <TabList>
                       <Tab>JavaScript</Tab>
                       <Tab>cURL</Tab>
                     </TabList>
                     <TabPanels>
                       <TabPanel>
                         <CopyableCode 
-                          content={getPrivateRequestBodyJson()} 
-                          label="Request body structure" 
-                          language="json"
-                        />
-                        <Text mt={4} fontSize="sm" color="gray.500">
-                          Private API routes require the data to be wrapped in a "fields" object.
-                        </Text>
-                      </TabPanel>
-                      <TabPanel>
-                        <CopyableCode 
                           content={getPrivatePutExample()} 
-                          label="JavaScript fetch example" 
+                          label="Private API JavaScript example" 
                           language="javascript"
                         />
                       </TabPanel>
                       <TabPanel>
                         <CopyableCode 
                           content={getPrivateCurlExample()} 
-                          label="cURL example" 
+                          label="Private API cURL example" 
                           language="bash"
                         />
                       </TabPanel>
@@ -317,77 +330,30 @@ fetch('/api/public/data/${model.name}', {
                   </Tabs>
                 </TabPanel>
                 <TabPanel>
-                  <Heading size="sm" mb={3}>Public API Examples</Heading>
                   <Tabs variant="enclosed">
                     <TabList>
-                      <Tab>Request Body</Tab>
-                      <Tab>Query Parameters</Tab>
-                      <Tab>Path Parameters</Tab>
+                      <Tab>JavaScript</Tab>
+                      <Tab>cURL</Tab>
                     </TabList>
                     <TabPanels>
                       <TabPanel>
                         <CopyableCode 
-                          content={getPublicRequestBodyJson()} 
-                          label="Request body structure" 
-                          language="json"
+                          content={getPublicPathPutExample()} 
+                          label="Public API JavaScript example (path parameters)" 
+                          language="javascript"
                         />
-                        <Text mt={4} fontSize="sm" color="gray.500">
-                          Public API routes accept the data directly without a wrapper.
-                        </Text>
                       </TabPanel>
                       <TabPanel>
-                        <Tabs variant="enclosed">
-                          <TabList>
-                            <Tab>JavaScript</Tab>
-                            <Tab>cURL</Tab>
-                          </TabList>
-                          <TabPanels>
-                            <TabPanel>
-                              <CopyableCode 
-                                content={getPublicPutExample()} 
-                                label="Public API with query parameters" 
-                                language="javascript"
-                              />
-                            </TabPanel>
-                            <TabPanel>
-                              <CopyableCode 
-                                content={getPublicCurlExample()} 
-                                label="cURL example" 
-                                language="bash"
-                              />
-                            </TabPanel>
-                          </TabPanels>
-                        </Tabs>
-                      </TabPanel>
-                      <TabPanel>
-                        <Tabs variant="enclosed">
-                          <TabList>
-                            <Tab>JavaScript</Tab>
-                            <Tab>cURL</Tab>
-                          </TabList>
-                          <TabPanels>
-                            <TabPanel>
-                              <CopyableCode 
-                                content={getPublicPathPutExample()} 
-                                label="Public API with path parameters" 
-                                language="javascript"
-                              />
-                            </TabPanel>
-                            <TabPanel>
-                              <CopyableCode 
-                                content={getPublicPathCurlExample()} 
-                                label="cURL example" 
-                                language="bash"
-                              />
-                            </TabPanel>
-                          </TabPanels>
-                        </Tabs>
+                        <CopyableCode 
+                          content={getPublicPathCurlExample()} 
+                          label="Public API cURL example (path parameters)" 
+                          language="bash"
+                        />
                       </TabPanel>
                     </TabPanels>
                   </Tabs>
                 </TabPanel>
                 <TabPanel>
-                  <Heading size="sm" mb={3}>Response</Heading>
                   <CopyableCode 
                     content={getResponseExample()} 
                     label="Example response" 
@@ -397,59 +363,114 @@ fetch('/api/public/data/${model.name}', {
               </TabPanels>
             </Tabs>
           </TabPanel>
+          
+          {/* PATCH Tab */}
           <TabPanel>
             <Tabs variant="enclosed">
               <TabList>
-                <Tab><Flex align="center" gap={2}><ServerIcon size={14} /> Private API</Flex></Tab>
-                <Tab><Flex align="center" gap={2}><GlobeIcon size={14} /> Public API</Flex></Tab>
-                <Tab><Flex align="center" gap={2}><CodeIcon size={14} /> Response</Flex></Tab>
+                <Tab>Request Body</Tab>
+                <Tab>Public API</Tab>
+                <Tab>Response</Tab>
               </TabList>
-              
               <TabPanels>
                 <TabPanel>
-                  <Heading size="sm" mb={3}>Private API Bulk Update</Heading>
-                  <CopyableCode 
-                    content={getPrivateBulkUpdateExample()} 
-                    label="Bulk update example" 
-                    language="javascript"
-                  />
-                  <Text mt={4} fontSize="sm" color="gray.500">
-                    For bulk updates with the private API, send an array of objects, each with an "id" and "fields" property.
+                  <Heading size="sm" mb={3}>PATCH Request Body Examples</Heading>
+                  <Text color="gray.500" mb={4}>
+                    Use PATCH when you want to update only specific fields without affecting other fields.
                   </Text>
-                </TabPanel>
-                <TabPanel>
-                  <Heading size="sm" mb={3}>Public API Bulk Update</Heading>
                   <Tabs variant="enclosed">
                     <TabList>
-                      <Tab>Query Parameters</Tab>
-                      <Tab>Path Parameters</Tab>
+                      <Tab>Update Single Field</Tab>
+                      <Tab>Toggle Boolean Field</Tab>
                     </TabList>
                     <TabPanels>
                       <TabPanel>
                         <CopyableCode 
-                          content={getPublicBulkUpdateExample()} 
-                          label="Public API bulk update with query parameters" 
-                          language="javascript"
+                          content={getPatchRequestBody()} 
+                          label="Partial update body" 
+                          language="json"
                         />
-                        <Text mt={4} fontSize="sm" color="gray.500">
-                          For bulk updates with the public API, send an array of objects, each with an "id" and the fields to update directly.
-                        </Text>
                       </TabPanel>
                       <TabPanel>
                         <CopyableCode 
-                          content={getPublicPathBulkUpdateExample()} 
-                          label="Public API bulk update with path parameters" 
-                          language="javascript"
+                          content={getPatchToggleBody()} 
+                          label="Toggle boolean field" 
+                          language="json"
                         />
                       </TabPanel>
                     </TabPanels>
                   </Tabs>
                 </TabPanel>
                 <TabPanel>
-                  <Heading size="sm" mb={3}>Bulk Update Response</Heading>
+                  <Tabs variant="enclosed">
+                    <TabList>
+                      <Tab>JavaScript</Tab>
+                      <Tab>Single Field cURL</Tab>
+                      <Tab>Toggle Field cURL</Tab>
+                    </TabList>
+                    <TabPanels>
+                      <TabPanel>
+                        <CopyableCode 
+                          content={getPublicPathPatchExample()} 
+                          label="Public API JavaScript example (path parameters)" 
+                          language="javascript"
+                        />
+                      </TabPanel>
+                      <TabPanel>
+                        <CopyableCode 
+                          content={getPublicPathPatchCurlExample()} 
+                          label="Update a single field (path parameters)" 
+                          language="bash"
+                        />
+                      </TabPanel>
+                      <TabPanel>
+                        <CopyableCode 
+                          content={getPublicPathPatchToggleCurlExample()} 
+                          label="Toggle a boolean field (path parameters)" 
+                          language="bash"
+                        />
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
+                </TabPanel>
+                <TabPanel>
+                  <CopyableCode 
+                    content={getResponseExample()} 
+                    label="Example response" 
+                    language="json"
+                  />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </TabPanel>
+          
+          {/* Bulk Update Tab */}
+          <TabPanel>
+            <Tabs variant="enclosed">
+              <TabList>
+                <Tab>Private API</Tab>
+                <Tab>Public API</Tab>
+                <Tab>Response</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>
+                  <CopyableCode 
+                    content={getPrivateBulkUpdateExample()} 
+                    label="Bulk update with private API" 
+                    language="javascript"
+                  />
+                </TabPanel>
+                <TabPanel>
+                  <CopyableCode 
+                    content={getPublicPathBulkUpdateExample()} 
+                    label="Bulk update with public API (path parameters)" 
+                    language="javascript"
+                  />
+                </TabPanel>
+                <TabPanel>
                   <CopyableCode 
                     content={getBulkUpdateResponse()} 
-                    label="Example response" 
+                    label="Example bulk update response" 
                     language="json"
                   />
                 </TabPanel>
