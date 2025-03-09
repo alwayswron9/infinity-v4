@@ -7,7 +7,11 @@ import {
   Table,
   Tbody,
   useDisclosure,
-  Flex
+  Flex,
+  Text,
+  Fade,
+  Tr,
+  Td
 } from '@chakra-ui/react';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -31,6 +35,7 @@ interface EnhancedDataTableProps {
   isLoading?: boolean;
   onRowClick?: (row: Record<string, any>) => void;
   onDeleteRow?: (row: Record<string, any>) => void;
+  onColumnRatioChange?: (columnRatios: Record<string, number>) => void;
   emptyStateMessage?: string;
   isHoverable?: boolean;
 }
@@ -41,6 +46,7 @@ export function EnhancedDataTable({
   isLoading = false,
   onRowClick,
   onDeleteRow,
+  onColumnRatioChange,
   emptyStateMessage = "No data available",
   isHoverable = true
 }: EnhancedDataTableProps) {
@@ -130,6 +136,11 @@ export function EnhancedDataTable({
     ? previousData 
     : data;
 
+  // Get colors for the loading indicator
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const loadingTextColor = useColorModeValue('gray.600', 'gray.300');
+  const loadingRowBgColor = useColorModeValue('gray.50', 'gray.700');
+
   return (
     <Box 
       position="relative" 
@@ -154,29 +165,23 @@ export function EnhancedDataTable({
         <EmptyStateMessage message={emptyStateMessage} />
       ) : (
         <Box position="relative">
-          {/* Overlay loading indicator for subsequent loads */}
-          {isLoading && !firstLoad && (
-            <Flex 
-              position="absolute" 
-              top="0" 
-              right="0" 
-              p={2} 
-              zIndex={10}
-            >
-              <Spinner 
-                size="sm" 
-                thickness="2px" 
-                color="brand.500" 
-                speed="0.8s"
-              />
-            </Flex>
-          )}
-          
           <Table 
             width="100%" 
             layout="fixed" // Force table to respect column widths
             style={{ borderCollapse: 'separate', borderSpacing: 0 }}
             size="sm"
+            variant="unstyled"
+            borderRadius="md"
+            overflow="hidden"
+            boxShadow="none"
+            borderWidth="1px"
+            borderColor={borderColor}
+            sx={{
+              '& tbody tr:first-of-type': {
+                borderTopWidth: '0',
+                borderTopColor: borderColor,
+              }
+            }}
           >
             {/* Table Header */}
             <TableHeader columns={enhancedColumns} />
@@ -189,8 +194,39 @@ export function EnhancedDataTable({
                   row={row}
                   columns={enhancedColumns}
                   rowIndex={rowIdx}
+                  onRowClick={onRowClick}
                 />
               ))}
+              
+              {/* Loading indicator row at the bottom */}
+              {isLoading && !firstLoad && (
+                <Tr>
+                  <Td 
+                    colSpan={enhancedColumns.length} 
+                    textAlign="center" 
+                    py={5}
+                    borderColor={borderColor}
+                    borderBottomWidth="0"
+                    bg={loadingRowBgColor}
+                  >
+                    <Flex 
+                      justify="center" 
+                      align="center" 
+                      gap={2}
+                    >
+                      <Spinner 
+                        size="sm" 
+                        thickness="2px" 
+                        color="brand.500" 
+                        speed="0.8s"
+                      />
+                      <Text fontSize="sm" color={loadingTextColor} fontWeight="medium">
+                        Loading more data...
+                      </Text>
+                    </Flex>
+                  </Td>
+                </Tr>
+              )}
             </Tbody>
           </Table>
         </Box>

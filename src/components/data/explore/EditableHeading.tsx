@@ -21,8 +21,30 @@ export function EditableHeading({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLParagraphElement>(null);
   const [textWidth, setTextWidth] = useState(0);
+  // Add local state to track input value
+  const [localValue, setLocalValue] = useState(value);
+  // Track if we're currently editing to prevent state conflicts
+  const isEditingRef = useRef(false);
+  
   const textColor = useColorModeValue('gray.800', 'white');
   const hoverColor = useColorModeValue('gray.700', 'gray.300');
+
+  // Update local value when prop value changes and we're not editing
+  useEffect(() => {
+    if (!isEditingRef.current) {
+      setLocalValue(value);
+    }
+  }, [value]);
+  
+  // Update editing ref when isEditing prop changes
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+    
+    // When starting to edit, sync local value with prop value
+    if (isEditing) {
+      setLocalValue(value);
+    }
+  }, [isEditing, value]);
 
   // Measure the text width to apply to input field
   useEffect(() => {
@@ -35,7 +57,7 @@ export function EditableHeading({
       span.style.fontSize = window.getComputedStyle(textRef.current).fontSize;
       span.style.fontWeight = window.getComputedStyle(textRef.current).fontWeight;
       span.style.fontFamily = window.getComputedStyle(textRef.current).fontFamily;
-      span.innerText = value;
+      span.innerText = localValue;
       
       document.body.appendChild(span);
       const width = span.getBoundingClientRect().width;
@@ -44,7 +66,7 @@ export function EditableHeading({
       // Add a small buffer to prevent text truncation
       setTextWidth(Math.max(width, 100) + 10);
     }
-  }, [value]);
+  }, [localValue]);
 
   React.useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -53,13 +75,26 @@ export function EditableHeading({
     }
   }, [isEditing]);
 
+  // Handle local input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value);
+  };
+  
+  // Submit the final value to parent
+  const handleSubmitValue = () => {
+    onChange(localValue);
+    onEditEnd();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault(); // Prevent form submission
-      onEditEnd();
+      handleSubmitValue();
     }
     if (e.key === 'Escape') {
       e.preventDefault();
+      // Reset to original value on escape
+      setLocalValue(value);
       onEditEnd();
     }
   };
@@ -86,9 +121,9 @@ export function EditableHeading({
       >
         <Input
           ref={inputRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onEditEnd}
+          value={localValue}
+          onChange={handleInputChange}
+          onBlur={handleSubmitValue}
           onKeyDown={handleKeyDown}
           bg="transparent"
           border="none"
@@ -98,6 +133,7 @@ export function EditableHeading({
           }}
           p={0}
           m={0}
+          pl={0}
           height={commonStyles.height}
           fontWeight={commonStyles.fontWeight}
           fontSize={commonStyles.fontSize}
@@ -127,7 +163,7 @@ export function EditableHeading({
       textOverflow={commonStyles.textOverflow}
       whiteSpace={commonStyles.whiteSpace}
     >
-      {value}
+      {localValue}
     </Text>
   );
 } 

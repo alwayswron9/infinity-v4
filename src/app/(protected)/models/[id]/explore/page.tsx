@@ -51,6 +51,12 @@ export default function ExplorePage() {
   const [editedName, setEditedName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState(false);
   
+  // Custom handler for setting edited name to prevent unnecessary updates
+  const handleSetEditedName = useCallback((name: string) => {
+    console.log("ExplorePage: Setting editedName:", name);
+    setEditedName(name);
+  }, []);
+  
   // Drawers state
   const { isOpen: isAddDataOpen, onOpen: onAddDataOpen, onClose: onAddDataClose } = useDisclosure();
   const { isOpen: isRecordDrawerOpen, onOpen: onRecordDrawerOpen, onClose: onRecordDrawerClose } = useDisclosure();
@@ -97,6 +103,14 @@ export default function ExplorePage() {
     modelId: modelId || '' 
   });
   
+  // Update editedName when currentView changes, but only if we're not in editing mode
+  useEffect(() => {
+    if (currentView && !isEditingName) {
+      console.log("ExplorePage: Updating editedName from currentView:", currentView.name);
+      setEditedName(currentView.name);
+    }
+  }, [currentView, isEditingName]);
+  
   // Create handler functions using our factory functions
   const handleRefreshData = useCallback(
     createRefreshDataHandler({
@@ -136,11 +150,11 @@ export default function ExplorePage() {
   
   const handleViewNameEdit = useCallback(
     createViewNameEditHandler({
-      setEditedName,
+      setEditedName: handleSetEditedName,
       setIsEditingName,
       setIsEditing
     }),
-    [setEditedName, setIsEditingName, setIsEditing]
+    [handleSetEditedName, setIsEditingName, setIsEditing]
   );
   
   const handleRowClick = useCallback(
@@ -207,6 +221,14 @@ export default function ExplorePage() {
     })) as ColumnDef<Record<string, any>>[];
   }, [availableColumns]);
   
+  // Create a wrapper for handleViewSelect that also refreshes data
+  const handleViewSelectWithRefresh = useCallback(
+    (viewId: string) => {
+      handleViewSelect(viewId, handleRefreshData);
+    },
+    [handleViewSelect, handleRefreshData]
+  );
+  
   // Check for action=add in URL query params
   useEffect(() => {
     if (searchParams?.get('action') === 'add' && model) {
@@ -260,7 +282,7 @@ export default function ExplorePage() {
           onEditRow={handleRowClick}
           onDeleteRow={handleDeleteRow}
           onCreateView={handleCreateView}
-          onViewSelect={handleViewSelect}
+          onViewSelect={handleViewSelectWithRefresh}
           onDeleteView={handleDeleteView}
           onAddData={onAddDataOpen}
           onCopyModelDetails={handleCopyModelDetails}
@@ -271,7 +293,7 @@ export default function ExplorePage() {
           editedName={editedName}
           isEditingName={isEditingName}
           setEditingName={setIsEditingName}
-          setEditedName={setEditedName}
+          setEditedName={handleSetEditedName}
         />
       </Section>
       

@@ -139,7 +139,7 @@ export const createSubmitDataHandler = (props: {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ fields: data }),
       });
       
       if (!response.ok) {
@@ -173,12 +173,12 @@ export const createUpdateRecordHandler = (props: {
     if (!modelId || !currentRecord?._id) return;
     
     try {
-      const response = await fetch(`/api/data/${modelId}/${currentRecord._id}`, {
+      const response = await fetch(`/api/data/${modelId}?id=${currentRecord._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ fields: data }),
       });
       
       if (!response.ok) {
@@ -211,7 +211,7 @@ export const createClearDataHandler = (props: {
     
     try {
       const response = await fetch(`/api/data/${modelId}/clear`, {
-        method: 'DELETE',
+        method: 'POST',
       });
       
       if (!response.ok) {

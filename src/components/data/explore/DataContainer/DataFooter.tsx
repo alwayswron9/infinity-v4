@@ -1,19 +1,19 @@
 import React from 'react';
-import { SimplePagination } from '../SimplePagination';
+import { LoadMorePagination } from '../LoadMorePagination';
 import { DataFooterProps } from './types';
 
 export function DataFooter({ 
   pagination, 
-  pageSizeOptions, 
-  onPaginationChange 
+  onPaginationChange,
+  isLoadingData = false
 }: DataFooterProps) {
   if (!pagination) return null;
   
   return (
-    <SimplePagination
+    <LoadMorePagination
       pagination={pagination}
-      pageSizeOptions={pageSizeOptions}
       onPaginationChange={onPaginationChange}
+      isLoading={isLoadingData}
     />
   );
 } 

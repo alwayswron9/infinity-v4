@@ -9,8 +9,23 @@ interface ActionButtonsProps {
 }
 
 export function ActionButtons({ row, onView, onDelete }: ActionButtonsProps) {
+  // Handle click events with stopPropagation to prevent row click
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onView) {
+      onView(row);
+    }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(row);
+    }
+  };
+
   return (
-    <HStack spacing={2} justifyContent="center">
+    <HStack spacing={2} justifyContent="center" onClick={(e) => e.stopPropagation()}>
       {onView && (
         <IconButton
           icon={<Eye size={16} />}
@@ -18,10 +33,7 @@ export function ActionButtons({ row, onView, onDelete }: ActionButtonsProps) {
           size="xs"
           colorScheme="brand"
           variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onView(row);
-          }}
+          onClick={handleViewClick}
         />
       )}
       {onDelete && (
@@ -31,10 +43,7 @@ export function ActionButtons({ row, onView, onDelete }: ActionButtonsProps) {
           size="xs"
           colorScheme="red"
           variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(row);
-          }}
+          onClick={handleDeleteClick}
         />
       )}
     </HStack>

@@ -155,19 +155,159 @@ export class PostgresDataService {
     const { filter = {}, page = 1, limit = 10 } = query || {};
     const offset = (page - 1) * limit;
 
-    // Validate filter against model fields
-    this.validateFilter(filter);
-
     // Build WHERE clause
     const whereClauses: string[] = ['model_id = $1'];
     const values: any[] = [this.model.id];
     let paramIndex = 2;
 
-    for (const [field, value] of Object.entries(filter)) {
-      whereClauses.push(`data->>$${paramIndex} = $${paramIndex + 1}`);
-      values.push(field, value);
-      paramIndex += 2;
+    // Handle different filter formats
+    if (Array.isArray(filter)) {
+      // Handle array of filter objects (complex format from UI)
+      console.log('Processing array of filter objects:', filter);
+      
+      for (const filterItem of filter) {
+        const { field, operator, value, conjunction } = filterItem;
+        
+        // Skip invalid filters
+        if (!field || !operator) continue;
+        
+        // Validate field exists in model
+        if (!this.model.fields[field]) {
+          console.warn(`Skipping filter with invalid field: ${field}`);
+          continue;
+        }
+        
+        // Add conjunction if not the first filter
+        if (whereClauses.length > 1 && conjunction) {
+          // Replace the last AND with the specified conjunction
+          const lastClause = whereClauses.pop();
+          whereClauses.push(`${lastClause} ${conjunction.toUpperCase()}`);
+        }
+        
+        // Process based on operator
+        switch (operator) {
+          case 'equals':
+            whereClauses.push(`data->>$${paramIndex} = $${paramIndex + 1}`);
+            values.push(field, value);
+            paramIndex += 2;
+            break;
+          case 'notEquals':
+            whereClauses.push(`data->>$${paramIndex} <> $${paramIndex + 1}`);
+            values.push(field, value);
+            paramIndex += 2;
+            break;
+          case 'contains':
+            whereClauses.push(`data->>$${paramIndex} ILIKE $${paramIndex + 1}`);
+            values.push(field, `%${value}%`);
+            paramIndex += 2;
+            break;
+          case 'notContains':
+            whereClauses.push(`data->>$${paramIndex} NOT ILIKE $${paramIndex + 1}`);
+            values.push(field, `%${value}%`);
+            paramIndex += 2;
+            break;
+          case 'startsWith':
+            whereClauses.push(`data->>$${paramIndex} ILIKE $${paramIndex + 1}`);
+            values.push(field, `${value}%`);
+            paramIndex += 2;
+            break;
+          case 'endsWith':
+            whereClauses.push(`data->>$${paramIndex} ILIKE $${paramIndex + 1}`);
+            values.push(field, `%${value}`);
+            paramIndex += 2;
+            break;
+          case 'gt':
+            whereClauses.push(`(data->>$${paramIndex})::numeric > $${paramIndex + 1}`);
+            values.push(field, value);
+            paramIndex += 2;
+            break;
+          case 'gte':
+            whereClauses.push(`(data->>$${paramIndex})::numeric >= $${paramIndex + 1}`);
+            values.push(field, value);
+            paramIndex += 2;
+            break;
+          case 'lt':
+            whereClauses.push(`(data->>$${paramIndex})::numeric < $${paramIndex + 1}`);
+            values.push(field, value);
+            paramIndex += 2;
+            break;
+          case 'lte':
+            whereClauses.push(`(data->>$${paramIndex})::numeric <= $${paramIndex + 1}`);
+            values.push(field, value);
+            paramIndex += 2;
+            break;
+          case 'isNull':
+            whereClauses.push(`data->>$${paramIndex} IS NULL OR data->>$${paramIndex} = ''`);
+            values.push(field);
+            paramIndex += 1;
+            break;
+          case 'isNotNull':
+            whereClauses.push(`data->>$${paramIndex} IS NOT NULL AND data->>$${paramIndex} <> ''`);
+            values.push(field);
+            paramIndex += 1;
+            break;
+          default:
+            console.warn(`Unsupported operator: ${operator}, defaulting to equals`);
+            whereClauses.push(`data->>$${paramIndex} = $${paramIndex + 1}`);
+            values.push(field, value);
+            paramIndex += 2;
+        }
+      }
+    } else if (typeof filter === 'object') {
+      // Handle simple key-value object format
+      console.log('Processing simple key-value filter:', filter);
+      
+      // Validate filter against model fields
+      this.validateFilter(filter);
+      
+      for (const [field, value] of Object.entries(filter)) {
+        // Handle different filter operations based on value type or special operators
+        if (value === null) {
+          // Handle NULL checks
+          whereClauses.push(`data->>$${paramIndex} IS NULL`);
+          values.push(field);
+          paramIndex += 1;
+        } else if (typeof value === 'object' && value.operator) {
+          // Handle complex filter objects with explicit operators
+          switch (value.operator) {
+            case 'equals':
+              whereClauses.push(`data->>$${paramIndex} = $${paramIndex + 1}`);
+              values.push(field, value.value);
+              paramIndex += 2;
+              break;
+            case 'contains':
+              whereClauses.push(`data->>$${paramIndex} ILIKE $${paramIndex + 1}`);
+              values.push(field, `%${value.value}%`);
+              paramIndex += 2;
+              break;
+            case 'startsWith':
+              whereClauses.push(`data->>$${paramIndex} ILIKE $${paramIndex + 1}`);
+              values.push(field, `${value.value}%`);
+              paramIndex += 2;
+              break;
+            case 'endsWith':
+              whereClauses.push(`data->>$${paramIndex} ILIKE $${paramIndex + 1}`);
+              values.push(field, `%${value.value}`);
+              paramIndex += 2;
+              break;
+            // Add more operators as needed
+            default:
+              // Default to equality for unknown operators
+              whereClauses.push(`data->>$${paramIndex} = $${paramIndex + 1}`);
+              values.push(field, value.value);
+              paramIndex += 2;
+          }
+        } else {
+          // Simple equality check (default behavior)
+          whereClauses.push(`data->>$${paramIndex} = $${paramIndex + 1}`);
+          values.push(field, value);
+          paramIndex += 2;
+        }
+      }
     }
+
+    console.log('Final WHERE clause:', whereClauses.join(' AND '));
+    console.log('Query parameters:', values);
 
     try {
       // Get total count

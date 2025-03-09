@@ -26,7 +26,7 @@ interface UseViewManagementReturn {
   currentView: ModelView | undefined;
   loading: boolean;
   error: string | null;
-  handleViewSelect: (viewId: string) => void;
+  handleViewSelect: (viewId: string, onViewSelected?: () => void) => void;
   handleCreateView: () => void;
   handleEditView: (viewId: string) => void;
   handleDeleteView: (viewId: string) => Promise<void>;
@@ -213,8 +213,13 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
     loadViewsData();
   }, [modelId]);
 
-  const handleViewSelect = (viewId: string) => {
+  const handleViewSelect = (viewId: string, onViewSelected?: () => void) => {
     setActiveView(viewId);
+    
+    // Call the callback if provided, to refresh data with the new view's filters and sorting
+    if (onViewSelected) {
+      onViewSelected();
+    }
   };
 
   // Helper to generate a unique view name
@@ -398,13 +403,17 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
       setLoading(true);
       let savedView: ModelView;
       
-      // Check if a view with this name already exists
-      const existingView = safeViews.find(v => v.name === formData.name);
+      console.log("useViewManagement: handleSaveView called with formData:", formData);
+      console.log("useViewManagement: Current editingView:", editingView);
+      console.log("useViewManagement: Current activeView:", activeView);
       
-      if (editingView?.id || existingView?.id) {
-        // Update existing view
-        const viewId = editingView?.id || existingView?.id;
+      // If we have an active view ID or editing view ID, we're updating an existing view
+      if (editingView?.id || activeView) {
+        // Update existing view - prioritize the editing view ID, then fall back to active view ID
+        const viewId = editingView?.id || activeView;
         if (!viewId) throw new Error('View ID not found');
+        
+        console.log(`useViewManagement: Updating existing view with ID: ${viewId}`);
         
         savedView = await viewService.updateView(
           modelId,
@@ -424,6 +433,8 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         toast.success('View updated successfully');
       } else {
         // Create new view
+        console.log("useViewManagement: Creating new view");
+        
         savedView = await viewService.createView(
           modelId,
           formData.name,

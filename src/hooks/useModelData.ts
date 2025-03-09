@@ -141,7 +141,7 @@ export function useModelData({ modelId }: UseModelDataOptions): UseModelDataRetu
           );
           
           if (activeFilters.length > 0) {
-            params.append('filters', JSON.stringify(activeFilters));
+            params.append('filter', JSON.stringify(activeFilters));
           }
         }
 

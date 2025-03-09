@@ -61,13 +61,12 @@ export function DataContainer({
   const editing = isEditingName !== undefined ? isEditingName : localIsEditing;
   const setEditing = setEditingName || setLocalIsEditing;
   
-  const pageSizeOptions = [10, 20, 50, 100];
-  
   // Use the column visibility hook
   const { 
     allAvailableColumns, 
     visibleColumns, 
-    handleColumnToggle 
+    handleColumnToggle,
+    handleColumnRatioChange
   } = useColumnVisibility({
     currentView,
     columns,
@@ -89,11 +88,6 @@ export function DataContainer({
       minHeight="400px"
       display="flex"
       flexDirection="column"
-      borderWidth="1px" 
-      borderColor={borderColor} 
-      borderRadius="md" 
-      bg={bgColor}
-      overflow="hidden"
       width="100%"
     >
       {currentView ? (
@@ -122,20 +116,26 @@ export function DataContainer({
             isLoadingData={isLoadingData}
           />
           
-          <DataTable 
-            data={data}
-            visibleColumns={visibleColumns}
-            currentView={currentView}
-            isLoadingData={isLoadingData}
-            onEditRow={onEditRow}
-            onDeleteRow={onDeleteRow}
-          />
+          <Box flex="1" overflow="hidden" position="relative">
+            <DataTable 
+              data={data} 
+              visibleColumns={visibleColumns} 
+              currentView={currentView}
+              isLoadingData={isLoadingData}
+              onEditRow={onEditRow}
+              onDeleteRow={onDeleteRow}
+              onColumnRatioChange={handleColumnRatioChange}
+            />
+          </Box>
           
-          <DataFooter 
-            pagination={pagination}
-            pageSizeOptions={pageSizeOptions}
-            onPaginationChange={onPaginationChange}
-          />
+          {/* Data Footer with Pagination */}
+          {pagination && (
+            <DataFooter 
+              pagination={pagination} 
+              onPaginationChange={onPaginationChange}
+              isLoadingData={isLoadingData}
+            />
+          )}
           
           <DataDrawers 
             currentView={currentView}
@@ -145,6 +145,7 @@ export function DataContainer({
             onCloseClearDataDialog={onCloseClearDataDialog}
             onClearData={onClearData}
             onConfigChange={onConfigChange}
+            onRefreshData={onRefreshData}
           />
         </>
       ) : (

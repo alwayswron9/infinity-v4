@@ -56,7 +56,12 @@ export const createSaveChangesHandler = (props: {
   return async () => {
     if (!currentView) return;
     
+    console.log("ViewHandlers: createSaveChangesHandler called");
+    console.log("ViewHandlers: Current view:", currentView);
+    console.log("ViewHandlers: Edited name:", editedName);
+    
     try {
+      // Make sure we're updating the existing view by preserving its ID
       await handleSaveView({
         ...currentView,
         name: editedName || currentView.name
@@ -78,9 +83,14 @@ export const createViewNameEditHandler = (props: {
   const { setEditedName, setIsEditingName, setIsEditing } = props;
   
   return (newName: string) => {
+    console.log("ViewHandlers: createViewNameEditHandler called with newName:", newName);
+    
+    // Update the edited name
     setEditedName(newName);
+    
+    // Only set editing flags if not already set
+    // This prevents unnecessary re-renders
     setIsEditingName(true);
-    // Also set the main isEditing flag to ensure Save button appears
     setIsEditing(true);
   };
 };

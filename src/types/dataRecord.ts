@@ -23,7 +23,10 @@ export const UpdateDataRecordInput = z.object({}).catchall(z.any());
 
 // Query parameters for listing records
 export const ListRecordsQuery = z.object({
-  filter: z.record(z.string(), z.any()).optional(),
+  filter: z.union([
+    z.record(z.string(), z.any()),
+    z.array(z.any())
+  ]).optional(),
   include: z.array(z.string()).optional(),
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(1000).default(10),
@@ -43,7 +46,7 @@ export type CreateDataRecordInput = z.infer<typeof CreateDataRecordInput>;
 export type UpdateDataRecordInput = z.infer<typeof UpdateDataRecordInput>;
 
 export type ListRecordsQuery = {
-  filter?: Record<string, any>;
+  filter?: Record<string, any> | any[];
   include?: string[];
   page?: number;
   limit?: number;

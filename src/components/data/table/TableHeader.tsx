@@ -3,7 +3,10 @@ import {
   Thead,
   Tr,
   Th,
-  useColorModeValue
+  useColorModeValue,
+  Box,
+  Flex,
+  Text
 } from '@chakra-ui/react';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -13,32 +16,50 @@ interface TableHeaderProps {
 
 export function TableHeader({ columns }: TableHeaderProps) {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const tableHeaderColor = useColorModeValue('gray.50', 'gray.700');
+  const tableHeaderBg = useColorModeValue('gray.50', 'gray.800');
+  const headerTextColor = useColorModeValue('gray.600', 'gray.300');
 
   return (
-    <Thead bg={tableHeaderColor} position="sticky" top={0} zIndex={1}>
+    <Thead 
+      bg={tableHeaderBg} 
+      position="sticky" 
+      top={0} 
+      zIndex={1}
+      borderBottomWidth="2px"
+      borderColor={borderColor}
+      boxShadow="none"
+    >
       <Tr>
         {columns.map((column, idx) => (
           <Th 
             key={idx}
             width={column.size ? `${column.size}px` : undefined}
             textTransform="none"
-            fontSize="xs"
+            fontSize="sm"
             fontWeight="medium"
-            color="gray.500"
-            borderBottomWidth="1px"
-            borderColor={borderColor}
-            p="10px 16px"
+            color={headerTextColor}
+            borderBottomWidth="0"
+            p="16px"
+            py="18px"
             whiteSpace="nowrap"
             overflow="hidden"
             textOverflow="ellipsis"
-            letterSpacing="0.5px"
+            letterSpacing="normal"
             maxW={column.size ? `${column.size}px` : undefined}
             title={typeof column.header === 'string' ? column.header : undefined}
+            _first={{ pl: "20px" }}
+            _last={{ pr: "20px" }}
           >
-            {typeof column.header === 'function' 
-              ? column.header({} as any) 
-              : column.header as React.ReactNode}
+            <Flex align="center" gap={1}>
+              {typeof column.header === 'function' 
+                ? column.header({} as any) 
+                : (
+                  <Text fontWeight="semibold">
+                    {column.header as React.ReactNode}
+                  </Text>
+                )
+              }
+            </Flex>
           </Th>
         ))}
       </Tr>

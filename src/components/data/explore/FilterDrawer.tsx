@@ -32,6 +32,7 @@ interface FilterDrawerProps {
   onClose: () => void;
   currentView: ModelViewType;
   onConfigChange: (config: any) => void;
+  onRefreshData?: () => void;
 }
 
 const FILTER_OPERATORS: { value: ViewFilterConfig['operator']; label: string }[] = [
@@ -56,7 +57,8 @@ export function FilterDrawer({
   isOpen, 
   onClose, 
   currentView,
-  onConfigChange 
+  onConfigChange,
+  onRefreshData
 }: FilterDrawerProps) {
   const [filters, setFilters] = useState<ViewFilterConfig[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
@@ -151,6 +153,11 @@ export function FilterDrawer({
       ...currentView.config,
       filters: validFilters
     });
+    
+    // Refresh data immediately to apply filters
+    if (onRefreshData) {
+      onRefreshData();
+    }
     
     onClose();
   };

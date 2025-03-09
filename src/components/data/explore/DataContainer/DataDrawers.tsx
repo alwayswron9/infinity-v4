@@ -10,7 +10,8 @@ export function DataDrawers({
   isClearDataDialogOpen,
   onCloseClearDataDialog,
   onClearData,
-  onConfigChange
+  onConfigChange,
+  onRefreshData
 }: DataDrawersProps) {
   return (
     <>
@@ -20,6 +21,7 @@ export function DataDrawers({
           onClose={onCloseFilterDrawer}
           currentView={currentView}
           onConfigChange={onConfigChange}
+          onRefreshData={onRefreshData}
         />
       )}
       

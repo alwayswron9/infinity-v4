@@ -31,7 +31,30 @@ export async function GET(
         return NextResponse.json({ success: true, data: record });
       } else {
         // List/query records
-        const filter = searchParams.get('filter') ? JSON.parse(searchParams.get('filter')!) : undefined;
+        const filtersParam = searchParams.get('filter');
+        let filter = undefined;
+        
+        if (filtersParam) {
+          try {
+            const parsedFilters = JSON.parse(filtersParam);
+            console.log('Received filters:', parsedFilters);
+            
+            // Check if it's an array of filter objects (from the UI)
+            if (Array.isArray(parsedFilters)) {
+              // For complex filter operations, we'll pass them directly to the data service
+              // which now has enhanced support for complex filter operations
+              filter = parsedFilters;
+              console.log('Using complex filter format:', filter);
+            } else {
+              // It's already in the expected format (simple key-value)
+              filter = parsedFilters;
+              console.log('Using simple filter format:', filter);
+            }
+          } catch (error) {
+            console.error('Error parsing filters:', error);
+          }
+        }
+        
         const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
         const sorting = searchParams.get('sorting') ? JSON.parse(searchParams.get('sorting')!) : undefined;

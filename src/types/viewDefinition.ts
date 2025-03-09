@@ -5,6 +5,7 @@ export const ViewColumnConfig = z.object({
   field: z.string(),
   visible: z.boolean(),
   width: z.number(),
+  ratio: z.number().optional(),
   format: z.object({
     type: z.enum(['text', 'number', 'date', 'boolean', 'custom']),
     options: z.record(z.string(), z.any()).optional(),

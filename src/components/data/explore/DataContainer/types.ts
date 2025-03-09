@@ -52,14 +52,13 @@ export type DataHeaderProps = Pick<DataContainerProps,
 export type DataTableProps = Pick<DataContainerProps, 
   'data' | 'isLoadingData' | 'currentView' | 'onEditRow' | 'onDeleteRow'> & {
   visibleColumns: ColumnDef<Record<string, any>>[];
+  onColumnRatioChange?: (columnRatios: Record<string, number>) => void;
 };
 
-export type DataFooterProps = Pick<DataContainerProps, 'pagination' | 'onPaginationChange'> & {
-  pageSizeOptions: number[];
-};
+export type DataFooterProps = Pick<DataContainerProps, 'pagination' | 'onPaginationChange' | 'isLoadingData'>;
 
 export type DataDrawersProps = Pick<DataContainerProps, 
-  'currentView' | 'onConfigChange' | 'onClearData'> & {
+  'currentView' | 'onConfigChange' | 'onClearData' | 'onRefreshData'> & {
   isFilterDrawerOpen: boolean;
   onCloseFilterDrawer: () => void;
   isClearDataDialogOpen: boolean;
