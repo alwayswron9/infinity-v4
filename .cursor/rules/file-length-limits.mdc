@@ -1,0 +1,9 @@
+---
+description: You need to use this rule whenever you are making changes to any file to ensure that you do not make files that are too long
+globs: *
+alwaysApply: false
+---
+
+# Your rule content
+
+You should make sure that any file in the codebase is less than 300 lines of code. if its more than 300 lines, then you propose changing the structure so that files are smaller. This is for better readability and maintainability

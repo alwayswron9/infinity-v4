@@ -108,12 +108,10 @@ export async function POST(
       // Create record
       const body = await authReq.json();
       
-      // Validate nested fields structure
-      if (!body.fields || typeof body.fields !== 'object') {
-        return createErrorResponse('Request body must contain a fields object', 400);
-      }
+      // Support both direct data and fields wrapper for backward compatibility
+      const data = body.fields || body;
 
-      const record = await dataService.createRecord(body.fields);
+      const record = await dataService.createRecord(data);
 
       return NextResponse.json({ success: true, data: record }, { status: 201 });
     } catch (error: any) {
@@ -158,17 +156,15 @@ export async function PUT(
           try {
             const item = body[i];
             
-            // Each item must have an id and fields
+            // Each item must have an id
             if (!item.id) {
               throw new Error('Each item must contain an id field');
             }
             
-            // Validate nested fields structure for each item
-            if (!item.fields || typeof item.fields !== 'object') {
-              throw new Error('Each item must contain a fields object');
-            }
+            // Support both direct data and fields wrapper for backward compatibility
+            const updateData = item.fields || item;
             
-            const record = await dataService.updateRecord(item.id, item.fields);
+            const record = await dataService.updateRecord(item.id, updateData);
             results.push(record);
           } catch (error: any) {
             errors.push({
@@ -195,12 +191,10 @@ export async function PUT(
           return createErrorResponse('Record ID is required', 400);
         }
 
-        // Validate nested fields structure
-        if (!body.fields || typeof body.fields !== 'object') {
-          return createErrorResponse('Request body must contain a fields object', 400);
-        }
+        // Support both direct data and fields wrapper for backward compatibility
+        const updateData = body.fields || body;
 
-        const record = await dataService.updateRecord(id, body.fields);
+        const record = await dataService.updateRecord(id, updateData);
 
         return NextResponse.json({ success: true, data: record });
       }

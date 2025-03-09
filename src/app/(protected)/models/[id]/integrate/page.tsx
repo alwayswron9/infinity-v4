@@ -1,196 +1,33 @@
 'use client';
 
 import { 
-  Box, 
   Stack, 
   Flex, 
   Spinner,
-  Code,
-  useColorModeValue,
   Alert,
   AlertIcon,
-  AlertTitle,
-  AlertDescription,
-  Button,
-  useClipboard,
-  Select,
   Text,
   Heading,
-  Divider,
   Card,
   CardHeader,
   CardBody,
-  VStack,
-  HStack
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Box,
+  SimpleGrid,
+  Divider
 } from '@chakra-ui/react';
+import { 
+  Persona
+} from '@saas-ui/react';
 import { Section } from '@/components/layout/Section';
-import { CheckIcon, CopyIcon } from 'lucide-react';
+import { FilterIcon, PlusIcon, RefreshCwIcon, CopyIcon, SearchIcon } from 'lucide-react';
 import { useModelContext } from '../explore/components/ModelContext';
-import { useState, useEffect } from 'react';
-import useViewStore from '@/lib/stores/viewStore';
-import type { ModelView } from '@/types/viewDefinition';
-
-// Copyable code block component
-function CopyableCode({ content, label }: { content: string, label?: string }) {
-  const { hasCopied, onCopy } = useClipboard(content);
-  const bgColor = useColorModeValue('gray.50', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-
-  return (
-    <Box position="relative" mb={4}>
-      {label && (
-        <Text fontSize="sm" fontWeight="medium" mb={1} color="gray.500">
-          {label}
-        </Text>
-      )}
-      <Box
-        position="relative"
-        bg={bgColor}
-        borderWidth="1px"
-        borderColor={borderColor}
-        borderRadius="md"
-        p={4}
-        pr={12}
-        overflowX="auto"
-      >
-        <Code
-          display="block"
-          whiteSpace="pre"
-          overflowX="auto"
-          bg="transparent"
-          p={0}
-          fontSize="sm"
-          fontFamily="mono"
-        >
-          {content}
-        </Code>
-        <Button
-          position="absolute"
-          top={2}
-          right={2}
-          size="sm"
-          variant="ghost"
-          onClick={onCopy}
-          aria-label="Copy code"
-          leftIcon={hasCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-        >
-          {hasCopied ? 'Copied' : 'Copy'}
-        </Button>
-      </Box>
-    </Box>
-  );
-}
-
-// View Configuration Copy Component
-function ViewConfigCopy() {
-  const [selectedViewId, setSelectedViewId] = useState<string>('');
-  const [selectedView, setSelectedView] = useState<ModelView | null>(null);
-  const { model, modelId } = useModelContext();
-  
-  // Get views from the store
-  const views = useViewStore(state => state.views) || [];
-  
-  // Update selected view when view ID changes
-  useEffect(() => {
-    if (selectedViewId) {
-      const view = views.find(v => v.id === selectedViewId);
-      setSelectedView(view || null);
-    } else {
-      setSelectedView(null);
-    }
-  }, [selectedViewId, views]);
-  
-  // Generate API call configuration
-  const getFilterConfig = () => {
-    if (!selectedView?.config?.filters?.length) return '[]';
-    return JSON.stringify(selectedView.config.filters, null, 2);
-  };
-  
-  const getSortingConfig = () => {
-    if (!selectedView?.config?.sorting?.length) return '[]';
-    return JSON.stringify(selectedView.config.sorting, null, 2);
-  };
-  
-  const getFullApiConfig = () => {
-    const params = new URLSearchParams({
-      page: '1',
-      limit: '10'
-    });
-    
-    if (selectedView?.config?.filters?.length) {
-      params.append('filter', JSON.stringify(selectedView.config.filters));
-    }
-    
-    if (selectedView?.config?.sorting?.length) {
-      params.append('sorting', JSON.stringify(selectedView.config.sorting));
-    }
-    
-    return `// API URL with query parameters
-fetch('/api/data/${modelId}?${params.toString()}')
-  .then(response => response.json())
-  .then(data => console.log(data));
-
-// Or with separate parameters
-const params = {
-  page: 1,
-  limit: 10,
-  filter: ${getFilterConfig()},
-  sorting: ${getSortingConfig()}
-};
-
-// Then construct your fetch call with these params`;
-  };
-  
-  return (
-    <Card variant="outline" mb={6}>
-      <CardHeader>
-        <Heading size="md">View Configuration for API Calls</Heading>
-        <Text mt={2} color="gray.500">
-          Select a view to copy its filter and sorting configuration for API calls
-        </Text>
-      </CardHeader>
-      <CardBody>
-        <VStack spacing={4} align="stretch">
-          <Select 
-            placeholder="Select a view" 
-            value={selectedViewId}
-            onChange={(e) => setSelectedViewId(e.target.value)}
-          >
-            {views.map(view => (
-              <option key={view.id} value={view.id}>
-                {view.name}
-              </option>
-            ))}
-          </Select>
-          
-          {selectedView && (
-            <>
-              <Divider my={2} />
-              
-              <Heading size="sm" mb={2}>Filter Configuration</Heading>
-              <CopyableCode 
-                content={getFilterConfig()} 
-                label="filter parameter" 
-              />
-              
-              <Heading size="sm" mb={2}>Sorting Configuration</Heading>
-              <CopyableCode 
-                content={getSortingConfig()} 
-                label="sorting parameter" 
-              />
-              
-              <Heading size="sm" mb={2}>Complete API Call Example</Heading>
-              <CopyableCode 
-                content={getFullApiConfig()} 
-                label="API call with configuration" 
-              />
-            </>
-          )}
-        </VStack>
-      </CardBody>
-    </Card>
-  );
-}
+import { CopyableCode } from './components/CopyableCode';
+import type { FieldDefinition } from '@/types/modelDefinition';
 
 export default function IntegratePage() {
   const { model, loading, error } = useModelContext();
@@ -210,29 +47,308 @@ export default function IntegratePage() {
       <Section>
         <Alert status="error" borderRadius="md">
           <AlertIcon />
-          <AlertTitle>Error loading model</AlertTitle>
-          <AlertDescription>{error || 'Model not found'}</AlertDescription>
+          <Text>Error loading model: {error || 'Model not found'}</Text>
         </Alert>
       </Section>
     );
   }
 
+  // Generate sample data structure based on model fields
+  const getSampleData = () => {
+    if (!model?.fields) return '{}';
+    
+    const sampleData: Record<string, any> = {};
+    Object.entries(model.fields).forEach(([key, field]) => {
+      if (!key.startsWith('_')) { // Skip system fields
+        const typedField = field as FieldDefinition;
+        switch(typedField.type) {
+          case 'string':
+            sampleData[key] = 'string value';
+            break;
+          case 'number':
+            sampleData[key] = 0;
+            break;
+          case 'boolean':
+            sampleData[key] = false;
+            break;
+          case 'date':
+            sampleData[key] = '2023-01-01';
+            break;
+          default:
+            sampleData[key] = null;
+        }
+      }
+    });
+    
+    return JSON.stringify(sampleData, null, 2);
+  };
+
+  // GET examples
+  const getQueryParams = () => {
+    return `model=${model.name}&page=1&limit=10`;
+  };
+
+  const getFilterParam = () => {
+    return `[
+  {
+    "field": "status",
+    "operator": "eq",
+    "value": "active"
+  }
+]`;
+  };
+
+  const getFullCurl = () => {
+    return `curl -X GET \\
+  "https://your-domain.com/api/public/data?model=${model.name}&page=1&limit=10" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
+  };
+
+  const getFilteredCurl = () => {
+    return `curl -X GET \\
+  "https://your-domain.com/api/public/data?model=${model.name}&filter=%5B%7B%22field%22%3A%22status%22%2C%22operator%22%3A%22eq%22%2C%22value%22%3A%22active%22%7D%5D" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
+  };
+
+  const getSingleRecordCurl = () => {
+    return `curl -X GET \\
+  "https://your-domain.com/api/public/data?model=${model.name}&id=record-id-1" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
+  };
+
+  // POST examples
+  const getPostCurl = () => {
+    return `curl -X POST \\
+  "https://your-domain.com/api/public/data?model=${model.name}" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '${getSampleData().replace(/\n/g, '\\n')}'`;
+  };
+
+  // PUT examples
+  const getPutRequestBody = () => {
+    return `{
+  "field1": "updated value",
+  "field2": 123
+}`;
+  };
+
+  const getPutCurl = () => {
+    return `curl -X PUT \\
+  "https://your-domain.com/api/public/data?model=${model.name}&id=record-id-1" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+  "field1": "updated value",
+  "field2": 123
+}'`;
+  };
+
+  // DELETE examples
+  const getDeleteCurl = () => {
+    return `curl -X DELETE \\
+  "https://your-domain.com/api/public/data?model=${model.name}&id=record-id-1" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
+  };
+
+  // SEARCH examples
+  const getSearchRequestBody = () => {
+    return `{
+  "query": "search term or question",
+  "limit": 10,
+  "minSimilarity": 0.7
+}`;
+  };
+
+  const getSearchCurl = () => {
+    return `curl -X POST \\
+  "https://your-domain.com/api/public/data/search?model=${model.name}" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+  "query": "search term or question",
+  "limit": 10,
+  "minSimilarity": 0.7
+}'`;
+  };
+
   return (
     <Section>
       <Stack spacing={6}>
         <Heading as="h1" size="lg">
-          Integrate with {model.name}
+          Public API Integration for {model.name}
         </Heading>
         
         <Text>
-          Use these code snippets to integrate with your {model.name} model.
+          Use these code snippets to integrate with the {model.name} model using public API endpoints.
+          All examples use the query parameter format, but path parameter format is also available.
         </Text>
         
-        {/* View Configuration Copy Tool */}
-        <ViewConfigCopy />
-        
-        {/* Rest of your integration code examples */}
-        {/* ... */}
+        <Card>
+          <CardHeader pb={0}>
+            <Flex align="center" gap={2}>
+              <Persona
+                name="API Reference"
+                size="xs"
+                src=""
+                presence="online"
+              />
+              <Heading size="md">API Integration Guide</Heading>
+            </Flex>
+          </CardHeader>
+          
+          <CardBody>
+            <Tabs isLazy variant="line" colorScheme="brand">
+              <TabList>
+                <Tab><Flex align="center" gap={2}><FilterIcon size={14} /> GET</Flex></Tab>
+                <Tab><Flex align="center" gap={2}><PlusIcon size={14} /> POST</Flex></Tab>
+                <Tab><Flex align="center" gap={2}><RefreshCwIcon size={14} /> PUT</Flex></Tab>
+                <Tab><Flex align="center" gap={2}><CopyIcon size={14} /> DELETE</Flex></Tab>
+                <Tab><Flex align="center" gap={2}><SearchIcon size={14} /> SEARCH</Flex></Tab>
+              </TabList>
+              
+              <TabPanels>
+                {/* GET Tab */}
+                <TabPanel>
+                  <Stack spacing={6}>
+                    <Box>
+                      <Heading size="sm" mb={3}>List Records</Heading>
+                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                        <Box>
+                          <Text fontWeight="medium" mb={2}>Query Parameters</Text>
+                          <CopyableCode 
+                            content={getQueryParams()} 
+                            label="Basic query parameters" 
+                          />
+                        </Box>
+                        <Box>
+                          <Text fontWeight="medium" mb={2}>Filter Parameter (JSON)</Text>
+                          <CopyableCode 
+                            content={getFilterParam()} 
+                            label="Filter parameter" 
+                            language="json"
+                          />
+                        </Box>
+                      </SimpleGrid>
+                      
+                      <Divider my={4} />
+                      
+                      <Text fontWeight="medium" mb={2}>Complete cURL Examples</Text>
+                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                        <CopyableCode 
+                          content={getFullCurl()} 
+                          label="Basic list request" 
+                          language="bash"
+                        />
+                        <CopyableCode 
+                          content={getFilteredCurl()} 
+                          label="Filtered list request" 
+                          language="bash"
+                        />
+                      </SimpleGrid>
+                    </Box>
+                    
+                    <Box>
+                      <Heading size="sm" mb={3}>Get Single Record</Heading>
+                      <CopyableCode 
+                        content={getSingleRecordCurl()} 
+                        label="Get record by ID" 
+                        language="bash"
+                      />
+                    </Box>
+                  </Stack>
+                </TabPanel>
+                
+                {/* POST Tab */}
+                <TabPanel>
+                  <Stack spacing={6}>
+                    <Box>
+                      <Heading size="sm" mb={3}>Create Record</Heading>
+                      <Text fontWeight="medium" mb={2}>Request Body (JSON)</Text>
+                      <CopyableCode 
+                        content={getSampleData()} 
+                        label="Sample data based on your model" 
+                        language="json"
+                      />
+                      
+                      <Divider my={4} />
+                      
+                      <Text fontWeight="medium" mb={2}>Complete cURL Example</Text>
+                      <CopyableCode 
+                        content={getPostCurl()} 
+                        label="Create new record" 
+                        language="bash"
+                      />
+                    </Box>
+                  </Stack>
+                </TabPanel>
+                
+                {/* PUT Tab */}
+                <TabPanel>
+                  <Stack spacing={6}>
+                    <Box>
+                      <Heading size="sm" mb={3}>Update Record</Heading>
+                      <Text fontWeight="medium" mb={2}>Request Body (JSON)</Text>
+                      <CopyableCode 
+                        content={getPutRequestBody()} 
+                        label="Update data" 
+                        language="json"
+                      />
+                      
+                      <Divider my={4} />
+                      
+                      <Text fontWeight="medium" mb={2}>Complete cURL Example</Text>
+                      <CopyableCode 
+                        content={getPutCurl()} 
+                        label="Update record by ID" 
+                        language="bash"
+                      />
+                    </Box>
+                  </Stack>
+                </TabPanel>
+                
+                {/* DELETE Tab */}
+                <TabPanel>
+                  <Stack spacing={6}>
+                    <Box>
+                      <Heading size="sm" mb={3}>Delete Record</Heading>
+                      <Text fontWeight="medium" mb={2}>Complete cURL Example</Text>
+                      <CopyableCode 
+                        content={getDeleteCurl()} 
+                        label="Delete record by ID" 
+                        language="bash"
+                      />
+                    </Box>
+                  </Stack>
+                </TabPanel>
+                
+                {/* SEARCH Tab */}
+                <TabPanel>
+                  <Stack spacing={6}>
+                    <Box>
+                      <Heading size="sm" mb={3}>Search Records</Heading>
+                      <Text fontWeight="medium" mb={2}>Request Body (JSON)</Text>
+                      <CopyableCode 
+                        content={getSearchRequestBody()} 
+                        label="Search parameters" 
+                        language="json"
+                      />
+                      
+                      <Divider my={4} />
+                      
+                      <Text fontWeight="medium" mb={2}>Complete cURL Example</Text>
+                      <CopyableCode 
+                        content={getSearchCurl()} 
+                        label="Search records" 
+                        language="bash"
+                      />
+                    </Box>
+                  </Stack>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </CardBody>
+        </Card>
       </Stack>
     </Section>
   );
