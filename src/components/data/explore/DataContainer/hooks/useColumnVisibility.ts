@@ -8,10 +8,11 @@ interface UseColumnVisibilityProps {
   onConfigChange: (config: any) => void;
 }
 
-interface ColumnInfo {
-  key: string;
-  label: string;
-  visible: boolean;
+interface CustomColumnMeta {
+  isAction?: boolean;
+  visible?: boolean;
+  ratio?: number;
+  [key: string]: any;
 }
 
 export function useColumnVisibility({ 
@@ -32,7 +33,8 @@ export function useColumnVisibility({
       label: col.field.replace(/^_/, '').replace(/_/g, ' ').split(' ')
               .map(word => word.charAt(0).toUpperCase() + word.slice(1))
               .join(' '),
-      visible: col.visible
+      visible: col.visible,
+      ratio: col.ratio // Include ratio if available
     }));
     
     console.log("useColumnVisibility: Available columns:", formattedColumns);
@@ -43,7 +45,12 @@ export function useColumnVisibility({
   const visibleColumns = useMemo(() => {
     if (!currentView || !currentView.config || !currentView.config.columns) return columns;
     
-    // Create a Set for faster lookups
+    // Create a map for faster lookups
+    const columnConfigMap = new Map(
+      currentView.config.columns.map(col => [col.field, col])
+    );
+    
+    // Create a Set for faster lookups of visible columns
     const visibleColumnKeys = new Set(
       currentView.config.columns
         .filter(col => col.visible)
@@ -62,71 +69,130 @@ export function useColumnVisibility({
       console.log("useColumnVisibility: Missing visible columns:", missingVisibleColumns);
       
       // Create column definitions for missing columns (especially system fields)
-      const additionalColumns = missingVisibleColumns.map(field => ({
-        id: field,
-        accessorKey: field,
-        header: field.replace(/^_/, '').replace(/_/g, ' ').split(' ')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ')
-      })) as ColumnDef<Record<string, any>>[];
+      const additionalColumns = missingVisibleColumns.map(field => {
+        const colConfig = columnConfigMap.get(field);
+        return {
+          id: field,
+          accessorKey: field,
+          header: field.replace(/^_/, '').replace(/_/g, ' ').split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' '),
+          meta: {
+            ratio: colConfig?.ratio // Add ratio to column meta if available
+          } as CustomColumnMeta
+        };
+      }) as ColumnDef<Record<string, any>>[];
       
       // Combine with existing columns
       const enhancedColumns = [...columns, ...additionalColumns];
       
-      // Now filter to only include visible columns
+      // Now filter to only include visible columns and add ratio to meta
       return enhancedColumns.filter(col => {
         const columnId = String(col.id || (col as any).accessorKey);
-        return visibleColumnKeys.has(columnId);
+        const isVisible = visibleColumnKeys.has(columnId);
+        
+        // Add ratio to column meta if available
+        if (isVisible) {
+          const colConfig = columnConfigMap.get(columnId);
+          if (colConfig?.ratio !== undefined) {
+            col.meta = {
+              ...(col.meta || {}),
+              ratio: colConfig.ratio
+            };
+          }
+        }
+        
+        return isVisible;
       });
     }
       
-    // Return only visible columns
+    // Return only visible columns with ratio added to meta
     return columns.filter(col => {
       // Handle different column definition types safely
       const columnId = String(col.id || (col as any).accessorKey);
       const isVisible = visibleColumnKeys.has(columnId);
+      
+      // Add ratio to column meta if available
+      if (isVisible) {
+        const colConfig = columnConfigMap.get(columnId);
+        if (colConfig?.ratio !== undefined) {
+          col.meta = {
+            ...(col.meta || {}),
+            ratio: colConfig.ratio
+          };
+        }
+      }
+      
       return isVisible;
     });
   }, [currentView, columns]);
 
-  // Handle column visibility toggle
+  // Handle toggling column visibility
   const handleColumnToggle = useCallback((columnKey: string, isVisible: boolean) => {
-    console.log(`useColumnVisibility: Toggling column ${columnKey} to ${isVisible}`);
+    if (!currentView || !currentView.config) return;
     
-    if (!currentView || !currentView.config) {
-      console.error("useColumnVisibility: Cannot toggle column - no current view or config");
-      return;
+    // Create a copy of the current columns configuration
+    const updatedColumns = [...(currentView.config.columns || [])];
+    
+    // Find the column to update
+    const columnIndex = updatedColumns.findIndex(col => col.field === columnKey);
+    
+    if (columnIndex >= 0) {
+      // Update the visibility of the existing column
+      updatedColumns[columnIndex] = {
+        ...updatedColumns[columnIndex],
+        visible: isVisible
+      };
+    } else {
+      // Add a new column configuration if it doesn't exist
+      updatedColumns.push({
+        field: columnKey,
+        visible: isVisible,
+        width: 150, // Default width
+        format: { type: 'text' },
+        sortable: true,
+        filterable: true
+      });
     }
-
-    // Get current columns config
-    const currentColumns = [...currentView.config.columns];
     
-    // Find and update the column's visibility
-    const updatedColumns = currentColumns.map(col => {
-      if (col.field === columnKey) {
-        console.log(`useColumnVisibility: Updating column ${col.field} visibility to ${isVisible}`);
-        return { ...col, visible: isVisible };
-      }
-      return col;
-    });
-
-    // Create a new config object (to ensure reactivity)
-    const newConfig = {
+    // Update the configuration
+    onConfigChange({
       ...currentView.config,
-      columns: updatedColumns,
-      // Add a timestamp to force detection of changes
-      lastUpdated: new Date().toISOString()
-    };
+      columns: updatedColumns
+    });
+  }, [currentView, onConfigChange]);
 
-    console.log("useColumnVisibility: Calling onConfigChange with new config");
+  // Handle saving column ratios
+  const handleColumnRatioChange = useCallback((columnRatios: Record<string, number>) => {
+    if (!currentView || !currentView.config) return;
     
-    // Notify parent component of the change
-    onConfigChange(newConfig);
+    // Create a copy of the current columns configuration
+    const updatedColumns = [...(currentView.config.columns || [])];
+    
+    // Update ratios for each column
+    Object.entries(columnRatios).forEach(([columnKey, ratio]) => {
+      const columnIndex = updatedColumns.findIndex(col => col.field === columnKey);
+      
+      if (columnIndex >= 0) {
+        // Update the ratio of the existing column
+        updatedColumns[columnIndex] = {
+          ...updatedColumns[columnIndex],
+          ratio
+        };
+      }
+    });
+    
+    // Update the configuration
+    onConfigChange({
+      ...currentView.config,
+      columns: updatedColumns
+    });
   }, [currentView, onConfigChange]);
 
   return {
     allAvailableColumns,
     visibleColumns,
-    handleColumnToggle
+    handleColumnToggle,
+    handleColumnRatioChange
   };
 } 

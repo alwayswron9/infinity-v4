@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 interface CustomColumnMeta {
   isAction?: boolean;
   visible?: boolean;
+  ratio?: number; // Add support for custom column ratio
   [key: string]: any;
 }
 
@@ -63,8 +64,14 @@ export function useColumnWidths(
       default: 1.5     // Default for text columns - give them reasonable space
     };
     
-    // Assign weights to content columns
+    // Assign weights to content columns, prioritizing custom ratios if available
     const columnWeights = contentColumns.map(col => {
+      // Check if column has a custom ratio defined
+      const customRatio = (col.meta as CustomColumnMeta)?.ratio;
+      if (customRatio !== undefined) {
+        return customRatio;
+      }
+      
       const columnId = String(col.id || '').toLowerCase();
       
       if (columnId.includes('id') || columnId.startsWith('_')) return columnTypeWeights.id;

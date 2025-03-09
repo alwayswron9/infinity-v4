@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { viewService } from '@/lib/services/viewService';
 import type { ModelView, ViewConfig } from '@/types/viewDefinition';
 import useViewStore from '@/lib/stores/viewStore';
@@ -26,7 +26,7 @@ interface UseViewManagementReturn {
   currentView: ModelView | undefined;
   loading: boolean;
   error: string | null;
-  handleViewSelect: (viewId: string) => void;
+  handleViewSelect: (viewId: string, onViewSelected?: () => void) => void;
   handleCreateView: () => void;
   handleEditView: (viewId: string) => void;
   handleDeleteView: (viewId: string) => Promise<void>;
@@ -39,6 +39,9 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
   const [isEditing, setIsEditing] = useState(false);
   const [editingView, setEditingView] = useState<ModelView | undefined>();
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  
+  // Track last refresh time
+  const lastRefreshTimeRef = useRef<number>(0);
 
   const {
     views,
@@ -64,7 +67,20 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
     if (!modelId) return;
     
     const loadViewsData = async () => {
+      // Skip if we've already loaded views
       if (hasInitialLoad) return;
+      
+      // Check if we've refreshed too recently (within 2 seconds)
+      const now = Date.now();
+      if (now - lastRefreshTimeRef.current < 2000) {
+        console.log('useViewManagement: Skipping refresh - too soon since last refresh');
+        return;
+      }
+      
+      // Update last refresh time
+      lastRefreshTimeRef.current = now;
+      
+      console.log('useViewManagement: Loading views for model:', modelId);
       
       let loadingToastId: string | number | null = null;
       let toastTimeoutId: NodeJS.Timeout | null = null;
@@ -197,8 +213,13 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
     loadViewsData();
   }, [modelId]);
 
-  const handleViewSelect = (viewId: string) => {
+  const handleViewSelect = (viewId: string, onViewSelected?: () => void) => {
     setActiveView(viewId);
+    
+    // Call the callback if provided, to refresh data with the new view's filters and sorting
+    if (onViewSelected) {
+      onViewSelected();
+    }
   };
 
   // Helper to generate a unique view name
@@ -310,11 +331,15 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
       setEditingView(newView);
       setIsEditing(true);
 
+      // Dismiss the loading toast before showing success
+      toast.dismiss(loadingToast);
       toast.success('New view created successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create view';
       setError(errorMessage);
       console.error('Error creating view:', error);
+      // Dismiss the loading toast before showing error
+      toast.dismiss(loadingToast);
       toast.error(errorMessage);
       
       // Reset editing state on error
@@ -351,10 +376,14 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
           setActiveView(null);
         }
       }
+      // Dismiss the loading toast before showing success
+      toast.dismiss(loadingToast);
       toast.success('View deleted successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
       setError(errorMessage);
+      // Dismiss the loading toast before showing error
+      toast.dismiss(loadingToast);
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -374,13 +403,17 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
       setLoading(true);
       let savedView: ModelView;
       
-      // Check if a view with this name already exists
-      const existingView = safeViews.find(v => v.name === formData.name);
+      console.log("useViewManagement: handleSaveView called with formData:", formData);
+      console.log("useViewManagement: Current editingView:", editingView);
+      console.log("useViewManagement: Current activeView:", activeView);
       
-      if (editingView?.id || existingView?.id) {
-        // Update existing view
-        const viewId = editingView?.id || existingView?.id;
+      // If we have an active view ID or editing view ID, we're updating an existing view
+      if (editingView?.id || activeView) {
+        // Update existing view - prioritize the editing view ID, then fall back to active view ID
+        const viewId = editingView?.id || activeView;
         if (!viewId) throw new Error('View ID not found');
+        
+        console.log(`useViewManagement: Updating existing view with ID: ${viewId}`);
         
         savedView = await viewService.updateView(
           modelId,
@@ -395,9 +428,13 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         );
         updateView(viewId, savedView);
         setActiveView(savedView.id);
+        // Dismiss the loading toast before showing success
+        toast.dismiss(loadingToast);
         toast.success('View updated successfully');
       } else {
         // Create new view
+        console.log("useViewManagement: Creating new view");
+        
         savedView = await viewService.createView(
           modelId,
           formData.name,
@@ -410,11 +447,15 @@ export function useViewManagement({ modelId }: UseViewManagementOptions): UseVie
         if (savedView.id) {
           setActiveView(savedView.id);
         }
+        // Dismiss the loading toast before showing success
+        toast.dismiss(loadingToast);
         toast.success('View created successfully');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save view';
       setError(errorMessage);
+      // Dismiss the loading toast before showing error
+      toast.dismiss(loadingToast);
       toast.error(errorMessage);
     } finally {
       setLoading(false);

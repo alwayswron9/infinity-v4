@@ -44,7 +44,7 @@ export function Calendar({
         day: cn(
           "h-9 w-9 p-0 font-normal",
           "inline-flex items-center justify-center rounded-md text-sm",
-          "aria-selected:opacity-100 aria-selected:bg-primary aria-selected:text-primary-foreground",
+          "aria-selected:opacity-100 aria-selected:bg-brand-primary aria-selected:text-white",
           "hover:bg-surface-hover hover:text-text-primary",
           "focus:bg-surface-hover focus:text-text-primary focus:outline-none"
         ),
@@ -52,7 +52,7 @@ export function Calendar({
         day_outside: "text-text-secondary opacity-50",
         day_disabled: "text-text-disabled",
         day_range_middle: "aria-selected:bg-surface aria-selected:text-text-primary",
-        day_selected: "bg-primary text-primary-foreground",
+        day_selected: "bg-brand-primary text-white",
         day_hidden: "invisible",
         ...classNames,
       }}

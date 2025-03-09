@@ -8,7 +8,7 @@ import {
   DrawerCloseButton,
   Box
 } from '@chakra-ui/react';
-import { ModelDataForm } from '@/components/models/ModelDataForm';
+import { SaasUIModelDataForm } from '@/components/models/SaasUIModelDataForm';
 
 interface AddDataDrawerProps {
   isOpen: boolean;
@@ -40,10 +40,11 @@ export function AddDataDrawer({
         </DrawerHeader>
         <DrawerBody p={6}>
           <Box>
-            <ModelDataForm
+            <SaasUIModelDataForm
               model={modelDefinition}
               onSubmit={onSubmit}
               onCancel={onClose}
+              submitButtonText="Add Data"
             />
           </Box>
         </DrawerBody>

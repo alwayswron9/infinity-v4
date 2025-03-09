@@ -9,7 +9,7 @@ import {
   DrawerCloseButton,
   Flex
 } from '@chakra-ui/react';
-import { ModelDataForm } from '@/components/models/ModelDataForm';
+import { SaasUIModelDataForm } from '@/components/models/SaasUIModelDataForm';
 
 interface RecordDrawerProps {
   isOpen: boolean;
@@ -56,7 +56,7 @@ export function RecordDrawer({
             </Button>
           </Flex>
           
-          <ModelDataForm
+          <SaasUIModelDataForm
             model={model}
             initialData={record || undefined}
             onSubmit={onSubmit}

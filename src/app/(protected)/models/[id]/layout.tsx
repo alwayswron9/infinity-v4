@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, createContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname, useParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { 
@@ -28,18 +28,8 @@ import {
 
 import { ModelDefinition } from '@/types/modelDefinition';
 
-// Create a context to share model data with child components
-export const ModelContext = createContext<{
-  model: ModelDefinition | null;
-  modelId: string;
-  loading: boolean;
-  refreshModel: () => Promise<void>;
-}>({
-  model: null,
-  modelId: '',
-  loading: false,
-  refreshModel: async () => {},
-});
+// Import the ModelContextProvider from explore/components
+import { ModelContextProvider } from './explore/components/ModelContext';
 
 /**
  * ModelDetailsLayout - Layout component for model detail pages
@@ -171,23 +161,15 @@ export default function ModelDetailsLayout({ children }: { children: React.React
       <Box minH="calc(100vh - 220px)" py={6}>
         <Container maxW="container.xl">
           <Flex justify="center" align="center" py={16}>
-            <Spinner color="primary.500" size="xl" />
+            <Spinner color="brand.500" size="xl" />
           </Flex>
         </Container>
       </Box>
     );
   }
   
-  // Create context value to share with children
-  const contextValue = {
-    model,
-    modelId,
-    loading,
-    refreshModel: fetchModel,
-  };
-  
   return (
-    <ModelContext.Provider value={contextValue}>
+    <ModelContextProvider>
       <Box minH="calc(100vh - 220px)" py={6}>
         <Container maxW="container.xl">
           {/* Model Header */}
@@ -212,7 +194,7 @@ export default function ModelDetailsLayout({ children }: { children: React.React
                 </Button>
                 <Button
                   size="md"
-                  colorScheme="primary"
+                  colorScheme="brand"
                   leftIcon={<Icon as={PlusIcon} boxSize={4} />}
                   onClick={handleAddData}
                 >
@@ -226,7 +208,7 @@ export default function ModelDetailsLayout({ children }: { children: React.React
           <Tabs 
             index={activeTab} 
             onChange={handleTabChange}
-            colorScheme="primary"
+            colorScheme="brand"
             mb={6}
           >
             <TabList>
@@ -250,11 +232,11 @@ export default function ModelDetailsLayout({ children }: { children: React.React
               </Tab>
             </TabList>
           </Tabs>
-          
-          {/* Children render here (actual page content) */}
+
+          {/* Page Content */}
           {children}
         </Container>
       </Box>
-    </ModelContext.Provider>
+    </ModelContextProvider>
   );
 } 

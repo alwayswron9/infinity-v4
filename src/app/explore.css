@@ -23,6 +23,20 @@
   background-color: var(--chakra-colors-gray-700);
 }
 
+/* Refresh button animation */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rotate-animation {
+  animation: rotate 1s linear infinite;
+}
+
 /* Utility classes that might be needed */
 .cursor-pointer {
   cursor: pointer;

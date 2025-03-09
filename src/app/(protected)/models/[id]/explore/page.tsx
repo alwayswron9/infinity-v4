@@ -1,18 +1,11 @@
 "use client";
 
-import { useState, useEffect, useContext, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { toast } from 'sonner';
-import { 
-  Box, 
-  Flex, 
-  Spinner,
-  useDisclosure,
-} from '@chakra-ui/react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Box, useDisclosure, Flex, Spinner, Text } from '@chakra-ui/react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { Section } from '@/components/layout/Section';
-import { ModelContext } from '../layout';
 import { useModelData } from '@/hooks/useModelData';
 import { useViewManagement } from '@/hooks/useViewManagement';
 import useViewStore from '@/lib/stores/viewStore';
@@ -22,12 +15,32 @@ import { DataContainer } from '@/components/data/explore/DataContainer';
 import { AddDataDrawer } from '@/components/data/explore/AddDataDrawer';
 import { RecordDrawer } from '@/components/data/explore/RecordDrawer';
 
+// Import our modular handlers
+import { 
+  createRefreshDataHandler,
+  createPaginationHandler,
+  createDeleteRowHandler,
+  createSubmitDataHandler,
+  createUpdateRecordHandler,
+  createClearDataHandler,
+  createCopyModelDetailsHandler
+} from './components/DataHandlers';
+
+import {
+  createConfigChangeHandler,
+  createSaveChangesHandler,
+  createViewNameEditHandler,
+  createRowClickHandler,
+  GenericModelView
+} from './components/ViewHandlers';
+
+import { useModelContext } from './components/ModelContext';
+
 export default function ExplorePage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   
   // Use the shared model context
-  const { model, modelId, loading: modelLoading, refreshModel } = useContext(ModelContext);
+  const { model, modelId, loading: modelLoading, error: modelError } = useModelContext();
   
   // Record editing state
   const [currentRecord, setCurrentRecord] = useState<Record<string, any> | null>(null);
@@ -37,6 +50,12 @@ export default function ExplorePage() {
   // For view name editing
   const [editedName, setEditedName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState(false);
+  
+  // Custom handler for setting edited name to prevent unnecessary updates
+  const handleSetEditedName = useCallback((name: string) => {
+    console.log("ExplorePage: Setting editedName:", name);
+    setEditedName(name);
+  }, []);
   
   // Drawers state
   const { isOpen: isAddDataOpen, onOpen: onAddDataOpen, onClose: onAddDataClose } = useDisclosure();
@@ -55,6 +74,13 @@ export default function ExplorePage() {
   } = useModelData({
     modelId: modelId || '',
   });
+  
+  // Reference to track if we should skip the next refresh
+  const skipNextRefreshRef = useRef(false);
+  // Track if a manual refresh is in progress
+  const isManualRefreshingRef = useRef(false);
+  // Track the last refresh time
+  const lastRefreshTimeRef = useRef(Date.now());
   
   // Get views from the store directly to ensure consistent state
   const views = useViewStore(state => state.views) || [];
@@ -77,6 +103,112 @@ export default function ExplorePage() {
     modelId: modelId || '' 
   });
   
+  // Update editedName when currentView changes, but only if we're not in editing mode
+  useEffect(() => {
+    if (currentView && !isEditingName) {
+      console.log("ExplorePage: Updating editedName from currentView:", currentView.name);
+      setEditedName(currentView.name);
+    }
+  }, [currentView, isEditingName]);
+  
+  // Create handler functions using our factory functions
+  const handleRefreshData = useCallback(
+    createRefreshDataHandler({
+      modelId,
+      pagination,
+      loadModelData
+    }),
+    [modelId, pagination, loadModelData]
+  );
+  
+  const handlePaginationChange = useCallback(
+    createPaginationHandler({
+      pagination,
+      loadModelData,
+      setPagination
+    }),
+    [pagination, loadModelData, setPagination]
+  );
+  
+  const handleConfigChange = useCallback(
+    createConfigChangeHandler({
+      currentView: currentView as GenericModelView | null,
+      handleViewConfigChange,
+      setIsEditing
+    }),
+    [currentView, handleViewConfigChange, setIsEditing]
+  );
+  
+  const handleSaveChanges = useCallback(
+    createSaveChangesHandler({
+      currentView: currentView as GenericModelView | null,
+      handleSaveView: handleSaveView as (view: Partial<GenericModelView>) => Promise<void>,
+      editedName
+    }),
+    [currentView, handleSaveView, editedName]
+  );
+  
+  const handleViewNameEdit = useCallback(
+    createViewNameEditHandler({
+      setEditedName: handleSetEditedName,
+      setIsEditingName,
+      setIsEditing
+    }),
+    [handleSetEditedName, setIsEditingName, setIsEditing]
+  );
+  
+  const handleRowClick = useCallback(
+    createRowClickHandler({
+      setCurrentRecord,
+      setIsEditMode,
+      onRecordDrawerOpen
+    }),
+    [setCurrentRecord, setIsEditMode, onRecordDrawerOpen]
+  );
+  
+  const handleDeleteRow = useCallback(
+    createDeleteRowHandler({
+      modelId,
+      handleRefreshData
+    }),
+    [modelId, handleRefreshData]
+  );
+  
+  const handleSubmitData = useCallback(
+    createSubmitDataHandler({
+      modelId,
+      handleRefreshData,
+      onAddDataClose
+    }),
+    [modelId, handleRefreshData, onAddDataClose]
+  );
+  
+  const handleUpdateRecord = useCallback(
+    createUpdateRecordHandler({
+      modelId,
+      handleRefreshData,
+      onRecordDrawerClose,
+      currentRecord
+    }),
+    [modelId, handleRefreshData, onRecordDrawerClose, currentRecord]
+  );
+  
+  const handleClearData = useCallback(
+    createClearDataHandler({
+      modelId,
+      handleRefreshData
+    }),
+    [modelId, handleRefreshData]
+  );
+  
+  const handleCopyModelDetails = useCallback(
+    createCopyModelDetailsHandler({
+      model,
+      setCopyingDetails
+    }),
+    [model, setCopyingDetails]
+  );
+  
   // Create columns for the data table
   const columns = useMemo(() => {
     if (!availableColumns) return [];
@@ -89,12 +221,13 @@ export default function ExplorePage() {
     })) as ColumnDef<Record<string, any>>[];
   }, [availableColumns]);
   
-  // Load data when modelId changes
-  useEffect(() => {
-    if (modelId) {
-      loadModelData(1, 10);
-    }
-  }, [modelId, loadModelData]);
+  // Create a wrapper for handleViewSelect that also refreshes data
+  const handleViewSelectWithRefresh = useCallback(
+    (viewId: string) => {
+      handleViewSelect(viewId, handleRefreshData);
+    },
+    [handleViewSelect, handleRefreshData]
+  );
   
   // Check for action=add in URL query params
   useEffect(() => {
@@ -105,187 +238,24 @@ export default function ExplorePage() {
       window.history.replaceState({}, '', newUrl);
     }
   }, [searchParams, model, onAddDataOpen]);
-  
-  // Handle pagination change
-  const handlePaginationChange = (pageIndex: number, pageSize: number) => {
-    setPagination({
-      pageIndex,
-      pageSize,
-      pageCount: Math.ceil((pagination?.total || 0) / pageSize),
-      total: pagination?.total || 0
-    });
-    loadModelData(pageIndex + 1, pageSize);
-  };
-  
-  // Handle config change
-  const handleConfigChange = (config: any) => {
-    console.log("ExplorePage: handleConfigChange called with config:", config);
-    
-    if (!currentView) {
-      console.error("ExplorePage: Cannot change config - no current view");
-      return;
-    }
-    
-    console.log("ExplorePage: Calling handleViewConfigChange");
-    handleViewConfigChange(config);
-    
-    // Set isEditing flag to ensure Save button appears when config changes
-    console.log("ExplorePage: Setting isEditing to true");
-    setIsEditing(true);
-  };
-  
-  // Handle save view changes
-  const handleSaveChanges = async () => {
-    if (!currentView) return;
-    
-    try {
-      await handleSaveView({
-        ...currentView,
-        name: editedName || currentView.name
-      });
-      
-      toast.success('View saved successfully');
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-  
-  // Handle view name edit
-  const handleViewNameEdit = (newName: string) => {
-    setEditedName(newName);
-    setIsEditingName(true);
-    // Also set the main isEditing flag to ensure Save button appears
-    setIsEditing(true);
-  };
-  
-  // Handle row click
-  const handleRowClick = (row: Record<string, any>) => {
-    setCurrentRecord(row);
-    setIsEditMode(false);
-    onRecordDrawerOpen();
-  };
-  
-  // Handle delete row
-  const handleDeleteRow = async (row: Record<string, any>) => {
-    if (!model || !row.id) return;
-    
-    try {
-      const response = await fetch(`/api/data/${modelId}/${row.id}`, {
-        method: 'DELETE'
-      });
-      
-      if (!response.ok) throw new Error('Failed to delete record');
-      
-      toast.success('Record deleted successfully');
-      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
-      refreshModel(); // Refresh model data in context to update record count
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-  
-  // Handle add data
-  const handleSubmitData = async (data: Record<string, any>) => {
-    if (!model) return;
-    
-    try {
-      const response = await fetch(`/api/data/${modelId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fields: data }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to add data');
-      }
-      
-      toast.success('Data added successfully');
-      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
-      onAddDataClose();
-      refreshModel(); // Refresh the model data in context
-      return Promise.resolve();
-    } catch (error: any) {
-      toast.error(error.message);
-      return Promise.reject(error);
-    }
-  };
-  
-  // Handle update record
-  const handleUpdateRecord = async (data: Record<string, any>) => {
-    if (!model || !currentRecord?.id) return;
-    
-    try {
-      const response = await fetch(`/api/data/${modelId}/${currentRecord.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fields: data }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to update record');
-      }
-      
-      toast.success('Record updated successfully');
-      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
-      onRecordDrawerClose();
-      return Promise.resolve();
-    } catch (error: any) {
-      toast.error(error.message);
-      return Promise.reject(error);
-    }
-  };
-  
-  // Handle clear data
-  const handleClearData = async () => {
-    if (!model) return;
-    
-    try {
-      const response = await fetch(`/api/data/${modelId}/clear`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) throw new Error('Failed to clear data');
-      
-      toast.success('All data cleared successfully');
-      loadModelData(pagination.pageIndex + 1, pagination.pageSize);
-      refreshModel(); // Refresh model data in context
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-  
-  // Handle copy model details
-  const handleCopyModelDetails = async () => {
-    if (!model) return;
-    
-    setCopyingDetails(true);
-    try {
-      // Create a formatted string with model details
-      const detailsText = `Model: ${model.name}
-ID: ${model.id}
-Description: ${model.description || 'N/A'}
-Fields: ${Object.keys(model.fields || {}).join(', ')}`;
-      
-      await navigator.clipboard.writeText(detailsText);
-      toast.success('Model details copied to clipboard');
-    } catch (error) {
-      toast.error('Failed to copy details');
-    } finally {
-      setCopyingDetails(false);
-    }
-  };
-  
-  // Early return if model is loading
-  if (modelLoading || !model) {
+
+  // Show loading state if model is loading
+  if (modelLoading) {
     return (
       <Flex justify="center" align="center" py={16}>
-        <Spinner color="primary.500" size="xl" />
+        <Spinner color="brand.500" size="xl" />
+      </Flex>
+    );
+  }
+
+  // Show error state if there's an error loading the model
+  if (modelError || !model) {
+    return (
+      <Flex direction="column" justify="center" align="center" py={16}>
+        <Text fontSize="lg" color="red.500" mb={4}>
+          {modelError || 'Failed to load model data'}
+        </Text>
+        <Text>Please try refreshing the page or contact support if the issue persists.</Text>
       </Flex>
     );
   }
@@ -312,17 +282,18 @@ Fields: ${Object.keys(model.fields || {}).join(', ')}`;
           onEditRow={handleRowClick}
           onDeleteRow={handleDeleteRow}
           onCreateView={handleCreateView}
-          onViewSelect={handleViewSelect}
+          onViewSelect={handleViewSelectWithRefresh}
           onDeleteView={handleDeleteView}
           onAddData={onAddDataOpen}
           onCopyModelDetails={handleCopyModelDetails}
           onClearData={handleClearData}
+          onRefreshData={handleRefreshData}
           onViewNameEdit={handleViewNameEdit}
           copyingDetails={copyingDetails}
           editedName={editedName}
           isEditingName={isEditingName}
           setEditingName={setIsEditingName}
-          setEditedName={setEditedName}
+          setEditedName={handleSetEditedName}
         />
       </Section>
       

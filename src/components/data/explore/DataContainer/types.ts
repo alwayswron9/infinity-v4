@@ -24,6 +24,7 @@ export interface DataContainerProps {
   onAddData: () => void;
   onCopyModelDetails: () => void;
   onClearData: () => void;
+  onRefreshData: () => void;
   onViewNameEdit?: (newName: string) => void;
   copyingDetails?: boolean;
   editedName?: string;
@@ -36,7 +37,8 @@ export type DataHeaderProps = Pick<DataContainerProps,
   'currentView' | 'hasUnsavedChanges' | 'activeViewId' | 'views' |
   'onSave' | 'onCreateView' | 'onViewSelect' | 'onDeleteView' | 
   'onCopyModelDetails' | 'copyingDetails' | 'editedName' | 
-  'isEditingName' | 'setEditingName' | 'setEditedName' | 'onViewNameEdit'> & {
+  'isEditingName' | 'setEditingName' | 'setEditedName' | 'onViewNameEdit' |
+  'onRefreshData' | 'isLoadingData'> & {
   viewName: string;
   editing: boolean;
   setEditing: (editing: boolean) => void;
@@ -50,14 +52,13 @@ export type DataHeaderProps = Pick<DataContainerProps,
 export type DataTableProps = Pick<DataContainerProps, 
   'data' | 'isLoadingData' | 'currentView' | 'onEditRow' | 'onDeleteRow'> & {
   visibleColumns: ColumnDef<Record<string, any>>[];
+  onColumnRatioChange?: (columnRatios: Record<string, number>) => void;
 };
 
-export type DataFooterProps = Pick<DataContainerProps, 'pagination' | 'onPaginationChange'> & {
-  pageSizeOptions: number[];
-};
+export type DataFooterProps = Pick<DataContainerProps, 'pagination' | 'onPaginationChange' | 'isLoadingData'>;
 
 export type DataDrawersProps = Pick<DataContainerProps, 
-  'currentView' | 'onConfigChange' | 'onClearData'> & {
+  'currentView' | 'onConfigChange' | 'onClearData' | 'onRefreshData'> & {
   isFilterDrawerOpen: boolean;
   onCloseFilterDrawer: () => void;
   isClearDataDialogOpen: boolean;
