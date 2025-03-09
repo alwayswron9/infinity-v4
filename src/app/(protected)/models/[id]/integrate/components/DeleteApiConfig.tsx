@@ -16,12 +16,12 @@ import { CopyableCode } from './CopyableCode';
 export function DeleteApiConfig() {
   const { model, modelId } = useModelContext();
   
-  const getDeleteExample = () => {
-    return `// Example DELETE request to remove a record
-fetch('/api/data/${modelId}?id=record-id-1', {
+  const getDeletePathExample = () => {
+    return `// Example DELETE request to remove a record using path parameters
+fetch('/api/public/data/${model.name}/record-id-1', {
   method: 'DELETE',
   headers: {
-    'Authorization': 'Bearer YOUR_API_KEY'
+    'X-API-Key': 'YOUR_API_KEY'
   }
 })
 .then(response => {
@@ -35,10 +35,10 @@ fetch('/api/data/${modelId}?id=record-id-1', {
 .catch(error => console.error('Error:', error));`;
   };
 
-  const getCurlExample = () => {
+  const getDeletePathCurl = () => {
     return `curl -X DELETE \\
-  "https://your-domain.com/api/data/${modelId}?id=record-id-1" \\
-  -H "Authorization: Bearer YOUR_API_KEY"`;
+  "https://your-domain.com/api/public/data/${model.name}/record-id-1" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
   };
 
   const getResponseExample = () => {
@@ -60,7 +60,6 @@ fetch('/api/data/${modelId}?id=record-id-1', {
       >
         <Text>
           DELETE operations are permanent and cannot be undone. Always confirm with the user before deleting records.
-          The record ID must be included as a query parameter.
         </Text>
       </Banner>
       
@@ -74,8 +73,8 @@ fetch('/api/data/${modelId}?id=record-id-1', {
         <TabPanels>
           <TabPanel>
             <CopyableCode 
-              content={getDeleteExample()} 
-              label="JavaScript fetch example" 
+              content={getDeletePathExample()} 
+              label="JavaScript fetch example with path parameters" 
               language="javascript"
             />
             <Text mt={4} fontSize="sm" color="gray.500">
@@ -84,8 +83,8 @@ fetch('/api/data/${modelId}?id=record-id-1', {
           </TabPanel>
           <TabPanel>
             <CopyableCode 
-              content={getCurlExample()} 
-              label="cURL example" 
+              content={getDeletePathCurl()} 
+              label="cURL example with path parameters" 
               language="bash"
             />
           </TabPanel>

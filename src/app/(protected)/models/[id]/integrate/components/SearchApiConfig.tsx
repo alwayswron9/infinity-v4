@@ -27,31 +27,12 @@ export function SearchApiConfig() {
   };
   
   const getPrivateSearchExample = () => {
-    return `// Example search request
+    return `// Example search request to private API
 fetch('/api/data/${modelId}/search', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer YOUR_API_KEY'
-  },
-  body: JSON.stringify({
-    query: "search term or question",
-    limit: 10,
-    minSimilarity: 0.7
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data))
-.catch(error => console.error('Error:', error));`;
-  };
-
-  const getPublicSearchExample = () => {
-    return `// Example public search request with query parameters
-fetch('/api/public/data/search?model=${model.name}', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'YOUR_PUBLIC_API_KEY'
   },
   body: JSON.stringify({
     query: "search term or question",
@@ -87,18 +68,6 @@ fetch('/api/public/data/${model.name}/search', {
     return `curl -X POST \\
   "https://your-domain.com/api/data/${modelId}/search" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-  "query": "search term or question",
-  "limit": 10,
-  "minSimilarity": 0.7
-}'`;
-  };
-
-  const getPublicSearchCurlExample = () => {
-    return `curl -X POST \\
-  "https://your-domain.com/api/public/data/search?model=${model.name}" \\
-  -H "X-API-Key: YOUR_PUBLIC_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
   "query": "search term or question",
@@ -196,57 +165,23 @@ fetch('/api/public/data/${model.name}/search', {
           <TabPanel>
             <Tabs variant="enclosed">
               <TabList>
-                <Tab>Query Parameters</Tab>
-                <Tab>Path Parameters</Tab>
+                <Tab>JavaScript</Tab>
+                <Tab>cURL</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <Tabs variant="enclosed">
-                    <TabList>
-                      <Tab>JavaScript</Tab>
-                      <Tab>cURL</Tab>
-                    </TabList>
-                    <TabPanels>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicSearchExample()} 
-                          label="Public API search with query parameters" 
-                          language="javascript"
-                        />
-                      </TabPanel>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicSearchCurlExample()} 
-                          label="cURL example" 
-                          language="bash"
-                        />
-                      </TabPanel>
-                    </TabPanels>
-                  </Tabs>
+                  <CopyableCode 
+                    content={getPublicPathSearchExample()} 
+                    label="Public API search with path parameters" 
+                    language="javascript"
+                  />
                 </TabPanel>
                 <TabPanel>
-                  <Tabs variant="enclosed">
-                    <TabList>
-                      <Tab>JavaScript</Tab>
-                      <Tab>cURL</Tab>
-                    </TabList>
-                    <TabPanels>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicPathSearchExample()} 
-                          label="Public API search with path parameters" 
-                          language="javascript"
-                        />
-                      </TabPanel>
-                      <TabPanel>
-                        <CopyableCode 
-                          content={getPublicPathSearchCurlExample()} 
-                          label="cURL example" 
-                          language="bash"
-                        />
-                      </TabPanel>
-                    </TabPanels>
-                  </Tabs>
+                  <CopyableCode 
+                    content={getPublicPathSearchCurlExample()} 
+                    label="cURL example" 
+                    language="bash"
+                  />
                 </TabPanel>
               </TabPanels>
             </Tabs>
@@ -257,9 +192,6 @@ fetch('/api/public/data/${model.name}/search', {
               label="Example response" 
               language="json"
             />
-            <Text mt={4} fontSize="sm" color="gray.500">
-              The response includes a similarity score for each result, indicating how closely it matches the query.
-            </Text>
           </TabPanel>
         </TabPanels>
       </Tabs>
