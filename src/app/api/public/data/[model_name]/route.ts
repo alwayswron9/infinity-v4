@@ -51,23 +51,23 @@ export async function GET(
         return NextResponse.json({
           success: true,
           data: recordsWithoutVectors,
-          meta: {
-            page,
-            limit,
-            total,
-            totalPages: Math.ceil(total / limit),
-            hasNextPage: page * limit < total,
-            hasPreviousPage: page > 1
-          }
+          meta: { page, limit, total }
         });
       }
     } catch (error: any) {
       console.error('Error fetching record(s):', error);
-      return NextResponse.json({
-        success: false,
-        error: error.message || 'Failed to fetch record(s)',
-        details: error.details || null
-      }, { status: error.status || 500 });
+      return NextResponse.json(
+        { 
+          success: false,
+          error: error.message || 'Failed to fetch record(s)',
+          details: {
+            code: error.code,
+            fields: error.fields,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          }
+        },
+        { status: error.status || 500 }
+      );
     }
   }, { params });
 }
@@ -241,7 +241,74 @@ export async function PUT(
     } catch (error: any) {
       console.error('Error updating record:', error);
       return NextResponse.json(
-        { error: error.message || 'Failed to update record' },
+        { 
+          success: false,
+          error: error.message || 'Failed to update record',
+          details: {
+            code: error.code,
+            fields: error.fields,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          }
+        },
+        { status: error.status || 500 }
+      );
+    }
+  }, { params });
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: ModelRouteContext
+): Promise<Response> {
+  const params = await context.params;
+  return withPublicApiKey(request, async (req) => {
+    try {
+      const { model_name } = params;
+      const { user_id } = req.apiKey;
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
+
+      const model = await modelService.getModelDefinitionByName(model_name, user_id);
+      const dataService = new PostgresDataService(model);
+
+      // Single record partial update
+      if (!id) {
+        return NextResponse.json(
+          { error: 'Record ID is required' },
+          { status: 400 }
+        );
+      }
+
+      // Get the current record to merge with partial updates
+      const currentRecord = await dataService.getRecord(id);
+      
+      // Get the partial update data
+      const partialUpdate = await req.json();
+      
+      // Remove any vector data from the input
+      const { _vector, ...updateData } = partialUpdate;
+      
+      // Update the record with the partial data
+      const record = await dataService.updateRecord(id, updateData);
+
+      // Exclude vector data from response
+      const { _vector: responseVector, ...recordWithoutVector } = record;
+      return NextResponse.json({ 
+        success: true, 
+        data: recordWithoutVector 
+      });
+    } catch (error: any) {
+      console.error('Error updating record:', error);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: error.message || 'Failed to update record',
+          details: {
+            code: error.code,
+            fields: error.fields,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          }
+        },
         { status: error.status || 500 }
       );
     }
@@ -268,18 +335,23 @@ export async function DELETE(
       }
 
       const model = await modelService.getModelDefinitionByName(model_name, user_id);
-
       const dataService = new PostgresDataService(model);
 
       await dataService.deleteRecord(id);
-      return NextResponse.json(
-        { success: true },
-        { status: 200 }
-      );
+
+      return new NextResponse(null, { status: 204 });
     } catch (error: any) {
       console.error('Error deleting record:', error);
       return NextResponse.json(
-        { error: error.message || 'Failed to delete record' },
+        { 
+          success: false,
+          error: error.message || 'Failed to delete record',
+          details: {
+            code: error.code,
+            fields: error.fields,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          }
+        },
         { status: error.status || 500 }
       );
     }

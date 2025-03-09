@@ -195,6 +195,44 @@ export async function PUT(request: NextRequest) {
   }, { params: {} });
 }
 
+export async function PATCH(request: NextRequest) {
+  return withPublicApiKey(request, async (authReq) => {
+    try {
+      const { searchParams } = new URL(request.url);
+      const modelName = searchParams.get('model');
+      const recordId = searchParams.get('id');
+
+      if (!modelName) {
+        return createErrorResponse('Model name is required', 400);
+      }
+
+      if (!recordId) {
+        return createErrorResponse('Record ID is required', 400);
+      }
+
+      // Get model definition by name
+      const model = await modelService.getModelDefinitionByName(modelName, authReq.apiKey.user_id);
+
+      // Initialize data service
+      const dataService = new PostgresDataService(model);
+
+      // Get the current record to merge with partial updates
+      const currentRecord = await dataService.getRecord(recordId);
+      
+      // Get the partial update data
+      const partialUpdate = await authReq.json();
+      
+      // Update the record with the partial data
+      const record = await dataService.updateRecord(recordId, partialUpdate);
+
+      return NextResponse.json({ success: true, data: record });
+    } catch (error: any) {
+      console.error('Error updating record:', error);
+      return createErrorResponse(error.message || 'Failed to update record', error.status || 500);
+    }
+  }, { params: {} });
+}
+
 export async function DELETE(request: NextRequest) {
   return withPublicApiKey(request, async (authReq) => {
     try {
