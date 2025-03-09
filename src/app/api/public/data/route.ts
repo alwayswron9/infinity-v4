@@ -82,12 +82,8 @@ export async function POST(request: NextRequest) {
         
         for (let i = 0; i < body.length; i++) {
           try {
-            // Validate nested fields structure for each item
-            if (!body[i].fields || typeof body[i].fields !== 'object') {
-              throw new Error('Each item must contain a fields object');
-            }
-            
-            const record = await dataService.createRecord(body[i].fields);
+            // Accept direct data without requiring fields wrapper
+            const record = await dataService.createRecord(body[i]);
             results.push(record);
           } catch (error: any) {
             errors.push({
@@ -109,13 +105,8 @@ export async function POST(request: NextRequest) {
           }
         }, { status: errors.length === 0 ? 201 : 207 });
       } else {
-        // Single record creation (existing functionality)
-        // Validate nested fields structure
-        if (!body.fields || typeof body.fields !== 'object') {
-          return createErrorResponse('Request body must contain a fields object', 400);
-        }
-
-        const record = await dataService.createRecord(body.fields);
+        // Single record creation - accept direct data without requiring fields wrapper
+        const record = await dataService.createRecord(body);
         return NextResponse.json({ success: true, data: record }, { status: 201 });
       }
     } catch (error: any) {
@@ -159,17 +150,13 @@ export async function PUT(request: NextRequest) {
           try {
             const item = body[i];
             
-            // Each item must have an id and fields
+            // Each item must have an id
             if (!item.id) {
               throw new Error('Each item must contain an id field');
             }
             
-            // Validate nested fields structure for each item
-            if (!item.fields || typeof item.fields !== 'object') {
-              throw new Error('Each item must contain a fields object');
-            }
-            
-            const record = await dataService.updateRecord(item.id, item.fields);
+            // Accept direct data without requiring fields wrapper
+            const record = await dataService.updateRecord(item.id, item);
             results.push(record);
           } catch (error: any) {
             errors.push({
@@ -191,17 +178,13 @@ export async function PUT(request: NextRequest) {
           }
         }, { status: errors.length === 0 ? 200 : 207 });
       } else {
-        // Single record update (existing functionality)
+        // Single record update
         if (!recordId) {
           return createErrorResponse('Record ID is required', 400);
         }
 
-        // Validate nested fields structure
-        if (!body.fields || typeof body.fields !== 'object') {
-          return createErrorResponse('Request body must contain a fields object', 400);
-        }
-
-        const record = await dataService.updateRecord(recordId, body.fields);
+        // Accept direct data without requiring fields wrapper
+        const record = await dataService.updateRecord(recordId, body);
 
         return NextResponse.json({ success: true, data: record });
       }
