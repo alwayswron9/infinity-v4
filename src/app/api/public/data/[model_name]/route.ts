@@ -288,8 +288,14 @@ export async function PATCH(
       // Remove any vector data from the input
       const { _vector, ...updateData } = partialUpdate;
       
-      // Update the record with the partial data
-      const record = await dataService.updateRecord(id, updateData);
+      // Extract the data from the current record (excluding system fields)
+      const { _id, _created_at, _updated_at, _vector: currentVector, ...currentData } = currentRecord;
+      
+      // Merge the current data with the partial update data
+      const mergedData = { ...currentData, ...updateData };
+      
+      // Update the record with the merged data
+      const record = await dataService.updateRecord(id, mergedData);
 
       // Exclude vector data from response
       const { _vector: responseVector, ...recordWithoutVector } = record;
