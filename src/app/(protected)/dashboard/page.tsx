@@ -197,10 +197,21 @@ export default function Dashboard() {
               </ListItem>
             </List>
             <Divider borderColor="gray.700" />
-            <Text color="gray.400" fontSize="sm">
-              Infinity serves as the central data hub for all your automation workflows,
-              ensuring consistent data storage, retrieval, and management while handling permissions and data validation.
-            </Text>
+            <Flex justifyContent="space-between" alignItems="center">
+              <Text color="gray.400" fontSize="sm">
+                Infinity serves as the central data hub for all your automation workflows.
+              </Text>
+              <Link href="/public-docs" passHref>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  colorScheme="brand"
+                  rightIcon={<Icon as={ArrowRight} boxSize={4} />}
+                >
+                  View Documentation
+                </Button>
+              </Link>
+            </Flex>
           </Stack>
         </Card>
 
