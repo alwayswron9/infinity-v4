@@ -14,7 +14,8 @@ import {
 } from '@chakra-ui/react';
 import { 
   Home as HomeIcon, 
-  Database as DatabaseIcon, 
+  Database as DatabaseIcon,
+  FileText as DocumentationIcon,
   Settings as SettingsIcon, 
   LogOut as LogOutIcon 
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: HomeIcon },
   { href: '/models', label: 'Models', icon: DatabaseIcon },
+  { href: '/documentation', label: 'Documentation', icon: DocumentationIcon },
   { href: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
